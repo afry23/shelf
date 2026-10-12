@@ -15,15 +15,157 @@ on:
       - '**/*.md'
       - '**/*.txt'
       - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    name: test (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-24.04
+            arch: x86_64
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+          - rid: osx-arm64
+            os: macos-15
+            arch: arm64
+          - rid: osx-x64
+            os: macos-15-intel
+            arch: x86_64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - name: Assert runner architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          RUNNER_LABEL: ${{ matrix.os }}
+        run: |
+          actual="$(uname -m)"
+          echo "uname -m: $actual (expected $EXPECTED_ARCH)"
+          if [ "$actual" != "$EXPECTED_ARCH" ]; then
+            echo "::error::Runner label '$RUNNER_LABEL' delivered '$actual', expected '$EXPECTED_ARCH'"
+            exit 1
+          fi
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - run: dotnet --info
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
+
+  aot:
+    name: aot (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-24.04
+            arch: x86_64
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+          - rid: osx-arm64
+            os: macos-15
+            arch: arm64
+          - rid: osx-x64
+            os: macos-15-intel
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assert runner architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          RUNNER_LABEL: ${{ matrix.os }}
+        run: |
+          actual="$(uname -m)"
+          echo "uname -m: $actual (expected $EXPECTED_ARCH)"
+          if [ "$actual" != "$EXPECTED_ARCH" ]; then
+            echo "::error::Runner label '$RUNNER_LABEL' delivered '$actual', expected '$EXPECTED_ARCH'"
+            exit 1
+          fi
+      - name: Install AOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish (Native AOT)
+        run: >
+          dotnet publish src/Shelf.Cli/Shelf.Cli.csproj
+          -c Release -r ${{ matrix.rid }} -p:PublishAot=true
+          -o "$RUNNER_TEMP/aot"
+      - name: Smoke check
+        run: |
+          BIN="$RUNNER_TEMP/aot/shelf"
+          if [ ! -x "$BIN" ]; then
+            echo "::error::$BIN does not exist or is not executable"
+            ls -la "$RUNNER_TEMP/aot"
+            exit 1
+          fi
+          if [ -e "$RUNNER_TEMP/aot/shelf.dll" ]; then
+            echo "::error::shelf.dll present: output is not a native binary"
+            exit 1
+          fi
+          file "$BIN" || true
+          ls -l "$BIN"
+
+          version_out="$("$BIN" --version)"
+          echo "--version output: $version_out"
+          if ! printf '%s\n' "$version_out" | grep -Eq '^shelf [0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::--version output does not match '^shelf X.Y.Z'"
+            exit 1
+          fi
+
+          if "$BIN"; then
+            code=0
+          else
+            code=$?
+          fi
+          echo "exit code without arguments: $code"
+          if [ "$code" -ne 2 ]; then
+            echo "::error::expected exit code 2 without arguments, got $code"
+            exit 1
+          fi
+
+  ci:
+    name: ci
+    needs: [test, aot]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require all jobs to succeed
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          AOT_RESULT: ${{ needs.aot.result }}
+        run: |
+          echo "test: $TEST_RESULT"
+          echo "aot: $AOT_RESULT"
+          if [ "$TEST_RESULT" != "success" ] || [ "$AOT_RESULT" != "success" ]; then
+            echo "::error::test or aot jobs did not succeed"
+            exit 1
+          fi
