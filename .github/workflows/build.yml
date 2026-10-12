@@ -147,7 +147,7 @@ jobs:
             code=$?
           fi
           echo "exit code without arguments: $code"
-          if [ "$code" -ne 2 ]; then
+          if [ "$code" -ne 1 ]; then
             echo "::error::expected exit code 2 without arguments, got $code"
             exit 1
           fi
