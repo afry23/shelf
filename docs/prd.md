@@ -399,7 +399,8 @@ src/
   Shelf.Web/           ASP.NET Core Minimal APIs, embedded UI
   Shelf.Web.Ui/        Frontend (build time), PDF.js, foliate-js
 tests/
-  Shelf.*.Tests/
+  Shelf.Specs/         BDD feature files (Reqnroll) and step definitions
+  Shelf.*.Tests/       Unit tests
   fixtures/            Sample EPUBs/PDFs (public domain)
 ```
 
@@ -423,6 +424,7 @@ The candidates must be checked for license and maintenance status before the pro
 | PDF reader | PDF.js (Apache 2.0) |
 | EPUB reader | foliate-js (MIT) |
 | Logging | Microsoft.Extensions.Logging, output to stderr (important for MCP stdio) |
+| BDD | Reqnroll (Gherkin feature files in English; process rules in `CLAUDE.md`) |
 
 ### 10.3 Database Schema (Core)
 
