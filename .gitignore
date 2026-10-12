@@ -47,3 +47,9 @@ msbuild.wrn
 node_modules/
 package-lock.json
 package.json
+
+# Reqnroll generated code-behind
+*.feature.cs
+
+# Test results
+TestResults/
