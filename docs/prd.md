@@ -511,11 +511,13 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 | Q5 | Annotations/highlights | **Later**, not in v1. A separate sidecar `annotations.json` remains the preferred direction. |
 | Q6 | Sync scenario | **No sync.** A library is used on one machine only. |
 | Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. |
-| Q1 | Frontend technology | **htmx + RazorSlices** (server-rendered HTML fragments, minimal JS, no Node.js toolchain). RazorSlices is chosen over Razor Pages/MVC because those are not Native AOT-compatible and would break the single AOT binary (Q2). AOT compatibility is verified in an M1 spike; fallback is Svelte. |
+| Q1 | Frontend technology | **htmx + RazorSlices** (server-rendered HTML fragments, minimal JS, no Node.js toolchain). RazorSlices is chosen over Razor Pages/MVC because those are not Native AOT-compatible and would break the single AOT binary (Q2). AOT compatibility is verified in an M0 spike; fallback is Svelte. |
 
 ### 13.2 Open
 
-None at the moment.
+| # | Topic | Question |
+|---|---|---|
+| Q8 | ONNX Runtime on `osx-x64` | The `Microsoft.ML.OnnxRuntime` NuGet package ships no `osx-x64` native since 1.24.1 (1.22.0 to 1.23.2 do). `osx-x64` is a target platform (9.2). Options: pin 1.23.x, build ONNX Runtime ourselves, or no semantic search on `osx-x64`. Decided in the M0 AOT spike. See [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md). |
 
 ## 14. Risks
 
@@ -524,4 +526,4 @@ None at the moment.
 | Poor metadata in PDFs | Incorrect grouping and sorting | Confidence scores, review queue, file-name heuristic, ISBN search in text |
 | sqlite-vec as a native dependency | Build/distribution effort per platform | Prebuilt binaries in the package; fallback: brute-force cosine in C# (fast enough at 10k works) |
 | Initial embedding indexing takes long | Poor first experience | Background job, work level first, chunks afterwards, resumable |
-| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M1 (incl. RazorSlices, MCP SDK, ONNX Runtime); ReadyToRun if necessary |
+| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M0 (incl. RazorSlices, MCP SDK, ONNX Runtime); ReadyToRun if necessary |
