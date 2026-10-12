@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Working title** | `shelf` |
-| **Status** | Draft v0.1 |
-| **Date** | 2026-10-11 |
+| **Status** | v1.0 |
+| **Date** | 2026-10-12 |
 | **Author** | Afry |
 | **Platforms** | macOS (arm64, x64), Linux (x64, arm64) |
 | **Technology** | C# / .NET 10 |
@@ -58,6 +58,8 @@ Existing alternatives were evaluated and rejected. Reasons include unreadable ha
 - Multi-user operation with permission management
 - Cloud hosting or SaaS
 - Reader functions beyond reading, i.e. no annotations in v1 (see chapter 13)
+- Sync of a library across multiple machines
+- OCR for scanned PDFs without a text layer (metadata only)
 
 ## 4. Target Audience
 
@@ -88,7 +90,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-LIB-2 | Supported formats: EPUB, PDF. | M |
 | F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT, MD) are tracked as files but not indexed by content. | S |
 | F-LIB-4 | The data model separates **Work** and **File**. A work has 1..n files. | M |
-| F-LIB-5 | Each work has a sidecar file `book.json` in the work folder. It is the **source of truth** for metadata and tags. | M |
+| F-LIB-5 | Each work has a sidecar file `book.json` in the work folder. It is the **source of truth** for metadata, tags, reading progress, and "not a duplicate" markings, and holds the work ID (ULID, generated once, never changed). | M |
 | F-LIB-6 | The SQLite database is exclusively an index and cache. `shelf reindex` rebuilds it completely from the file system and sidecars. | M |
 | F-LIB-7 | Incremental scan: only new or changed files are processed (check via mtime + size, SHA-256 when in doubt). | M |
 | F-LIB-8 | Optional watch mode: file changes in the root folder are detected automatically. | C |
@@ -112,7 +114,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-IMP-4 | ISBN detection via regex in the first and last pages of the text. | S |
 | F-IMP-5 | Cover extraction: the cover image for EPUB, a rendering of the first page for PDF. Stored as `cover.jpg` in the work folder. | S |
 | F-IMP-6 | Optional online enrichment via Open Library or Google Books by ISBN. **Off** by default, only on explicit command. | C |
-| F-IMP-7 | Uncertain detections end up in a review queue (`shelf review`) instead of being filed incorrectly. | S |
+| F-IMP-7 | Uncertain detections end up in a review queue (`shelf review`) instead of being filed incorrectly. The queue is persisted in `.shelf/review.json` and survives `shelf reindex`. | S |
 
 ### 6.3 Grouping Multiple Formats into One Work
 
@@ -120,9 +122,28 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 |---|---|---|
 | F-GRP-1 | On import, it is checked whether the file belongs to an existing work. The cascade stops at the first confident match: 1. same ISBN, 2. normalized title + author surname(s), 3. text fingerprint (SimHash over the first ~5,000 words of running text). | M |
 | F-GRP-2 | Title normalization: lowercase, Unicode normalization (NFKD), removal of diacritics, punctuation, articles (der/die/das/the/a/an), and additions such as "2nd Edition" or "(German Edition)". | M |
-| F-GRP-3 | Every grouping has a confidence score. If it is below the threshold, no automatic grouping takes place; a review entry is created instead. | M |
+| F-GRP-3 | Every grouping has a confidence score (0–1, see below). If it is below the auto-merge threshold, no automatic grouping takes place; a review entry is created instead. | M |
 | F-GRP-4 | Manual correction via `shelf merge <work-a> <work-b>` and `shelf split <work> <file>`. | M |
 | F-GRP-5 | Different **editions** are treated as different works but are marked as "related". | S |
+| F-GRP-6 | All thresholds are configurable in `config.toml`. The start values below are calibrated against acceptance criterion 1 before M1 is completed. | M |
+
+**Confidence per signal (start values):**
+
+| Signal | Confidence |
+|---|---|
+| Same ISBN-13 | 1.0 |
+| Normalized title + author surname(s) identical, year identical or missing | 0.95 |
+| Normalized title + author surname(s) identical, year different | 0.6 (probably another edition, see F-GRP-5) |
+| SimHash (64 bit), Hamming distance ≤ 3 | 0.9 |
+| SimHash (64 bit), Hamming distance 4–10 | 0.6 |
+
+**Thresholds (start values):**
+
+| Confidence | Action |
+|---|---|
+| ≥ 0.9 | Merge automatically |
+| ≥ 0.5 and < 0.9 | Create review entry |
+| < 0.5 | Create new work |
 
 ### 6.4 Folder Structure and Organization
 
@@ -152,8 +173,10 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
       ...
   .shelf/
     index.db
+    review.json
     journal/
     models/
+    trash/
 ```
 
 **Rationale:** Two levels (author → work) remain navigable in Finder or the file manager. Works as their own folders keep all formats, the cover, and the metadata together. The year in the folder name separates editions.
@@ -199,10 +222,10 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 |---|---|---|
 | F-DUP-1 | **Exact duplicates:** same SHA-256 → suggestion to remove all but one file. | M |
 | F-DUP-2 | **Same work, same format, different file** (e.g. two EPUBs from different sources) → suggestion with a comparison of size, page count, and metadata completeness. | M |
-| F-DUP-3 | **Probable duplicates** across work boundaries, via MinHash/SimHash of the text or high embedding similarity → for manual review only. | S |
+| F-DUP-3 | **Probable duplicates** across work boundaries, via MinHash/SimHash of the text or high embedding similarity → for manual review only. Start values (configurable, see F-GRP-6): SimHash Hamming distance ≤ 3, or work-level cosine similarity ≥ 0.95. The cosine threshold must be calibrated on the test library, since e5 models also score unrelated texts at 0.7–0.85. | S |
 | F-DUP-4 | Deleting always means: move to `.shelf/trash/`. Permanent deletion only via `shelf trash empty`. | M |
 | F-DUP-5 | Interactive mode in the CLI and comparison view in the web UI. | M |
-| F-DUP-6 | Pairs can be marked as "not a duplicate". They are then not suggested again. | S |
+| F-DUP-6 | Pairs can be marked as "not a duplicate". They are then not suggested again. The marking is stored in `book.json` (across works: on both sides as the other work's ID; within a work: as a file pair). | S |
 
 ## 7. Interfaces
 
@@ -245,7 +268,7 @@ Further requirements for the CLI:
 | `search_books` | Metadata/full-text search with the same query language as the CLI |
 | `semantic_search` | Semantic search at work or chunk level, with locations |
 | `get_book` | Metadata, formats, tags, and table of contents of a work |
-| `read_passage` | Text excerpt at a location (page/CFI), limited to max. N characters |
+| `read_passage` | Text excerpt at a location (page/CFI). Parameter `maxChars`: default 4,000, hard maximum 20,000 (configurable) |
 | `similar_books` | Similar works to a work |
 | `list_tags` | Tag tree with counts |
 | `add_tags` / `remove_tags` | Change tags (write) |
@@ -300,7 +323,7 @@ Requirements for the MCP server:
 | F-RDR-1 | PDF reader based on **PDF.js**: page navigation, zoom, text search, table of contents (outline). | M |
 | F-RDR-2 | EPUB reader based on **foliate-js**: reflow, font size, theme, table of contents, text search. | M |
 | F-RDR-3 | Deep links to locations (`/read/{fileId}#page=42` or `#cfi=...`). Search hits jump directly there. | M |
-| F-RDR-4 | Reading progress is saved per file and resumed on opening. | S |
+| F-RDR-4 | Reading progress is saved per file in `book.json` and resumed on opening. Writes are debounced (e.g. at most every 30 s and on closing the reader). | S |
 | F-RDR-5 | If a work has multiple formats, the preferred format for the reader is configurable (default: EPUB). | S |
 | F-RDR-6 | Bookmarks. | C |
 
@@ -325,7 +348,7 @@ Reference: 10,000 works, approx. 15,000 files, Apple M-series or a current x64 l
 ### 9.2 Platform and Operation
 
 - Self-contained single-file binaries for `osx-arm64`, `osx-x64`, `linux-x64`, and `linux-arm64`.
-- CLI and MCP are built as Native AOT where possible. Parts that require reflection (e.g. the web host) may use JIT. A single binary is preferred; the AOT decision is in chapter 13.
+- CLI, MCP server, and web host ship as **one** binary (decision Q2). Native AOT is the goal; if a required library is not AOT-compatible, ReadyToRun is the fallback.
 - No external services (no Python, no Docker, no vector DB) at runtime.
 - The embedding model is downloaded once on first need and stored in `.shelf/models/`. Offline installation is possible via `shelf model install <path>`.
 - Configuration: `~/.config/shelf/config.toml` (XDG) for global, `<root>/.shelf/config.toml` per library.
@@ -337,7 +360,7 @@ Reference: 10,000 works, approx. 15,000 files, Apple M-series or a current x64 l
 - All file operations run transactionally via the journal so that recovery after a crash is possible.
 - The library remains fully usable without `shelf`: readable folders and readable `book.json`.
 - Write access to the SQLite database in WAL mode. CLI, web, and MCP can run in parallel.
-- Only the index is fault-tolerant with respect to sync tools (iCloud, Syncthing); sidecars and files remain authoritative.
+- A library is used on one machine only (decision Q6). Sync via iCloud, Syncthing, or similar is not supported.
 
 ### 9.4 Privacy
 
@@ -396,7 +419,7 @@ The candidates must be checked for license and maintenance status before the pro
 | Embeddings | Microsoft.ML.OnnxRuntime + tokenizer (Microsoft.ML.Tokenizers) |
 | MCP | Official ModelContextProtocol C# SDK |
 | Web backend | ASP.NET Core Minimal APIs |
-| Web frontend | Lightweight, e.g. Svelte or htmx; decision see chapter 13 |
+| Web frontend | htmx + RazorSlices (decision Q1); small interactions via vanilla JS or Alpine.js |
 | PDF reader | PDF.js (Apache 2.0) |
 | EPUB reader | foliate-js (MIT) |
 | Logging | Microsoft.Extensions.Logging, output to stderr (important for MCP stdio) |
@@ -416,9 +439,9 @@ works_fts  (FTS5: title, subtitle, authors, description, tags)
 chunks_fts (FTS5: text)
 vec_works  (sqlite-vec: work_id, embedding)
 vec_chunks (sqlite-vec: chunk_id, embedding)
-dupe_ignores(a_id, b_id)
-review_queue(id, kind, payload_json, created_at)
-reading_progress(file_id, locator, updated_at)
+dupe_ignores(a_id, b_id)                      -- mirrored from book.json
+review_queue(id, kind, payload_json, created_at) -- mirrored from .shelf/review.json
+reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 ```
 
 ### 10.4 `book.json` (Sidecar)
@@ -436,8 +459,21 @@ reading_progress(file_id, locator, updated_at)
   "tags": ["architektur/verteilte-systeme", "datenbanken"],
   "rating": 5,
   "readStatus": "read",
-  "files": ["Designing Data-Intensive Applications.epub",
-            "Designing Data-Intensive Applications.pdf"]
+  "files": [
+    {
+      "name": "Designing Data-Intensive Applications.epub",
+      "progress": { "locator": "epubcfi(/6/14!/4/2/10)", "updatedAt": "2026-10-12T19:04:00Z" }
+    },
+    {
+      "name": "Designing Data-Intensive Applications.pdf",
+      "progress": { "locator": "page=212", "updatedAt": "2026-09-30T08:12:00Z" }
+    }
+  ],
+  "notDuplicates": {
+    "works": ["01J8XQ2…"],
+    "files": [["Designing Data-Intensive Applications.epub",
+               "Designing Data-Intensive Applications (1).epub"]]
+  }
 }
 ```
 
@@ -463,15 +499,21 @@ reading_progress(file_id, locator, updated_at)
 
 ## 13. Open Questions and Decisions
 
-| # | Question | Options |
+### 13.1 Decisions
+
+| # | Question | Decision |
 |---|---|---|
-| Q1 | Frontend technology | Blazor (all C#, larger bundle) vs. Svelte (lean, separate build) vs. htmx + Razor (minimal JS) |
-| Q2 | One binary or two? | One binary for everything (simpler) vs. AOT CLI + separate web host (faster CLI start) |
-| Q3 | Embedding model | multilingual-e5-small (fast) vs. bge-m3 (better, ~4× larger) |
-| Q4 | Work ID | ULID in `book.json` vs. derived from ISBN/title |
-| Q5 | Annotations/highlights | Not in v1; later as a separate sidecar `annotations.json`? |
-| Q6 | Sync scenario | Should the library run on multiple machines via iCloud/Syncthing? This affects locking. |
-| Q7 | Scanned PDFs without a text layer | Ignore (metadata only) vs. optional OCR (e.g. Tesseract as an external dependency) |
+| Q2 | One binary or two? | **One binary** for CLI, MCP server, and web host. |
+| Q3 | Embedding model | Start with **multilingual-e5-small**. The model stays replaceable (F-SEM-8); bge-m3 can be evaluated later. |
+| Q4 | Work ID | **ULID**, generated once on import and stored in `book.json`. It never changes. |
+| Q5 | Annotations/highlights | **Later**, not in v1. A separate sidecar `annotations.json` remains the preferred direction. |
+| Q6 | Sync scenario | **No sync.** A library is used on one machine only. |
+| Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. |
+| Q1 | Frontend technology | **htmx + RazorSlices** (server-rendered HTML fragments, minimal JS, no Node.js toolchain). RazorSlices is chosen over Razor Pages/MVC because those are not Native AOT-compatible and would break the single AOT binary (Q2). AOT compatibility is verified in an M1 spike; fallback is Svelte. |
+
+### 13.2 Open
+
+None at the moment.
 
 ## 14. Risks
 
@@ -480,5 +522,4 @@ reading_progress(file_id, locator, updated_at)
 | Poor metadata in PDFs | Incorrect grouping and sorting | Confidence scores, review queue, file-name heuristic, ISBN search in text |
 | sqlite-vec as a native dependency | Build/distribution effort per platform | Prebuilt binaries in the package; fallback: brute-force cosine in C# (fast enough at 10k works) |
 | Initial embedding indexing takes long | Poor first experience | Background job, work level first, chunks afterwards, resumable |
-| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M1; ReadyToRun if necessary |
-| Sync tools change files in parallel | Inconsistent index | Index is only a cache; sidecars are authoritative; robust re-scan |
+| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M1 (incl. RazorSlices, MCP SDK, ONNX Runtime); ReadyToRun if necessary |
