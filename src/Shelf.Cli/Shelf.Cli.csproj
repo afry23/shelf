@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>shelf</AssemblyName>
+    <RootNamespace>Shelf.Cli</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+  </ItemGroup>
+
+</Project>
