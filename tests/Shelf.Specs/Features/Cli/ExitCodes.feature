@@ -18,7 +18,8 @@ Feature: CLI exit codes
   Scenario: Printing the help succeeds
     When I run shelf with arguments "--help"
     Then the exit code is 0
-    And standard output starts with "Usage: shelf"
+    And standard output contains "Usage:"
+    And standard output contains "shelf [options]"
     And standard error is empty
 
   Scenario Outline: Usage errors exit with code 2 and write to standard error

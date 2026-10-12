@@ -1,58 +1,101 @@
-using System.Reflection;
+using System.CommandLine;
+using System.CommandLine.Help;
+using System.CommandLine.Invocation;
+using System.Text.Json;
 
 namespace Shelf.Cli;
 
 /// <summary>
-/// Temporary argument handling. It will be replaced by the chosen CLI framework;
-/// the exit codes and stream rules (PRD 7.1) stay.
+/// Entry point of the CLI (ADR 0002: System.CommandLine). Exit codes and stream rules follow PRD 7.1.
+/// Never touches the static console or the process environment; everything comes in through the arguments.
 /// </summary>
 public static class ShelfApp
 {
-    private const int ExitSuccess = 0;
-    private const int ExitUsageError = 2;
-
+    private const string AppName = "shelf";
     private const string Usage = "Usage: shelf <command> [options]";
 
-    public static int Run(string[] args, TextWriter stdout, TextWriter stderr)
+    public static int Run(string[] args, TextWriter stdout, TextWriter stderr) =>
+        Run(args, stdout, stderr, CliEnvironment.Empty);
+
+    public static int Run(string[] args, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
+        ArgumentNullException.ThrowIfNull(environment);
+        // `environment` is reserved for M1 color output; until then the NO_COLOR scenarios are intentionally weak.
 
-        if (args.Length == 0)
+        // A plain Command is the root (not RootCommand): RootCommand derives its name from the process
+        // path, which is the test host in specs (ADR 0002).
+        var json = GlobalOptions.CreateJson();
+        var root = new Command(AppName, "Manage your e-book library");
+        root.Options.Add(json);
+        root.Options.Add(new HelpOption());
+        root.Options.Add(new Option<bool>("--version")
+        {
+            Description = "Show version information",
+            Action = new VersionAction(json, stdout),
+        });
+
+        // Without a command there is nothing to run: that is a usage error, not success.
+        root.SetAction(_ =>
         {
             stderr.WriteLine(Usage);
-            return ExitUsageError;
-        }
+            return ExitCodes.Usage;
+        });
 
-        var first = args[0];
-        switch (first)
+        var parseResult = root.Parse(args);
+        if (parseResult.Errors.Count > 0)
         {
-            case "--version":
-                stdout.WriteLine($"shelf {GetVersion()}");
-                return ExitSuccess;
-            case "--help":
-                stdout.WriteLine(Usage);
-                return ExitSuccess;
+            var message = ParseErrorMessages.Describe(parseResult.UnmatchedTokens);
+            if (message is not null)
+            {
+                stderr.WriteLine(message);
+            }
+
+            stderr.WriteLine(Usage);
+            return ExitCodes.Usage;
         }
 
-        stderr.WriteLine(first.StartsWith('-')
-            ? $"Unknown option '{first}'"
-            : $"Unknown command '{first}'");
-        stderr.WriteLine(Usage);
-        return ExitUsageError;
+        try
+        {
+            return parseResult.Invoke(new InvocationConfiguration
+            {
+                Output = stdout,
+                Error = stderr,
+                EnableDefaultExceptionHandler = false,
+            });
+        }
+        catch (Exception exception)
+        {
+            stderr.WriteLine($"error: {exception.Message}");
+            return ExitCodes.Error;
+        }
     }
 
-    private static string GetVersion()
+    private sealed class VersionAction(Option<bool> json, TextWriter stdout) : SynchronousCommandLineAction
     {
-        var info = typeof(ShelfApp).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (string.IsNullOrEmpty(info))
+        public override int Invoke(ParseResult parseResult)
         {
-            return "0.0.0";
-        }
+            var version = VersionInfo.Get();
+            if (parseResult.GetValue(json))
+            {
+                using var buffer = new MemoryStream();
+                using (var writer = new Utf8JsonWriter(buffer))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("version", version);
+                    writer.WriteEndObject();
+                }
 
-        var plus = info.IndexOf('+', StringComparison.Ordinal);
-        return plus >= 0 ? info[..plus] : info;
+                stdout.WriteLine(System.Text.Encoding.UTF8.GetString(buffer.ToArray()));
+            }
+            else
+            {
+                stdout.WriteLine($"{AppName} {version}");
+            }
+
+            return ExitCodes.Success;
+        }
     }
 }

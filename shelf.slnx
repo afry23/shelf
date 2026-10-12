@@ -4,6 +4,7 @@
     <Project Path="src/Shelf.Core/Shelf.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
   </Folder>
 </Solution>

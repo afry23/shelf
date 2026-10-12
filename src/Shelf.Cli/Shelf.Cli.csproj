@@ -5,10 +5,20 @@
     <AssemblyName>shelf</AssemblyName>
     <RootNamespace>Shelf.Cli</RootNamespace>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- Keep framework messages in English; no satellite resource folders next to the binary (ADR 0002). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Cli.Tests" />
   </ItemGroup>
 
 </Project>
