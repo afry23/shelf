@@ -1,0 +1,129 @@
+date: 2026-10-12T19:27:22Z
+os: macOS 26.6.2 (arm64)
+cpu: Apple M4
+ram_bytes: 25769803776
+dotnet: 10.0.401
+power: Now drawing from 'Battery Power'
+timing tool: zsh EPOCHREALTIME loop
+=== Baseline
+warnings (distinct lines): 0
+  ok    --version
+  ok    --help
+  ok    greet World --times 2
+  ok    --json greet World
+  ok    greet World --json
+  ok    tag add fiction
+  ok    (no args)
+  ok    greet (missing argument)
+  ok    greet World --times abc
+  ok    frobnicate
+  ok    --help NO_COLOR=1 on a pty (217 bytes captured) has no ESC byte (runtime keypad mode ignored)
+functional: PASS
+size_bytes: 1236096
+output directory:
+  proto-baseline
+  proto-baseline.dSYM
+first_run_ms: 3.39
+timing[--version] median p95 min max (ms): 3.15 3.45 2.98 3.59
+timing[greet World --times 2] median p95 min max (ms): 3.32 3.56 3.11 3.72
+timing[--help] median p95 min max (ms): 3.24 3.73 2.97 4.15
+=== SystemCommandLine
+warnings (distinct lines): 0
+  ok    --version
+  ok    --help
+  ok    greet World --times 2
+  ok    --json greet World
+  ok    greet World --json
+  ok    tag add fiction
+  ok    (no args)
+  ok    greet (missing argument)
+  ok    greet World --times abc
+  ok    frobnicate
+  ok    --help NO_COLOR=1 on a pty (297 bytes captured) has no ESC byte (runtime keypad mode ignored)
+functional: PASS
+size_bytes: 3061672
+output directory:
+  proto-scl
+  proto-scl.dSYM
+first_run_ms: 4.05
+timing[--version] median p95 min max (ms): 3.52 3.67 3.37 3.80
+timing[greet World --times 2] median p95 min max (ms): 3.76 4.21 3.52 4.25
+timing[--help] median p95 min max (ms): 3.70 4.44 3.47 4.54
+=== SpectreCli
+warnings (distinct lines): 26
+     4 warning IL2026
+     4 warning IL2067
+     3 warning IL2070
+     7 warning IL2072
+     4 warning IL2075
+     1 warning IL3000
+     3 warning IL3050
+  FAIL  --version (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  --help (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  greet World --times 2 (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  --json greet World (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  greet World --json (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  tag add fiction (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  (no args) (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  greet (missing argument) (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  greet World --times abc (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  frobnicate (exit 134, stdout '', stderr 'Unhandled exception. Spectre.Console.Cli.CommandRuntimeException: Could not get settings type for command of type 'GreetCommand'.
+   at Spectre.Console.Cli.ConfiguredCommand.FromType[TCommand](String, Boolean) + 0x90
+   at Spectre.Console.Cli.Configurator.AddCommand[TCommand](String) + 0x28
+   at Proto.<>c__DisplayClass0_0.<Run>b__0(IConfigurator) + 0x80
+   at Proto.Run(String[], TextWriter, TextWriter) + 0xe0
+   at Program.<Main>$(String[] args) + 0x2c')
+  FAIL  --help NO_COLOR=1 on a pty (exit 250, output bytes 0)
+functional: FAIL
+size_bytes: 9350032
+output directory:
+  proto-spectre
+  proto-spectre.dSYM
+./measure.sh: line 64: 49442 Abort trap: 6           "$BIN" --version > /dev/null 2>&1
+first_run_ms: n/a (binary fails)
+timing: n/a (binary fails --version)

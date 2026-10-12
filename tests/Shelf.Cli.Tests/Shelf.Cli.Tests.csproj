@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Framework resources stay English so help texts do not depend on the machine locale (ADR 0002). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <RootNamespace>Shelf.Cli.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shelf.Cli\Shelf.Cli.csproj" />
+  </ItemGroup>
+
+</Project>
