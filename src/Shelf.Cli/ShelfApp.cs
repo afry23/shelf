@@ -2,6 +2,8 @@ using System.CommandLine;
 using System.CommandLine.Help;
 using System.CommandLine.Invocation;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Shelf.Cli.Logging;
 
 namespace Shelf.Cli;
 
@@ -23,8 +25,19 @@ public static class ShelfApp
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
         ArgumentNullException.ThrowIfNull(environment);
-        // `environment` is reserved for M1 color output; until then the NO_COLOR scenarios are intentionally weak.
+        // `environment` carries the log level; M1 adds color output (until then the NO_COLOR scenarios are weak).
 
+        using var provider = new StderrLoggerProvider(stderr);
+        using var factory = new LoggerFactory([provider], new LoggerFilterOptions { MinLevel = environment.MinimumLogLevel });
+        var logger = factory.CreateLogger("Shelf.Cli.ShelfApp");
+        ShelfAppLog.Starting(logger, VersionInfo.Get());
+        var code = RunCore(args, stdout, stderr, logger);
+        ShelfAppLog.Exiting(logger, code);
+        return code;
+    }
+
+    private static int RunCore(string[] args, TextWriter stdout, TextWriter stderr, ILogger logger)
+    {
         // A plain Command is the root (not RootCommand): RootCommand derives its name from the process
         // path, which is the test host in specs (ADR 0002).
         var json = GlobalOptions.CreateJson();
@@ -45,6 +58,7 @@ public static class ShelfApp
         });
 
         var parseResult = root.Parse(args);
+        ShelfAppLog.Parsed(logger, parseResult.Tokens.Count, parseResult.Errors.Count);
         if (parseResult.Errors.Count > 0)
         {
             var message = ParseErrorMessages.Describe(parseResult.UnmatchedTokens);

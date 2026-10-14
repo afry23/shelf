@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using Reqnroll;
 using Shelf.Cli;
 using Xunit;
@@ -14,12 +15,16 @@ public sealed class CliSteps(ScenarioEnvironment environment)
     private readonly StringWriter _stderr = new();
     private bool _stdoutIsTerminal;
     private int _exitCode = -1;
+    private LogLevel? _logLevel;
 
     [Given("the environment variable {string} is set to {string}")]
     public void GivenTheEnvironmentVariableIsSetTo(string name, string value) => environment.Variables[name] = value;
 
     [Given("standard output is a terminal")]
     public void GivenStandardOutputIsATerminal() => _stdoutIsTerminal = true;
+
+    [Given("the log level is {string}")]
+    public void GivenTheLogLevelIs(string value) => _logLevel = Enum.Parse<LogLevel>(value, ignoreCase: false);
 
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
@@ -28,6 +33,11 @@ public sealed class CliSteps(ScenarioEnvironment environment)
         var cliEnvironment = CliEnvironment.FromVariables(
             name => environment.Variables.GetValueOrDefault(name),
             _stdoutIsTerminal);
+        if (_logLevel is { } level)
+        {
+            cliEnvironment = cliEnvironment.WithMinimumLogLevel(level);
+        }
+
         _exitCode = ShelfApp.Run(args, _stdout, _stderr, cliEnvironment);
     }
 
@@ -51,6 +61,28 @@ public sealed class CliSteps(ScenarioEnvironment environment)
     [Then("standard output contains {string}")]
     public void ThenStandardOutputContains(string text) =>
         Assert.Contains(text, _stdout.ToString(), StringComparison.Ordinal);
+
+    [Then("standard error contains {string}")]
+    public void ThenStandardErrorContains(string text) =>
+        Assert.Contains(text, _stderr.ToString(), StringComparison.Ordinal);
+
+    [Then("standard output does not contain {string}")]
+    public void ThenStandardOutputDoesNotContain(string text) =>
+        Assert.DoesNotContain(text, _stdout.ToString(), StringComparison.Ordinal);
+
+    [Then("standard error contains the line {string}")]
+    public void ThenStandardErrorContainsTheLine(string line) =>
+        Assert.Contains(line, StderrLines());
+
+    [Then("standard error contains {int} log line(s) at level {string}")]
+    public void ThenStandardErrorContainsLogLinesAtLevel(int count, string level)
+    {
+        var prefix = "[" + level + "] ";
+        Assert.Equal(count, StderrLines().Count(l => l.StartsWith(prefix, StringComparison.Ordinal)));
+    }
+
+    private string[] StderrLines() =>
+        _stderr.ToString().Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
 
     [Then("standard error does not contain {string}")]
     public void ThenStandardErrorDoesNotContain(string text) =>
