@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>proto-cstoml</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Harness.cs" />
+    <PackageReference Include="CsToml" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,6 @@
+title = "crlf"
+
+[grouping]
+auto_merge = 0.9
+# comment
+review = 0.5

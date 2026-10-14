@@ -1,0 +1,4 @@
+key = integer:1
+bare_key = integer:2
+bare-key = integer:3
+1234 = integer:4

@@ -8,16 +8,15 @@ namespace Shelf.Specs.Steps;
 
 // Style convention for step definitions: Cucumber expressions ({string}, {int}).
 [Binding]
-public sealed class CliSteps
+public sealed class CliSteps(ScenarioEnvironment environment)
 {
     private readonly StringWriter _stdout = new();
     private readonly StringWriter _stderr = new();
-    private readonly Dictionary<string, string> _variables = new();
     private bool _stdoutIsTerminal;
     private int _exitCode = -1;
 
     [Given("the environment variable {string} is set to {string}")]
-    public void GivenTheEnvironmentVariableIsSetTo(string name, string value) => _variables[name] = value;
+    public void GivenTheEnvironmentVariableIsSetTo(string name, string value) => environment.Variables[name] = value;
 
     [Given("standard output is a terminal")]
     public void GivenStandardOutputIsATerminal() => _stdoutIsTerminal = true;
@@ -26,10 +25,10 @@ public sealed class CliSteps
     public void WhenIRunShelfWithArguments(string arguments)
     {
         var args = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var environment = CliEnvironment.FromVariables(
-            name => _variables.GetValueOrDefault(name),
+        var cliEnvironment = CliEnvironment.FromVariables(
+            name => environment.Variables.GetValueOrDefault(name),
             _stdoutIsTerminal);
-        _exitCode = ShelfApp.Run(args, _stdout, _stderr, environment);
+        _exitCode = ShelfApp.Run(args, _stdout, _stderr, cliEnvironment);
     }
 
     [Then("the exit code is {int}")]

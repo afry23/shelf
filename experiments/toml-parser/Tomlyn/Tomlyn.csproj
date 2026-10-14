@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>proto-tomlyn</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Harness.cs" />
+    <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+</Project>

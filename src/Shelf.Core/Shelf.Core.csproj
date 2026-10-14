@@ -4,4 +4,12 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="CsToml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Core.Tests" />
+  </ItemGroup>
+
 </Project>

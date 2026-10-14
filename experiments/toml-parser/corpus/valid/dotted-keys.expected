@@ -1,0 +1,4 @@
+name = string:Orange
+physical.color = string:orange
+physical.shape = string:round
+site = table:

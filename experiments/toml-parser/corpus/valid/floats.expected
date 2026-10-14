@@ -1,0 +1,8 @@
+a = float:1
+b = float:3.1415
+c = float:-0.01
+d = float:5E+22
+e = float:1000000
+f = float:-0.02
+g = float:6.626E-34
+h = float:224617.445991228

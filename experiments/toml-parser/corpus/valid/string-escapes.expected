@@ -1,0 +1,3 @@
+a = string:back\slash
+b = string:quote"d
+c = string:tab	here
