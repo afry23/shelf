@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shelf.Cli\Shelf.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Shelf.Core\Shelf.Core.csproj" />
   </ItemGroup>
 
 </Project>

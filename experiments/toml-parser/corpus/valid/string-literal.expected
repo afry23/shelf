@@ -1,0 +1,2 @@
+p = string:C:\Users\nodejs\templates
+q = string:quoted "value"

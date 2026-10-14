@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
+    <Project Path="tests/Shelf.Core.Tests/Shelf.Core.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
   </Folder>
 </Solution>

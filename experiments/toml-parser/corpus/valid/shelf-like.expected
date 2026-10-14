@@ -1,0 +1,3 @@
+title = string:My Library
+grouping.auto_merge = float:0.9
+mcp.readOnly = boolean:true

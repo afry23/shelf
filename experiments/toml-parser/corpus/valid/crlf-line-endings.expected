@@ -1,0 +1,3 @@
+title = string:crlf
+grouping.auto_merge = float:0.9
+grouping.review = float:0.5

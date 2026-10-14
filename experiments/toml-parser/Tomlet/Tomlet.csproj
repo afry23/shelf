@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>proto-tomlet</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Harness.cs" />
+    <PackageReference Include="Samboy063.Tomlet" />
+  </ItemGroup>
+
+</Project>

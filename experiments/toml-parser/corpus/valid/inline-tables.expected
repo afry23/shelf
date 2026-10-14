@@ -1,0 +1,4 @@
+p.x = integer:1
+p.y = integer:2
+q.a.b = string:c
+r = table:

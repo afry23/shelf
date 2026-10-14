@@ -1,0 +1,14 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Tomlyn" Version="2.10.1" />
+    <PackageVersion Include="Samboy063.Tomlet" Version="6.2.0" />
+    <PackageVersion Include="CsToml" Version="1.8.6" />
+    <PackageVersion Include="Tommy" Version="3.1.2" />
+  </ItemGroup>
+
+</Project>

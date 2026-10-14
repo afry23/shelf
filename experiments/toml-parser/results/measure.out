@@ -1,0 +1,183 @@
+date: 2026-10-14T06:33:40Z
+os: macOS 26.6.2 (arm64)
+cpu: Apple M4
+ram_bytes: 25769803776
+dotnet: 10.0.401
+power: Now drawing from 'AC Power'
+timing tool: zsh EPOCHREALTIME loop
+=== Baseline
+warnings (distinct lines): 0
+size_bytes: 1518576
+output directory:
+  proto-toml-baseline
+  proto-toml-baseline.dSYM
+first_run_ms: 5.89
+timing[get sample/config.toml grouping.auto_merge] median p95 min max (ms): 3.37 4.16 3.14 4.83
+=== Tomlyn
+warnings (distinct lines): 0
+--- checks (G5)
+  passed 22/22
+  lines 6/6
+--- corpus
+  fail invalid/integer-overflow.toml (accepted)
+  fail invalid/trailing-comma-in-inline-table.toml (accepted)
+  passed 59/61
+  lines 21/21
+--- error output
+  [missing-value] checks/invalid/missing-value.toml:2:4: input(2,4) : error : Unexpected token end-of-line found while expecting a value
+  [missing-value] 
+  [duplicate-key] checks/invalid/duplicate-key.toml:3:1: input(3,1) : error : The key `grouping.x` is already defined at (2,1) with `x = 1` and cannot be redefined
+  [duplicate-key] 
+  [unterminated-string] checks/invalid/unterminated-string.toml:1:13: input(1,13) : error : Invalid newline in a string
+  [unterminated-string] input(2,1) : error : Invalid newline in a string
+--- round-trip
+  result: ok
+  unchanged round-trip byte-identical: yes
+  comment lines in sample/unchanged: 9 / 9
+  comment lines in edited: 8
+  key order kept after edit: yes
+  changed lines vs sample (diff, both sides): 3
+  new key present: yes
+  edited value present: yes
+size_bytes: 2281504
+output directory:
+  proto-tomlyn
+  proto-tomlyn.dSYM
+de_DE float output: float:0.9
+first_run_ms: 8.00
+timing[get sample/config.toml grouping.auto_merge] median p95 min max (ms): 7.80 8.16 7.54 8.50
+=== Tomlet
+warnings (distinct lines): 0
+--- checks (G5)
+  fail invalid/leading-zero.toml (accepted)
+  passed 21/22
+  lines 5/5
+--- corpus
+  fail valid/tables-whitespace-in-header.toml (j.k.l.v: expected 'integer:1', got 'absent')
+  pass invalid/array-of-tables-redefines-table.toml line=3 col=none line-ok
+  pass invalid/bare-key-with-space.toml line=1 col=none line-ok
+  pass invalid/bare-word-value.toml line=1 col=none line-ok
+  pass invalid/control-character-in-string.toml line=1 col=none line-ok
+  pass invalid/duplicate-key.toml line=3 col=none line-ok
+  pass invalid/duplicate-table.toml line=2 col=none line-ok
+  pass invalid/empty-hex.toml line=1 col=none line-ok
+  pass invalid/inline-table-extension.toml line=2 col=none line-ok
+  pass invalid/integer-overflow.toml line=1 col=none line-ok
+  pass invalid/invalid-date.toml line=1 col=none line-ok
+  pass invalid/invalid-escape.toml line=1 col=none line-ok
+  pass invalid/invalid-underscore.toml line=1 col=none line-ok
+  fail invalid/leading-zero.toml (accepted)
+  pass invalid/missing-key.toml line=1 col=none line-ok
+  pass invalid/missing-value-after-comment.toml line=1 col=none line-ok
+  pass invalid/missing-value.toml line=2 col=none line-ok
+  pass invalid/mixed-up-brackets.toml line=2 col=none line-ok
+  pass invalid/newline-in-basic-string.toml line=1 col=none line-ok
+  fail invalid/redefine-table-via-dotted-keys.toml (accepted)
+  fail invalid/trailing-comma-in-inline-table.toml (accepted)
+  pass invalid/two-pairs-on-a-line.toml line=1 col=none line-ok
+  pass invalid/unterminated-string.toml line=1 col=none line-ok
+  pass invalid/unterminated-table-header.toml line=1 col=none line-ok
+  passed 57/61
+  lines 20/20
+--- error output
+  [missing-value] checks/invalid/missing-value.toml:2: Expected the start of a number, string literal, boolean, array, or table on line 2, found '
+  [missing-value] '
+  [duplicate-key] checks/invalid/duplicate-key.toml:3: TOML document attempts to re-define key 'x' on line 3
+  [unterminated-string] checks/invalid/unterminated-string.toml:1: Found an unterminated TOML string on line 1
+--- round-trip
+  result: ok
+  unchanged round-trip byte-identical: no
+  comment lines in sample/unchanged: 9 / 6
+  comment lines in edited: 2
+  key order kept after edit: no
+  changed lines vs sample (diff, both sides): 44
+  new key present: yes
+  edited value present: yes
+size_bytes: 3193968
+output directory:
+  proto-tomlet
+  proto-tomlet.dSYM
+de_DE float output: float:0.9
+first_run_ms: 9.05
+timing[get sample/config.toml grouping.auto_merge] median p95 min max (ms): 8.88 9.71 8.52 9.84
+=== CsToml
+warnings (distinct lines): 0
+--- checks (G5)
+  passed 22/22
+  lines 6/6
+--- corpus
+  pass invalid/array-of-tables-redefines-table.toml line=3 col=none line-ok
+  pass invalid/bare-key-with-space.toml line=1 col=none line-ok
+  pass invalid/bare-word-value.toml line=1 col=none line-ok
+  pass invalid/control-character-in-string.toml line=1 col=none line-ok
+  pass invalid/duplicate-key.toml line=3 col=none line-ok
+  pass invalid/duplicate-table.toml line=2 col=none line-ok
+  pass invalid/empty-hex.toml line=1 col=none line-ok
+  pass invalid/inline-table-extension.toml line=2 col=none line-ok
+  pass invalid/integer-overflow.toml line=1 col=none line-ok
+  pass invalid/invalid-date.toml line=1 col=none line-ok
+  pass invalid/invalid-escape.toml line=1 col=none line-ok
+  pass invalid/invalid-underscore.toml line=1 col=none line-ok
+  pass invalid/leading-zero.toml line=1 col=none line-ok
+  pass invalid/missing-key.toml line=1 col=none line-ok
+  pass invalid/missing-value-after-comment.toml line=1 col=none line-ok
+  pass invalid/missing-value.toml line=2 col=none line-ok
+  pass invalid/mixed-up-brackets.toml line=2 col=none line-ok
+  pass invalid/newline-in-basic-string.toml line=1 col=none line-ok
+  pass invalid/redefine-table-via-dotted-keys.toml line=3 col=none line-ok
+  pass invalid/trailing-comma-in-inline-table.toml line=1 col=none line-ok
+  pass invalid/two-pairs-on-a-line.toml line=1 col=none line-ok
+  pass invalid/unterminated-string.toml line=1 col=none line-ok
+  pass invalid/unterminated-table-header.toml line=1 col=none line-ok
+  passed 61/61
+  lines 23/23
+--- error output
+  [missing-value] checks/invalid/missing-value.toml:2: A syntax error (CsTomlException) was thrown while parsing line 2. CsToml.Error.CsTomlException: Unexpected value found.
+  [duplicate-key] checks/invalid/duplicate-key.toml:3: A syntax error (CsTomlException) was thrown while parsing line 3. CsToml.Error.CsTomlException: Key 'x' is already defined.
+  [unterminated-string] checks/invalid/unterminated-string.toml:1: A syntax error (CsTomlException) was thrown while parsing line 1. CsToml.Error.CsTomlException: Escape characters 10 were included.
+--- round-trip
+  result: ok
+  unchanged round-trip byte-identical: no
+  comment lines in sample/unchanged: 9 / 2
+  comment lines in edited: 0
+  key order kept after edit: no
+  changed lines vs sample (diff, both sides): 51
+  new key present: yes
+  edited value present: yes
+size_bytes: 3774656
+output directory:
+  proto-cstoml
+  proto-cstoml.dSYM
+de_DE float output: float:0.9
+first_run_ms: 4.42
+timing[get sample/config.toml grouping.auto_merge] median p95 min max (ms): 3.84 5.29 3.46 5.68
+=== Tommy
+warnings (distinct lines): 0
+--- checks (G5)
+  passed 22/22
+  lines 6/6
+--- corpus
+  fail invalid/empty-hex.toml (crash ArgumentOutOfRangeException: Specified argument was out of the range of valid values. (Parameter 'Index was out of range. Must be non-negative and less than the size of the collection.'))
+  fail invalid/integer-overflow.toml (crash OverflowException: Value was either too large or too small for an Int64.)
+  passed 59/61
+  lines 21/21
+--- error output
+  [missing-value] checks/invalid/missing-value.toml:2:4: Encountered a newline when expecting a value!
+  [duplicate-key] checks/invalid/duplicate-key.toml:3:6: The key x is already defined!
+  [unterminated-string] checks/invalid/unterminated-string.toml:1:14: The character U+0000000A must be escaped in a string!
+--- round-trip
+  result: ok
+  unchanged round-trip byte-identical: no
+  comment lines in sample/unchanged: 9 / 3
+  comment lines in edited: 2
+  key order kept after edit: no
+  changed lines vs sample (diff, both sides): 35
+  new key present: yes
+  edited value present: yes
+size_bytes: 2945320
+output directory:
+  proto-tommy
+  proto-tommy.dSYM
+de_DE float output: float:0.9
+first_run_ms: 8.28
+timing[get sample/config.toml grouping.auto_merge] median p95 min max (ms): 8.03 8.67 7.70 9.05
