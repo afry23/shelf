@@ -1,0 +1,4 @@
+# Fixtures must never be touched by line-ending conversion: hashes in tests/fixtures/manifest.json are byte hashes.
+*.epub binary
+*.pdf binary
+*.png binary

@@ -7,5 +7,7 @@
     <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
     <Project Path="tests/Shelf.Core.Tests/Shelf.Core.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
+    <Project Path="tests/Shelf.TestData.Tests/Shelf.TestData.Tests.csproj" />
+    <Project Path="tests/Shelf.TestData/Shelf.TestData.csproj" />
   </Folder>
 </Solution>

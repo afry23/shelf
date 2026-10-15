@@ -56,7 +56,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | **AOT spike** | One AOT binary that loads and uses: Microsoft.Data.Sqlite + FTS5, sqlite-vec, VersOne.Epub, PdfPig, ONNX Runtime, ModelContextProtocol SDK, ASP.NET Core Minimal APIs + RazorSlices, TOML parser. Includes the `osx-x64` decision for ONNX Runtime (PRD 13.2 Q8, ADR 0001) | Q1, Q2, risk "Native AOT" |
 | CLI framework decision | Spectre.Console.Cli vs. System.CommandLine, decided by AOT compatibility and cold start. **Done:** [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12) | 10.2, 7.1 |
 | Cold start measurement | Baseline of the spike binary against the < 150 ms target | 9.1 |
-| Test fixtures | Public-domain EPUBs/PDFs; generator for a synthetic library of 10,000 works / 15,000 files for performance tests | 10.1, 9.1 |
+| Test fixtures | Public-domain EPUBs/PDFs; generator for a synthetic library of 10,000 works / 15,000 files for performance tests. **Done:** 13 fixtures in `tests/fixtures/` (manifest + provenance), deterministic generator `tests/Shelf.TestData` ([slice plan](slices/m0-fixtures.md)); reference run not in CI | 10.1, 9.1 |
 | Logging | Microsoft.Extensions.Logging to stderr only. **Done:** custom stderr `ILoggerProvider` on Microsoft.Extensions.Logging 10.0.12 ([slice plan](slices/m0-logging.md)); no user-facing level control yet | 10.2 |
 
 **Exit criteria:**
