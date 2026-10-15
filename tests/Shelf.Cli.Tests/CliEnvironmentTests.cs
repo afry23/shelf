@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Shelf.Cli.Tests;
@@ -41,4 +42,27 @@ public sealed class CliEnvironmentTests
         Assert.False(CliEnvironment.Empty.StdoutIsTerminal);
         Assert.False(CliEnvironment.Empty.UseColor);
     }
+
+    [Fact]
+    public void MinimumLogLevel_defaults_to_Warning()
+    {
+        Assert.Equal(LogLevel.Warning, CliEnvironment.Empty.MinimumLogLevel);
+        Assert.Equal(LogLevel.Warning, CliEnvironment.FromVariables(_ => null, stdoutIsTerminal: false).MinimumLogLevel);
+    }
+
+    [Fact]
+    public void WithMinimumLogLevel_returns_a_copy_with_the_new_level()
+    {
+        var original = CliEnvironment.FromVariables(name => name == "NO_COLOR" ? "1" : null, stdoutIsTerminal: true);
+        var changed = original.WithMinimumLogLevel(LogLevel.Debug);
+
+        Assert.NotSame(original, changed);
+        Assert.Equal(LogLevel.Debug, changed.MinimumLogLevel);
+        Assert.True(changed.NoColor);
+        Assert.True(changed.StdoutIsTerminal);
+    }
+
+    [Fact]
+    public void WithMinimumLogLevel_rejects_undefined_values() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => CliEnvironment.Empty.WithMinimumLogLevel((LogLevel)42));
 }
