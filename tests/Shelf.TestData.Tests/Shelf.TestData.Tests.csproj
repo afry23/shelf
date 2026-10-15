@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <RootNamespace>Shelf.TestData.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <!-- Test-only use: readability checks of generated files (ADR 0001 rows 4 and 5). -->
+    <PackageReference Include="VersOne.Epub" />
+    <PackageReference Include="PdfPig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.TestData\Shelf.TestData.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -53,3 +53,6 @@ package.json
 
 # Test results
 TestResults/
+
+# Generated synthetic libraries (tests/Shelf.TestData)
+/artifacts/

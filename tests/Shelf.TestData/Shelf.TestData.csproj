@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Framework resources stay English so help texts do not depend on the machine locale (ADR 0002). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <RootNamespace>Shelf.TestData</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Vocabulary\*.txt" LogicalName="Vocabulary.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.TestData.Tests" />
+  </ItemGroup>
+
+</Project>
