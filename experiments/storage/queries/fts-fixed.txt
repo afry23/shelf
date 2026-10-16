@@ -1,0 +1,13 @@
+# Hand-written FTS queries (bucket "fixed"): prefixes, phrases, column filters, umlaut words.
+data*
+perf*
+distrib*
+"event sourcing"
+"time series"
+"open source"
+title : patterns
+authors : mueller
+authors : kowalski
+muller
+schafer
+verschlusselung
