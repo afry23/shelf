@@ -127,7 +127,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - Version: 0.1.16 (2026-08-22) (S29). Nightly `0.1.17-alpha-*` prereleases (latest 2026-10-12). Pre-1.0.
 - License: Apache-2.0 (nuspec S28, repo S30). The FSF list says Apache 2.0 is compatible with GPL version 3 (S1).
 - Maintenance: 5 stable releases in the last 12 months; last push 2026-10-12; 100+ commits in the last 6 months (API page limit); 30 open issues+PRs; two main maintainers (EliotJones 960, BobLd 589 commits), no organization (S29, S30, S31).
-- AOT/trimming: no claim in project file at `a7bb3566` (S32).
+- AOT/trimming: no claim in project file at `a7bb3566` (S32). Corrected by [ADR 0005](0005-epub-pdf-parsers-aot.md) R3: `IsAotCompatible=true` via `src/Directory.Build.targets` for net8.0+ TFMs (claimed).
 - Native assets: none (managed).
 - Risks: pre-1.0 API; extraction quality on real books belongs to the PDF import slice.
 - Verdict: **adopt**.
@@ -367,7 +367,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 
 **Inputs for the AOT spike**
 
-- Documented not AOT-compatible: Spectre.Console.Cli (row 2). No documented claim: VersOne.Epub, PdfPig, Microsoft.ML.Tokenizers, Microsoft.ML.OnnxRuntime (managed part), SQLitePCLRaw (rows 4, 5, 12, 11, 9). Claimed in the project file: System.CommandLine, Microsoft.Data.Sqlite.Core, PDFtoImage, ModelContextProtocol (core, hosting, AspNetCore), RazorSlices (rows 3, 8, 6, 13, 14). All claims are unverified until the spike runs.
+- Documented not AOT-compatible: Spectre.Console.Cli (row 2). No documented claim: VersOne.Epub, PdfPig, Microsoft.ML.Tokenizers, Microsoft.ML.OnnxRuntime (managed part), SQLitePCLRaw (rows 4, 5, 12, 11, 9). Claimed in the project file: System.CommandLine, Microsoft.Data.Sqlite.Core, PDFtoImage, ModelContextProtocol (core, hosting, AspNetCore), RazorSlices (rows 3, 8, 6, 13, 14). All claims are unverified until the spike runs. Corrected by ADR 0005 R3: PdfPig does claim `IsAotCompatible=true` via `src/Directory.Build.targets` for net8.0+ TFMs.
 - RIDs without a prebuilt native asset: `osx-x64` for ONNX Runtime (row 11). All other native components have assets for all four RIDs: SQLite (row 9), PDFium and SkiaSharp (rows 6, 7), sqlite-vec (row 10, as release assets and not as an official NuGet package).
 - Packaging questions that belong in the spike: sqlite-vec as a loadable extension in a single-file AOT binary (extension lookup uses OS library paths, S55); the 3.x vs 2.1.x SQLitePCLRaw lines (row 9); SkiaSharp being pulled in by PDFtoImage (row 6); FTS5 in the 3.x SQLite builds is unverified.
 

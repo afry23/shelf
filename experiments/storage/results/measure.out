@@ -18,15 +18,15 @@ Storage: warnings (distinct lines, all codes): 0
 == step 3: output directory and sizes
 out/Baseline:
 total 2416
--rwxr-xr-x  1 afry  staff  1236104 Oct 16 19:23 proto-storage-baseline
-drwxr-xr-x  3 afry  staff       96 Oct 16 19:23 proto-storage-baseline.dSYM
+-rwxr-xr-x  1236104 Oct 16 19:23 proto-storage-baseline
+drwxr-xr-x  96 Oct 16 19:23 proto-storage-baseline.dSYM
 
 out/Storage:
 total 11048
--rwxr--r--  1 afry  staff  1696624 Jul  7 04:07 libe_sqlite3.dylib
--rwxr-xr-x  1 afry  staff  3792736 Oct 16 19:23 proto-storage
-drwxr-xr-x  3 afry  staff       96 Oct 16 19:23 proto-storage.dSYM
--rw-r--r--  1 afry  staff   161896 Oct 16 19:23 vec0.dylib
+-rwxr--r--  1696624 Jul  7 04:07 libe_sqlite3.dylib
+-rwxr-xr-x  3792736 Oct 16 19:23 proto-storage
+drwxr-xr-x  96 Oct 16 19:23 proto-storage.dSYM
+-rw-r--r--  161896 Oct 16 19:23 vec0.dylib
 size baseline binary: 1236104 B
 size storage binary: 3792736 B (delta vs baseline: 2556632 B)
 size libe_sqlite3.dylib: 1696624 B
@@ -59,7 +59,7 @@ sqlite_version=3.53.3
 rid=osx-arm64
 os=macOS 26.6.2
 arch=Arm64
-base_directory=/Users/afry/code/dotnet/shelf/experiments/storage/out/Storage/
+base_directory=<repo>/experiments/storage/out/Storage/
 compile_option=ATOMIC_INTRINSICS=1
 compile_option=COMPILER=clang-17.0.0
 compile_option=DEFAULT_AUTOVACUUM
@@ -178,19 +178,19 @@ vec-load table=chunks rows=100000 dim=1024 ms=10979 db_bytes_delta=413757440
 vec-gen table=chunks count=1000000 dim=384 ms=8567 db_bytes=2053160960
 vec-load table=chunks rows=1000000 dim=384 ms=14447 db_bytes_delta=1562054656
 total 15051480
--rw-r--r--  1 afry  staff   532312064 Oct 16 19:23 lib.db
--rw-r--r--  1 afry  staff         336 Oct 16 19:23 lib.db.chunks.queries.txt
--rw-r--r--  1 afry  staff         460 Oct 16 19:23 lib.db.queries.txt
--rw-r--r--  1 afry  staff   874692608 Oct 16 19:23 vec-chunks-1024.db
--rw-r--r--  1 afry  staff   409600016 Oct 16 19:23 vec-chunks-1024.f32
--rw-r--r--  1 afry  staff  3615215616 Oct 16 19:24 vec-chunks-384-1m.db
--rw-r--r--  1 afry  staff  1536000016 Oct 16 19:23 vec-chunks-384-1m.f32
--rw-r--r--  1 afry  staff   361914368 Oct 16 19:23 vec-chunks-384.db
--rw-r--r--  1 afry  staff   153600016 Oct 16 19:23 vec-chunks-384.f32
--rw-r--r--  1 afry  staff    88342528 Oct 16 19:23 vec-works-1024.db
--rw-r--r--  1 afry  staff    40960016 Oct 16 19:23 vec-works-1024.f32
--rw-r--r--  1 afry  staff    36532224 Oct 16 19:23 vec-works-384.db
--rw-r--r--  1 afry  staff    15360016 Oct 16 19:23 vec-works-384.f32
+-rw-r--r--  532312064 Oct 16 19:23 lib.db
+-rw-r--r--  336 Oct 16 19:23 lib.db.chunks.queries.txt
+-rw-r--r--  460 Oct 16 19:23 lib.db.queries.txt
+-rw-r--r--  874692608 Oct 16 19:23 vec-chunks-1024.db
+-rw-r--r--  409600016 Oct 16 19:23 vec-chunks-1024.f32
+-rw-r--r--  3615215616 Oct 16 19:24 vec-chunks-384-1m.db
+-rw-r--r--  1536000016 Oct 16 19:23 vec-chunks-384-1m.f32
+-rw-r--r--  361914368 Oct 16 19:23 vec-chunks-384.db
+-rw-r--r--  153600016 Oct 16 19:23 vec-chunks-384.f32
+-rw-r--r--  88342528 Oct 16 19:23 vec-works-1024.db
+-rw-r--r--  40960016 Oct 16 19:23 vec-works-1024.f32
+-rw-r--r--  36532224 Oct 16 19:23 vec-works-384.db
+-rw-r--r--  15360016 Oct 16 19:23 vec-works-384.f32
 data directory total: 7.2G
 == step 6: FTS latency in process (A4, target)
 fts-bench works overall p50=0.123 p95=2.898 max=3.338 n=840 queries=42 avg_hits=19.5

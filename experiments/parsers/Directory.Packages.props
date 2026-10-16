@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same pins as the repository root Directory.Packages.props. -->
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
+    <PackageVersion Include="VersOne.Epub" Version="3.3.6" />
+  </ItemGroup>
+
+</Project>
