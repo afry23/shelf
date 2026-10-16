@@ -57,7 +57,7 @@ main() {
     return 1
   fi
   echo "AOT/trim warnings: 0"
-  ls -l "$OUTDIR"
+  for f in "$OUTDIR"/*; do echo "  $(size_of "$f") B $(basename "$f")"; done
   echo "size proto-storage: $(size_of "$BIN") B"
   echo "size libe_sqlite3.$EXT: $(size_of "$OUTDIR/libe_sqlite3.$EXT") B"
   cp "$LIB" "$OUTDIR/vec0.$EXT"

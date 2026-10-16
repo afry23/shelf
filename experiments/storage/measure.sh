@@ -89,7 +89,7 @@ metric warnings "$WARN_TOTAL"
 cp vendor/osx-arm64/vec0.dylib "$OUT/Storage/vec0.dylib"
 
 echo "== step 3: output directory and sizes"
-ls -l "$OUT/Baseline" "$OUT/Storage"
+for F in "$OUT"/Baseline/* "$OUT"/Storage/*; do echo "$(stat -f%z "$F") B $(basename "$F")"; done
 BS=$(stat -f%z "$BASE")
 SS=$(stat -f%z "$BIN")
 LS=$(stat -f%z "$OUT/Storage/libe_sqlite3.dylib")
@@ -155,7 +155,7 @@ if [ "$LARGE" = 1 ]; then
   "$BIN" vec-gen data/vec-chunks-384-1m.db --table chunks --count 1000000 --dim 384 --seed 44 --flat data/vec-chunks-384-1m.f32
   "$BIN" vec-load data/vec-chunks-384-1m.db --table chunks --dim 384
 fi
-ls -l data
+for F in data/*; do echo "$(stat -f%z "$F") B $(basename "$F")"; done
 echo "data directory total: $(du -sh data | cut -f1)"
 
 echo "== step 6: FTS latency in process (A4, target)"

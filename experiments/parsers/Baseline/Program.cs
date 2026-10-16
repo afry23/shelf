@@ -1,0 +1,1 @@
+Console.Out.WriteLine("ok");

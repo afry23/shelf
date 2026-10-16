@@ -17,9 +17,9 @@ vendor/osx-arm64/vec0.dylib:
 == AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
 AOT/trim warnings: 0
 total 10728
--rwxr--r--  1 afry  staff  1696624 Jul  7 04:07 libe_sqlite3.dylib
--rwxr-xr-x  1 afry  staff  3792736 Oct 16 19:23 proto-storage
-drwxr-xr-x  3 afry  staff       96 Oct 16 19:38 proto-storage.dSYM
+-rwxr--r--  1696624 Jul  7 04:07 libe_sqlite3.dylib
+-rwxr-xr-x  3792736 Oct 16 19:23 proto-storage
+drwxr-xr-x  96 Oct 16 19:38 proto-storage.dSYM
 size proto-storage: 3792736 B
 size libe_sqlite3.dylib: 1696624 B
 == info
@@ -27,7 +27,7 @@ sqlite_version=3.53.3
 rid=osx-arm64
 os=macOS 26.6.2
 arch=Arm64
-base_directory=/Users/afry/code/dotnet/shelf/experiments/storage/out/Storage-osx-arm64/
+base_directory=<repo>/experiments/storage/out/Storage-osx-arm64/
 compile_option=ATOMIC_INTRINSICS=1
 compile_option=COMPILER=clang-17.0.0
 compile_option=DEFAULT_AUTOVACUUM
