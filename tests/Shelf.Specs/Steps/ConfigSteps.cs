@@ -11,6 +11,9 @@ namespace Shelf.Specs.Steps;
 public sealed class ConfigSteps
 {
     private string? _workingDirectory;
+
+    /// <summary>The scratch folder of the scenario ("an empty working directory"); shared with other step classes.</summary>
+    public string WorkingDirectory => _workingDirectory ?? throw new InvalidOperationException("The scenario has no working directory.");
     private ConfigDocument? _document;
     private ConfigException? _loadError;
     private ConfigException? _readError;
