@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Match the installed Microsoft.AspNetCore.App runtime (10.0.12). -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>

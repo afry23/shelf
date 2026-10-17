@@ -1,0 +1,9 @@
+bin/
+obj/
+out/
+Ui/node_modules/
+Ui/dist/
+results/*
+!results/local/
+results/local/*.log
+results/local/*.warnings.txt
