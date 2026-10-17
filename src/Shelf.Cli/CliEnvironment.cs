@@ -10,16 +10,30 @@ public sealed class CliEnvironment
 {
     private const string LogLevelVariable = "SHELF_LOG_LEVEL";
 
-    private CliEnvironment(bool noColor, bool stdoutIsTerminal, LogLevel minimumLogLevel, string? ignoredLogLevel = null)
+    private readonly Func<string, string?> _getVariable;
+    private readonly string? _workingDirectory;
+    private readonly string? _homeDirectory;
+
+    private CliEnvironment(
+        bool noColor,
+        bool stdoutIsTerminal,
+        LogLevel minimumLogLevel,
+        string? ignoredLogLevel,
+        Func<string, string?> getVariable,
+        string? workingDirectory,
+        string? homeDirectory)
     {
         NoColor = noColor;
         StdoutIsTerminal = stdoutIsTerminal;
         MinimumLogLevel = minimumLogLevel;
         IgnoredLogLevel = ignoredLogLevel;
+        _getVariable = getVariable;
+        _workingDirectory = workingDirectory;
+        _homeDirectory = homeDirectory;
     }
 
     /// <summary>No <c>NO_COLOR</c> and standard output is not a terminal.</summary>
-    public static CliEnvironment Empty { get; } = new(noColor: false, stdoutIsTerminal: false, LogLevel.Warning);
+    public static CliEnvironment Empty { get; } = new(noColor: false, stdoutIsTerminal: false, LogLevel.Warning, null, _ => null, null, null);
 
     /// <summary>True when <c>NO_COLOR</c> is present and non-empty (no-color.org).</summary>
     public bool NoColor { get; }
@@ -58,7 +72,25 @@ public sealed class CliEnvironment
             }
         }
 
-        return new CliEnvironment(noColor, stdoutIsTerminal, level, ignored);
+        return new CliEnvironment(noColor, stdoutIsTerminal, level, ignored, getVariable, null, null);
+    }
+
+    /// <summary>The value of a process environment variable, or null.</summary>
+    public string? GetVariable(string name) => _getVariable(name);
+
+    /// <summary>The directory commands resolve relative paths against. Set by the host; a command that needs it fails if it is missing.</summary>
+    public string WorkingDirectory =>
+        _workingDirectory ?? throw new InvalidOperationException("The working directory is not known.");
+
+    /// <summary>The home directory, used to find the global config file.</summary>
+    public string HomeDirectory =>
+        _homeDirectory ?? throw new InvalidOperationException("The home directory is not known.");
+
+    public CliEnvironment WithDirectories(string workingDirectory, string homeDirectory)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(workingDirectory);
+        ArgumentException.ThrowIfNullOrEmpty(homeDirectory);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory);
     }
 
     public CliEnvironment WithMinimumLogLevel(LogLevel level)
@@ -69,6 +101,6 @@ public sealed class CliEnvironment
             throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined log level.");
         }
 
-        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory);
     }
 }

@@ -88,6 +88,31 @@ public sealed class CliEnvironmentTests
     }
 
     [Fact]
+    public void Directories_are_unknown_until_the_host_sets_them()
+    {
+        Assert.Throws<InvalidOperationException>(() => CliEnvironment.Empty.WorkingDirectory);
+        Assert.Throws<InvalidOperationException>(() => CliEnvironment.Empty.HomeDirectory);
+    }
+
+    [Fact]
+    public void WithDirectories_survives_a_later_change_of_the_log_level()
+    {
+        var environment = CliEnvironment.Empty.WithDirectories("/work", "/home/ada").WithMinimumLogLevel(LogLevel.Debug);
+
+        Assert.Equal("/work", environment.WorkingDirectory);
+        Assert.Equal("/home/ada", environment.HomeDirectory);
+    }
+
+    [Fact]
+    public void GetVariable_reads_through_to_the_given_function()
+    {
+        var environment = CliEnvironment.FromVariables(n => n == "XDG_CONFIG_HOME" ? "/xdg" : null, stdoutIsTerminal: false);
+
+        Assert.Equal("/xdg", environment.GetVariable("XDG_CONFIG_HOME"));
+        Assert.Null(environment.GetVariable("OTHER"));
+    }
+
+    [Fact]
     public void WithMinimumLogLevel_rejects_undefined_values() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => CliEnvironment.Empty.WithMinimumLogLevel((LogLevel)42));
 }

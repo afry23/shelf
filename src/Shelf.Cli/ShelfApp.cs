@@ -3,6 +3,7 @@ using System.CommandLine.Help;
 using System.CommandLine.Invocation;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Shelf.Cli.Commands;
 using Shelf.Cli.Logging;
 
 namespace Shelf.Cli;
@@ -36,12 +37,12 @@ public static class ShelfApp
         using var factory = new LoggerFactory([provider], new LoggerFilterOptions { MinLevel = environment.MinimumLogLevel });
         var logger = factory.CreateLogger("Shelf.Cli.ShelfApp");
         ShelfAppLog.Starting(logger, VersionInfo.Get());
-        var code = RunCore(args, stdout, stderr, logger);
+        var code = RunCore(args, stdout, stderr, logger, environment);
         ShelfAppLog.Exiting(logger, code);
         return code;
     }
 
-    private static int RunCore(string[] args, TextWriter stdout, TextWriter stderr, ILogger logger)
+    private static int RunCore(string[] args, TextWriter stdout, TextWriter stderr, ILogger logger, CliEnvironment environment)
     {
         // A plain Command is the root (not RootCommand): RootCommand derives its name from the process
         // path, which is the test host in specs (ADR 0002).
@@ -55,6 +56,8 @@ public static class ShelfApp
             Action = new VersionAction(json, stdout),
         });
 
+        root.Subcommands.Add(InitCommand.Create(json, stdout, stderr, environment));
+
         // Without a command there is nothing to run: that is a usage error, not success.
         root.SetAction(_ =>
         {
@@ -66,11 +69,10 @@ public static class ShelfApp
         ShelfAppLog.Parsed(logger, parseResult.Tokens.Count, parseResult.Errors.Count);
         if (parseResult.Errors.Count > 0)
         {
-            var message = ParseErrorMessages.Describe(parseResult.UnmatchedTokens);
-            if (message is not null)
-            {
-                stderr.WriteLine(message);
-            }
+            // Our own text for unmatched tokens; otherwise the framework's (missing argument, invalid value).
+            var message = ParseErrorMessages.Describe(parseResult.UnmatchedTokens, atRoot: parseResult.CommandResult.Command == root)
+                ?? parseResult.Errors[0].Message;
+            stderr.WriteLine(message);
 
             stderr.WriteLine(Usage);
             return ExitCodes.Usage;

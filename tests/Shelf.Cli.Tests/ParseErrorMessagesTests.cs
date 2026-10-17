@@ -11,6 +11,12 @@ public sealed class ParseErrorMessagesTests
     public void Describe_names_the_first_unmatched_token(string token, string expected) =>
         Assert.Equal(expected, ParseErrorMessages.Describe([token, "later"]));
 
+    [Theory]
+    [InlineData("--x", "Unknown option '--x'")]
+    [InlineData("b", "Unexpected argument 'b'")]
+    public void Describe_below_a_command_calls_a_word_an_argument(string token, string expected) =>
+        Assert.Equal(expected, ParseErrorMessages.Describe([token], atRoot: false));
+
     [Fact]
     public void Describe_returns_null_without_unmatched_tokens() =>
         Assert.Null(ParseErrorMessages.Describe([]));

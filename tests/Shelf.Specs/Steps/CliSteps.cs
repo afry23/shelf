@@ -9,7 +9,7 @@ namespace Shelf.Specs.Steps;
 
 // Style convention for step definitions: Cucumber expressions ({string}, {int}).
 [Binding]
-public sealed class CliSteps(ScenarioEnvironment environment)
+public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps workspace)
 {
     private readonly StringWriter _stdout = new();
     private readonly StringWriter _stderr = new();
@@ -26,6 +26,19 @@ public sealed class CliSteps(ScenarioEnvironment environment)
     [Given("the log level is {string}")]
     public void GivenTheLogLevelIs(string value) => _logLevel = Enum.Parse<LogLevel>(value, ignoreCase: false);
 
+    /// <summary>The home directory of scenarios that have a working directory: a folder inside it.</summary>
+    public const string HomeFolder = ".home";
+
+    [Given("I have run shelf with arguments {string}")]
+    public void GivenIHaveRunShelfWithArguments(string arguments)
+    {
+        WhenIRunShelfWithArguments(arguments);
+        Assert.Equal(0, _exitCode);
+        _stdout.GetStringBuilder().Clear();
+        _stderr.GetStringBuilder().Clear();
+        _exitCode = -1;
+    }
+
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
     {
@@ -33,6 +46,13 @@ public sealed class CliSteps(ScenarioEnvironment environment)
         var cliEnvironment = CliEnvironment.FromVariables(
             name => environment.Variables.GetValueOrDefault(name),
             _stdoutIsTerminal);
+        if (workspace.HasWorkingDirectory)
+        {
+            cliEnvironment = cliEnvironment.WithDirectories(
+                workspace.WorkingDirectory,
+                Path.Combine(workspace.WorkingDirectory, HomeFolder));
+        }
+
         if (_logLevel is { } level)
         {
             cliEnvironment = cliEnvironment.WithMinimumLogLevel(level);
