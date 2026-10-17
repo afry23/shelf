@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed: the license and maintenance verdicts are done; the Node.js version policy needs the project owner's confirmation (see Decision) |
+| **Status** | Accepted: license and maintenance verdicts done; Node.js 26 chosen by the project owner on 2026-10-17 (see Decision) |
 | **Date** | 2026-10-17 (all sources retrieved on this date) |
 | **Scope** | Build-time tools of the Svelte UI (PRD Q1): Node.js, npm, Vite, `@sveltejs/vite-plugin-svelte`, TypeScript, and the npm dependency tree of `experiments/web/Ui` (85 lock entries). Svelte itself is row 22 of [ADR 0001](0001-dependency-licenses-and-maintenance.md) |
 | **Roadmap** | M0 "License and maintenance check" (continuation for the toolchain chosen by PRD Q1 on 2026-10-17); open item of the ADR 0001 note on row 22 |
@@ -91,7 +91,7 @@ Legend: "flag" = maintenance risk flag. Dates are release dates.
 
 Toolchain verdicts: **adopt T1-T9**; no candidate is rejected and none violates the license policy. Notes: T7 (MPL-2.0, build time only) and T9 (maintenance flag, optional, not needed for the build).
 
-**Node.js version policy: owner decision needed.** Facts for it: the output of the UI build was identical under Node.js 24.22.0 and 26.10.0; v24 is the current LTS but enters Maintenance on 2026-10-20 (end 2028-04-30); v26 becomes LTS on 2026-10-28 (end 2029-04-30). Options: (a) pin the major line `24` now; (b) pin the major line `26` and use it as soon as it is LTS (11 days from the date of this ADR), accepting that it is still "Current" until then; (c) allow `>=24` without a pin. Recommendation: **(b)**, written as `26` in `.node-version` / CI `setup-node`, because it has the longest support window and Vite and the plugin support it; the lock file (`npm ci`) pins the packages.
+**Node.js version policy: Node.js 26, decided by the project owner on 2026-10-17.** The major line is pinned as `26` in `.node-version` and in CI (`actions/setup-node`); the lock file (`npm ci`) pins the packages. Node.js 26 is "Current" until it becomes LTS on 2026-10-28 (end of support 2029-04-30). Facts behind the decision: the output of the UI build was identical under Node.js 24.22.0 and 26.10.0; v24 is the current LTS but enters Maintenance on 2026-10-20 (end 2028-04-30); v26 becomes LTS on 2026-10-28 (end 2029-04-30). Options that were considered: (a) pin the major line `24`; (b) pin the major line `26`; (c) allow `>=24` without a pin. (b) was chosen: it has the longest support window and Vite and the plugin support it. `experiments/web/.node-version` keeps the exact version used for the spike run (v26.10.0) as a record.
 
 ## Consequences
 
