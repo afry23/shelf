@@ -341,7 +341,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - Maintenance: organization `sveltejs`; last push 2026-10-12; 1142 open issues+PRs; top contributors Rich-Harris 5250, dummdidumm 815 (S132, S135). Not flagged.
 - Toolchain: PRD Q1 states that Svelte brings a Node.js build toolchain; this was not verified separately here.
 - Verdict: **adopt**.
-- **Update 2026-10-17:** Svelte is the frontend (PRD Q1: Svelte 5 + Vite + TypeScript, single-page application). **Not checked with this ADR's method:** Vite, TypeScript and Node.js (build-time tools), and the npm dependency tree of the UI. That check is open and belongs to the first web slice or the web AOT spike.
+- **Update 2026-10-17:** Svelte is the frontend (PRD Q1: Svelte 5 + Vite + TypeScript, single-page application). **Not checked with this ADR's method:** Vite, TypeScript and Node.js (build-time tools), and the npm dependency tree of the UI. That check was done in [ADR 0009](0009-frontend-toolchain-licenses-and-maintenance.md) (2026-10-17).
 - Sources: S1, S132-S135.
 
 ### 23. bge-m3 (deferred, informational)
