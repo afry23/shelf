@@ -222,3 +222,7 @@ All sources retrieved read-only on 2026-10-14. `nuspec(id, version)` is `https:/
 | S11 | `nuspec`/`nupkg` Nett 0.15.0; `catalog(nett)`; `gh:repos/paiden/Nett` (`archived: true`); README (no TOML version claim) |
 | S12 | `nuspec` of Alexinea.Extensions.Configuration.Toml 7.0.0, Carbon.Toml 0.36.0, Logary.TOML 3.6.1, Tomlyn.Extensions.Configuration 2.0.1, Tomlyn.Signed 2.10.1, PicoToml 2026.10.0 |
 | S13 | Reflection listing of the public API and `RequiresUnreferencedCode`/`RequiresDynamicCode` attributes of Tomlyn, Tomlet, CsToml and Tommy (local scratch tool, assemblies loaded for inspection only) |
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/toml-parser/`, `.github/workflows/spike-toml.yml` were deleted from the repository. The last commit that contains them is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

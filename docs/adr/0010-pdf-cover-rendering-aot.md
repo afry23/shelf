@@ -168,3 +168,7 @@ K1-K9 all pass on `osx-arm64`.
 - The plan's `check.sh` text said K8 is run "through `experiments/combined/check.sh`"; it also compares pixel hashes of `proto-shelf cover` with `proto-cover` after that script, and the combined check script got its own cover row (also repeated from the copied directory).
 - The zero-page PDF is created by `check.sh` as a hand-written minimal file; its error type (`ArgumentOutOfRangeException`) is not one of the PDFtoImage exceptions, so the experiment's `kind=io` mapping is a placeholder for it.
 - The format recommendation ranges are computed from the four fixtures only.
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/pdf-cover/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

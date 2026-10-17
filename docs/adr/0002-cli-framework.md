@@ -129,3 +129,7 @@ Details decided in this slice:
 - **Shell completion** (M5): generate scripts in shelf, using `Command.GetCompletions` or the command model; no framework feature is available for bash/zsh/fish.
 - **Follow-up M1:** when real commands exist, print the framework's parse error message (e.g. missing argument, invalid value) before the usage line, with a scenario.
 - **Follow-ups:** TOML parser selection is a separate slice (ADR 0003). `experiments/cli-framework/` is kept until M0 closes and is to be deleted afterwards, with the ADR pointing to the last commit that contains it.
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/cli-framework/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

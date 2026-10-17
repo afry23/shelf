@@ -47,6 +47,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 **Goal:** All technology decisions that are expensive to revise later are verified.
 
+**Status: closed on 2026-10-17 with known gaps** (see "Carried over from M0" below). The prototypes of the spikes were deleted at the close; each ADR names the last commit that contains them (`f6089e6`).
+
 | Work package | Details | PRD reference |
 |---|---|---|
 | Solution skeleton | Projects as in 10.1, central package management, `Directory.Build.props`, nullable + warnings as errors | 10.1 |
@@ -62,9 +64,24 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 **Exit criteria:**
 
-- The AOT spike runs on both supported platforms (`osx-arm64`, `linux-x64`), or every incompatible library has a documented fallback (ReadyToRun, brute-force cosine instead of sqlite-vec).
+- The AOT spike runs on both supported platforms (`osx-arm64`, `linux-x64`), or every incompatible library has a documented fallback (ReadyToRun, brute-force cosine instead of sqlite-vec). **Partly met.** `osx-arm64`: every library of the spike passes under Native AOT, alone and in one binary ([ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md), [0005](adr/0005-epub-pdf-parsers-aot.md), [0006](adr/0006-mcp-sdk-aot.md), [0007](adr/0007-web-backend-aot.md), [0008](adr/0008-combined-aot-binary.md), [0010](adr/0010-pdf-cover-rendering-aot.md)); no fallback was needed. `linux-x64`: storage, parsers and TOML pass; MCP, web, the combined binary and PDF cover rendering are not verified. ONNX Runtime had no spike. The gaps are carried over below.
 - CLI framework and TOML parser are chosen. **Done:** CLI framework: [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12); TOML parser: [ADR 0003](adr/0003-toml-parser.md) (CsToml 1.8.6; AOT verified on `osx-arm64` and `linux-x64`, see ADR 0003).
-- Reqnroll runs in CI; the template feature file is green.
+- Reqnroll runs in CI; the template feature file is green. **Done:** `tests/Shelf.Specs` runs in the CI `test` job (`dotnet test`) on both platforms.
+
+**Decisions made in M0** (ADR 0001 to 0010): dependency licenses and maintenance (0001, 0009); System.CommandLine (0002); CsToml (0003); SQLite + FTS5 with sqlite-vec loaded from a side file (0004); VersOne.Epub and PdfPig (0005); ModelContextProtocol.Core with explicit registration (0006); Minimal APIs on Kestrel with runtime OpenAPI, embedded Svelte build and bearer token (0007); one Native AOT executable for everything (0008); Node.js 26 for the UI build (0009); PDFtoImage for covers, PDF cover as JPEG q85 at 600 px (0010). Svelte instead of htmx + RazorSlices is recorded in PRD Q1.
+
+#### Carried over from M0
+
+| Gap | Lands in | Note |
+|---|---|---|
+| ONNX Runtime and the XLM-R tokenizer under Native AOT (managed and native part, token-ID parity) | first slice of M3 | no spike was done; [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md) row 11 stays `pending` |
+| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | Storage, parsers and TOML are already confirmed there |
+| Cold start of the real commands against < 150 ms | M1 exit criteria (performance) | the spike binary measured about 8 ms for `--version` and `--help` on `osx-arm64`, observation only |
+| Project setup for the executable: Web SDK or `MvcEnhancedModelMetadataSupport=false` with the runtime feature switch and the `<Using>` items; `CA1416` handling (assembly-level `SupportedOSPlatform`) with warnings as errors | M1 (executable) and M4 (web) | [ADR 0008](adr/0008-combined-aot-binary.md) findings 1 and 2, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) finding 2 |
+| UI build in CI: `actions/setup-node` with Node.js 26, `npm ci`, a type-check step, `allowScripts` decision for fsevents; negation in the root `.gitignore` for `package.json` and `package-lock.json` | M4 | [ADR 0009](adr/0009-frontend-toolchain-licenses-and-maintenance.md) |
+| `mcp.readOnly` (hiding write tools), one error format for `/api/v1`, OpenAPI path and token flow in the browser | M3 and M4 | [ADR 0006](adr/0006-mcp-sdk-aot.md), [ADR 0007](adr/0007-web-backend-aot.md) |
+| Signature and quarantine of the native libraries on macOS (`vec0`, `libpdfium`, `libSkiaSharp`) | M5 distribution | [ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md) R5, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) R5 |
+| The integrated CsToml adapter in `Shelf.Core` published on `linux-x64` | with the first CI AOT job that includes config loading (M1) | only the prototype was published there ([ADR 0003](adr/0003-toml-parser.md)) |
 
 ### M1 – Foundation
 
