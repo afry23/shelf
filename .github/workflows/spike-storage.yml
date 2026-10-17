@@ -1,6 +1,6 @@
 name: spike-storage
 
-# Temporary, non-required: four-platform functional check of the storage spike (ADR 0004).
+# Temporary, non-required: two-platform (osx-arm64, linux-x64) functional check of the storage spike (ADR 0004).
 # Not part of the `ci` aggregate job in build.yml. Remove when M0 closes.
 on:
   workflow_dispatch:

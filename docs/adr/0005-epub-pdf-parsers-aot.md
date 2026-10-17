@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted for `osx-arm64`: VersOne.Epub 3.3.6 and PdfPig 0.1.16 pass all gates there under Native AOT and are adopted for M1; E2/P2 on `linux-x64`, `linux-arm64`, `osx-x64` are pending the first `spike-parsers` run (a failure there triggers the decision rule), see Decision |
+| **Status** | Accepted for `osx-arm64` and `linux-x64`: VersOne.Epub 3.3.6 and PdfPig 0.1.16 pass all gates on both under Native AOT and are adopted for M1; `osx-x64` and `linux-arm64` are no longer supported platforms (PRD 9.2), see Decision |
 | **Date** | 2026-10-16 |
 | **Scope** | PRD F-IMP-2 (OPF, PDF Info, XMP), F-IMP-4 (ISBN regex in first/last pages), F-IMP-5 (EPUB cover only; the milestone stays M4), F-SRC-5 (location: PDF page, EPUB chapter + CFI), F-SEM-2 (chunk locator; enabling only), 6.1 (page count), Q7 (scanned PDFs: metadata only), 9.1 (cold start < 150 ms; initial indexing < 15 min at 10,000 works / 15,000 files), 9.2 (four RIDs, Native AOT, ReadyToRun fallback), 9.3 (robustness), 10.2 rows EPUB/PDF, risk table 14 ("Poor metadata in PDFs", "Native AOT incompatible with libraries") |
 | **Roadmap** | M0 "AOT spike", parser part only (VersOne.Epub, PdfPig); exit criterion "every incompatible library has a documented fallback (ReadyToRun, ...)"; "Cold start measurement", parser delta only |
@@ -81,7 +81,7 @@ Every row has a fixed input and an expected output and runs on the AOT binary: `
 
 - `experiments/parsers/` (not in `shelf.slnx`, not built by `build.yml`): `Baseline` (prints `ok`) and `Parsers` (`Variant=epub|pdf|all` selects the package references; assemblies `proto-parsers-epub`, `-pdf`, `-all`). The experiment `Directory.Build.props` does not import the root props (warnings are collected, not fatal).
 - Commands: `info`, `epub-check`, `pdf-check`, `isbn-check`, `mutate`, `robust`/`robust-one` (child process per input, 10 s kill timeout), `meta`, `extract`, `dump`, `verify`, `bench`, `corpus`.
-- `measure.sh` (`osx-arm64`, AC power) writes `results/measure.out`; `check.sh <rid>` is the portable functional subset for the four RIDs; `.github/workflows/spike-parsers.yml` runs it (non-required, not part of the `ci` aggregate).
+- `measure.sh` (`osx-arm64`, AC power) writes `results/measure.out`; `check.sh <rid>` is the portable functional subset per RID; `.github/workflows/spike-parsers.yml` runs it (non-required, not part of the `ci` aggregate).
 - Timing as in ADR 0003/0004: `zsh $EPOCHREALTIME` loop (5 warmups, 50 runs, nearest-rank p95), because `hyperfine` is not installed.
 
 ## Research
@@ -164,19 +164,19 @@ Observations: R-E14 (added after the first review, observation row): an OPF with
 
 ### Four platforms
 
-`check.sh osx-arm64` ran locally (`results/ci/osx-arm64.txt`). The other three RIDs (`linux-x64`, `linux-arm64`, `osx-x64`) can only be run by the `spike-parsers` workflow, which the implementer did not run; its first run on the pull request decides E2/P2 there (see Decision). The R-E13 observation needs about 3 GiB of memory on the runner (2.8 GiB peak here); if a runner has too little memory that row (observation, 10 s timeout) may be killed without failing a gate.
+`check.sh osx-arm64` ran locally (`results/ci/osx-arm64.txt`). `linux-x64` was run by the `spike-parsers` workflow (CI run 39013676270 on PR #15, 2026-10-17, `check linux-x64: ok`): 0 AOT/trim warnings, EPUB rows 32/32, PDF rows 14/14, robustness rows 17/17, generator verify pass for tiny and 200 works / 300 files, differential dump AOT vs JIT identical. `linux-arm64` and `osx-x64` were dropped as target platforms and never run. The R-E13 observation needs about 3 GiB of memory on the runner (2.8 GiB peak here); if a runner has too little memory that row (observation, 10 s timeout) may be killed without failing a gate.
 
 ## Gate results (`osx-arm64`, AOT binary)
 
 | Gate | Result | Measured |
 |---|---|---|
 | E1 AOT publish `epub` and `all`, 0 warnings | **pass** | 0 / 0 |
-| E2 EPUB rows | **pass** on `osx-arm64`; three other RIDs pending CI | 32/32 rows, 0 failed |
+| E2 EPUB rows | **pass** on `osx-arm64` and `linux-x64` | 32/32 rows, 0 failed |
 | E3 differential | **pass** | byte-identical (fixtures, tiny, 17 gated mutations) |
 | E4 robustness R-E | **pass** | 10 gated rows controlled, <= 18 MiB, <= 15 ms |
 | E5 8,300 EPUBs | **pass** | 8,300/8,300 for every check, 0 errors |
 | P1 AOT publish `pdf` and `all`, 0 warnings | **pass** | 0 / 0 |
-| P2 PDF rows | **pass** on `osx-arm64`; three other RIDs pending CI | 14/14 rows, 0 failed |
+| P2 PDF rows | **pass** on `osx-arm64` and `linux-x64` | 14/14 rows, 0 failed |
 | P3 differential | **pass** | byte-identical |
 | P4 robustness R-P | **pass** | 7 gated rows controlled (3 ok: R-P4, R-P5, R-P7; 3 `PdfDocumentFormatException`: R-P1/2/3; 1 `IndexOutOfRangeException`: R-P6), <= 29 MiB |
 | P5 6,700 PDFs | **pass** | 6,700/6,700 for every check, 0 errors |
@@ -187,7 +187,7 @@ Observations: R-E14 (added after the first review, observation row): an OPF with
 
 ## Decision
 
-**Option A, VersOne.Epub 3.3.6, and option C, PdfPig 0.1.16, are adopted for M1 under Native AOT (pins)**: all of E1-E5, P1-P5 and T1-T3 pass on `osx-arm64`. Decision rule steps 1 and 2 apply; steps 3-6 are not triggered on this platform. E2/P2 on `linux-x64`, `linux-arm64` and `osx-x64` are pending the first `spike-parsers` run: an E failure there triggers step 3 (hand-written EPUB reader, estimated below at 3-4 days, within the 5-day limit), a P failure triggers step 4 (escalate with the options in order, no decision alone).
+**Option A, VersOne.Epub 3.3.6, and option C, PdfPig 0.1.16, are adopted for M1 under Native AOT (pins)**: all of E1-E5, P1-P5 and T1-T3 pass on `osx-arm64`, and E1/E2/P1/P2 pass on `linux-x64`. Decision rule steps 1 and 2 apply; steps 3-6 are not triggered on either supported platform.
 
 The adoption carries conditions that M1 must implement (they are findings, not gate failures):
 
@@ -219,8 +219,8 @@ The adoption carries conditions that M1 must implement (they are findings, not g
 - **Language (Q12):** no PDF fixture carries catalog `/Lang` or XMP `dc:language` (X-P6); EPUB language comes from `dc:language`; for PDFs the PRD needs an owner decision (text-based detection or none).
 - **Q6 (ISBN scope):** PDF pages 1-5 and the last 3, EPUB first 3 and last 2 spine items, ISBN-10 only with the `ISBN` prefix, OPF/Info identifiers before text hits; confirmed by the reference library (zero false positives from text on 6,700 PDFs and 8,300 EPUBs).
 - **Re-check triggers:** VersOne.Epub 4.x, PdfPig 0.2/1.0 (or the `0.1.17-alpha` nightly if the `Page.Text` spacing or XMP decoding is fixed), .NET 11, a `spike-parsers` result that contradicts E2/P2 on another RID, the first run on real books (owner corpus) contradicting the extrapolation, a decision on PDF cover rendering.
-- **Workflow and prototype:** `.github/workflows/spike-parsers.yml` is not required, is not part of the `ci` aggregate of `build.yml`, and runs `check.sh` on `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `macos-15-intel`. It was written but not run by the implementer. It and `experiments/parsers/` are deleted when M0 closes, with a note pointing to the last commit that contains them.
-- **Not verified in this ADR:** NCX/nav documents with a public DOCTYPE (only the OPF was tested, R-E14); `linux-x64`, `linux-arm64`, `osx-x64` (AOT publish warnings, check rows, differential); real-world EPUBs and PDFs (embedded fonts, Type0/CID fonts, CMaps, DRM, huge files); validity of the generated files beyond the lenient readers (`epubcheck`, `qpdf` not available); the cause of the PdfPig scaling stop; the trim mode applied to non-annotated assemblies (documentation not checked); the claim that VersOne.Epub ignores a declared chapter encoding (source only, not measured); stack overflow behavior beyond R-E12 and R-P8; text quality of `GetWords()` on multi-column or right-to-left layouts; whether `Process.PeakWorkingSet64` is zero on macOS only for this runtime (observed 0, replaced by `getrusage`).
+- **Workflow and prototype:** `.github/workflows/spike-parsers.yml` is not required, is not part of the `ci` aggregate of `build.yml`, and runs `check.sh` on `ubuntu-24.04` and `macos-15`. It first ran on PR #15, where both jobs passed. It and `experiments/parsers/` are deleted when M0 closes, with a note pointing to the last commit that contains them.
+- **Not verified in this ADR:** NCX/nav documents with a public DOCTYPE (only the OPF was tested, R-E14); `linux-arm64` and `osx-x64` (not supported); real-world EPUBs and PDFs (embedded fonts, Type0/CID fonts, CMaps, DRM, huge files); validity of the generated files beyond the lenient readers (`epubcheck`, `qpdf` not available); the cause of the PdfPig scaling stop; the trim mode applied to non-annotated assemblies (documentation not checked); the claim that VersOne.Epub ignores a declared chapter encoding (source only, not measured); stack overflow behavior beyond R-E12 and R-P8; text quality of `GetWords()` on multi-column or right-to-left layouts; whether `Process.PeakWorkingSet64` is zero on macOS only for this runtime (observed 0, replaced by `getrusage`).
 
 ## Deviations from the plan
 
