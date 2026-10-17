@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | Proposed: criteria fixed, nothing measured yet |
+| **Status** | Accepted for `osx-arm64`: ASP.NET Core Minimal APIs on Kestrel (`CreateSlimBuilder`), source-generated JSON, runtime OpenAPI generation and the embedded Svelte build pass W1-W11 under Native AOT and are adopted for M4; `linux-x64` not verified, see Decision |
 | **Date** | 2026-10-17 |
 | **Scope** | PRD F-WEB-1 (`shelf serve`, bind `127.0.0.1`), F-WEB-2 (token on other interfaces), F-WEB-3 (UI embedded, no Node.js at runtime), 7.3 (REST/JSON under `/api/v1`, files with range requests, OpenAPI generated automatically), 9.2 (Native AOT, ReadyToRun fallback), 10.2 (Web backend, Web frontend), Q1 (Svelte), risk table 14 |
 | **Roadmap** | M0 "AOT spike", web part only: ASP.NET Core Minimal APIs (JSON API, range requests, embedded Svelte build, access token); exit criterion "every incompatible library has a documented fallback", on `osx-arm64` only |
 | **Inputs** | [ADR 0001](0001-dependency-licenses-and-maintenance.md) row 22 and its 2026-10-17 note, [ADR 0006](0006-mcp-sdk-aot.md) (spike/ADR structure), slice plan `docs/slices/m0-spike-web.md` |
 
-Order of work: Context to Research were written before any measurement and are committed with status `Proposed` before `experiments/web/` exists, so the criteria are provable from the repository history. Measurements, decision and consequences are added after the run.
+Order of work: Context to Research were written before any measurement and committed with status `Proposed` before `experiments/web/` existed (commit `873af0b`), so the criteria are provable from the repository history. Measurements, decision and consequences were added after the run.
 
 ## Context
 
@@ -94,19 +94,74 @@ Statuses: **documented** = stated in the cited documentation page; **unverified*
 | S6 | `aspnetcore/fundamentals/servers/kestrel/endpoints.md` (same repository and date) |
 | S7 | `npm view <package> version engines.node license` for svelte, vite, @sveltejs/vite-plugin-svelte, typescript, svelte-check; `node --version`, `npm --version` on the development machine (2026-10-17) |
 
+## Research updates from the measurement
+
+- **R1 (builder):** `WebApplication.CreateSlimBuilder` with Kestrel, Minimal APIs (`MapGroup`, `TypedResults`, `Results<...>` unions), a source-generated `JsonSerializerContext` in `ConfigureHttpJsonOptions` and `AddProblemDetails` publishes with 0 warnings and runs. Options B (`CreateEmptyBuilder`) and C (`CreateBuilder`) were not tried because A passed.
+- **R2 (range requests):** `Results.File(path, contentType, enableRangeProcessing: true)` works under AOT: 200 with `Accept-Ranges: bytes`, 206 with the right `Content-Range` for first, middle, suffix and open-ended ranges, 416 for a start beyond the end. A request with **multiple ranges returns the full body with 200**, not a multipart response (observation; PDF.js uses single ranges). ETag behavior was not checked.
+- **R3 (embedded UI):** `new ManifestEmbeddedFileProvider(assembly, "ui")` with `UseStaticFiles(new StaticFileOptions { FileProvider = ... })` and `MapFallbackToFile("index.html", staticFileOptions)` works under AOT. Project settings: `GenerateEmbeddedFilesManifest=true`, package `Microsoft.Extensions.FileProviders.Embedded` 10.0.12, `<EmbeddedResource Include="..\Ui\dist\**\*" LinkBase="ui" />`. Content types: `text/html`, `text/javascript`, `text/css`. A path with a file extension that does not exist is a 404; a path without one falls back to `index.html`. The publish writes a 53 B `proto-web.staticwebassets.endpoints.json` next to the binary; the binary copied **alone** into an empty directory passes all rows, so the file is not needed (`MapStaticAssets` is not used). `MapStaticAssets` was not tried.
+- **R4 (OpenAPI):** runtime generation works under Native AOT: `AddOpenApi()` plus `MapOpenApi("/openapi/v1.json")` served an OpenAPI **3.1.1** document with the three paths, the methods and responses declared by `.Produces(...)` (the book path lists 200 and 404) and schemas `Book`, `ErrorBody`, `FormatInfo`, `TagsRequest`, `TagsResponse`. `MapOpenApi` was called unconditionally and the endpoint answered; the environment variable was not set, so the app ran in the default environment, which ASP.NET Core treats as Production (the environment name was not printed). The documentation's "restricted to Development" therefore describes the sample code, not a restriction of the API. The document's `servers` entry contains the base URL of the request. Build-time generation was not tried.
+- **R5 (logging):** with `ClearProviders`, a stderr-only provider and `SetMinimumLevel(Warning)`, stdout stayed empty and stderr held exactly the startup line (W10). The default console logger was not examined.
+- **R6 (binding):** `--bind` is parsed with `IPAddress.TryParse` and passed to `Kestrel.Listen(address, port)`; a non-IP value is rejected with exit code 2, a non-loopback address without `--token` is rejected with exit code 2 before anything listens. The default `127.0.0.1` was probed: a connection to the machine's LAN address on the same port was refused. IPv6 (`::1`, `::`) was not tested.
+- **R7 (Svelte toolchain):** `npm ci` plus `vite build` took about 1 s in total (warm npm cache), 41 packages, output of 3 files and 30,607 B (`index.html`, one hashed JS and one hashed CSS asset under `assets/`). Versions used: Node.js v26.10.0, npm 11.19.1, Svelte 5.57.2, Vite 8.3.4, TypeScript 7.0.2, `@sveltejs/vite-plugin-svelte` 7.3.1. npm 11.19.1 prints "npm warn install-scripts" lines (some package has an install script that is not approved); which package and whether it matters was not investigated.
+
 ## Measurements
 
-Not yet taken.
+`experiments/web/check.sh`, `osx-arm64`, macOS 26.6.2 (Apple Silicon), .NET SDK 10.0.401, Microsoft.AspNetCore.App 10.0.12, `Microsoft.AspNetCore.OpenApi` 10.0.12. Raw output: `experiments/web/results/local/osx-arm64.txt`.
+
+| Gate | Result | Value |
+|---|---|---|
+| W1 AOT publish, 0 warnings | **pass** | 0 `IL*`/`AOT*` warnings, 0 warnings of any kind in the publish log |
+| W2 Svelte build | **pass** | `npm ci && npm run build`, 3 files, 30,607 B |
+| W3 embedded assets | **pass** | with `Ui/dist` moved away and an empty working directory: `/` and both assets 200, exact bytes, content types as expected |
+| W4 SPA fallback and 404s | **pass** | `/library/abc` returns `index.html`; `/missing.js` 404; `/api/v1/unknown` 404 as JSON |
+| W5 JSON API | **pass** | book JSON as expected (`pages: null` kept, ASP.NET's serializer defaults); unknown id 404 JSON; valid tags update; invalid body and empty tag 400 JSON |
+| W6 range requests | **pass** | 200, 206 (`bytes 0-99/1048576`, middle, suffix, open end), 416 for a start beyond the end |
+| W7 bind | **pass** | default `127.0.0.1`; `0.0.0.0` without token exit 2; non-IP bind exit 2; `0.0.0.0` with token starts |
+| W8 token | **pass** | 401 JSON without or with a wrong token (`WWW-Authenticate: Bearer`), 200 with the token; the file endpoint is protected too; the UI stays public |
+| W9 OpenAPI | **pass** | OpenAPI 3.1.1, paths, methods, 404 response and `Book` schema present |
+| W10 stdout/stderr | **pass** | stdout 0 bytes, stderr only the startup line |
+| W11 AOT vs JIT | **pass** | normalized dumps identical (564 lines) |
+| X-1 observation | | `proto-web` 15,901,896 B (about 15.2 MiB); `Ui/dist` 30,607 B; Svelte build about 1 s; the binary links only system libraries |
+| X-2 observation | | about 90 ms from process start to the first successful response, including the polling loop; not gated |
+
+### Observations and pitfalls found while running
+
+1. **Two error formats.** Responses produced by the framework (an unparseable body, a missing static file) are `application/problem+json` with a volatile `traceId`; responses produced by the endpoints (`TypedResults.NotFound(ErrorBody)`, token 401) are `application/json` with the project's own `ErrorBody`. The product should pick one format.
+2. **An invalid JSON body gave a 400 with an empty body** until `UseStatusCodePages()` was added together with `AddProblemDetails()`.
+3. **Multiple ranges are not honored** (full 200 response, see R2).
+4. **Volatile content in the dump.** `traceId` in problem documents and the OpenAPI `servers` URL differ per run; the W11 comparison removes exactly these two and nothing else.
+5. **Binary size.** The web server alone is 15.2 MiB (the MCP server alone was 11.1 MiB); the size of a combined CLI + MCP + web binary is open (combined spike).
+6. **The UI is not executed.** The Svelte bundle is served byte-exactly, but no browser ran it.
+
+## Gate results
+
+W1-W11 all pass on `osx-arm64`.
 
 ## Decision
 
-Pending the measurement. Builder (option A, B or C), the static-file approach and the OpenAPI approach are decided by the first passing variant per the decision rule, preferring A and runtime OpenAPI generation first.
+**ASP.NET Core Minimal APIs on Kestrel are adopted for M4 under Native AOT (decision rule step 1), with this composition:**
+
+- `WebApplication.CreateSlimBuilder`, Kestrel `Listen(IPAddress, port)` (no URL strings; `--bind` is validated as an IP address by shelf), Minimal APIs with `MapGroup("/api/v1")`, all request and response types on a source-generated `JsonSerializerContext` inserted first into the resolver chain;
+- files via `Results.File(..., enableRangeProcessing: true)`;
+- the Svelte build embedded as resources (`GenerateEmbeddedFilesManifest`, `LinkBase="ui"`) and served by `ManifestEmbeddedFileProvider` + `UseStaticFiles` + `MapFallbackToFile("index.html")`; an explicit `/api/v1/{**rest}` fallback returns JSON 404 before the SPA fallback;
+- OpenAPI by **runtime generation** (`AddOpenApi`, `MapOpenApi`); build-time generation is not needed;
+- a bearer-token middleware for `/api/v1/*` with a constant-time comparison; `--bind` to a non-loopback address is refused without `--token`.
+
+No fallback (another builder, own endpoints, ReadyToRun) was needed. Options B, C and D were not evaluated.
 
 ## Consequences
 
-To be written after the measurement. Hand-offs already known:
+- **M4 web slices** implement these patterns and add scenarios for: one error format for all `/api/v1` errors (observation 1), an empty or invalid body returning a JSON 400 (observation 2), range requests (full, first, middle, suffix, open end, beyond end), SPA fallback versus JSON 404, token handling and bind refusal.
+- **Browser flow for the token** (cookie from a `?token=` link, or the UI asking for the token and sending a header) is an M4 design question. The spike keeps the static UI public and protects only `/api/v1/*`.
+- **OpenAPI path:** the spike used `/openapi/v1.json`; whether it lives under `/api/v1` and whether it needs the token is decided in M4.
+- **`linux-x64` is not verified for the web part**; to be covered in the combined AOT binary or in M4. The M0 exit criterion "AOT spike runs on both supported platforms" stays open for it.
+- **CI and builds need Node.js** for the UI (`setup-node` with a pinned version, `npm ci`). The version policy (v26.10.0 is the local version, an LTS line may be preferred) and the license and maintenance check of Vite, TypeScript, Node.js and the npm dependency tree (including the npm install-script warning, R7) are open and belong to the first web slice (ADR 0001 note).
+- **Re-check triggers:** .NET 11 (OpenAPI 3.2 becomes the default version), Vite or Svelte major versions, a requirement for HTTPS or HTTP/3 (not in `CreateSlimBuilder`), multi-range support, running the UI in a browser test.
+- **Prototype:** `experiments/web/` is kept until M0 closes, then deleted with a note pointing to the last commit that contains it (like the other spikes).
 
-- The browser flow for the access token (cookie from a `?token=` link, or the UI asking for the token) is an M4 design question; the spike checks the server side only.
-- `linux-x64` is not verified for the web part; to be covered in the combined AOT binary or in M4.
-- License and maintenance check of Vite, TypeScript, Node.js and the UI's npm dependency tree (ADR 0001 method) is open and belongs to the first web slice.
-- Node.js version policy (local v26.10.0 versus an LTS line) is decided with that check.
+## Deviations from the plan
+
+- W4 passes with `/missing.js` returning a 404 with a `application/problem+json` body; the plan only required the status.
+- W5's invalid-body row needed `UseStatusCodePages()` (observation 2); the first smoke run without it returned an empty 400 body. The gate was not weakened.
+- The W11 comparison removes `traceId` from problem documents and `servers` from the OpenAPI document (observation 4); the plan only named `Date`, `Server` and other volatile headers.
+- X-2 is measured with a polling loop in `check.sh` and includes the loop's own latency.
