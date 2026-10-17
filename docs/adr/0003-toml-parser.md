@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted: CsToml 1.8.6 |
+| **Status** | Accepted: CsToml 1.8.6; Native AOT confirmed on `osx-arm64` and `linux-x64` |
 | **Date** | 2026-10-14 |
 | **Scope** | PRD 9.2 (config locations, Native AOT, single binary), F-GRP-6 (thresholds in `config.toml`; reader only), 7.2 (`mcp.readOnly` as an example key) |
 | **Roadmap** | M0 exit criterion "CLI framework and TOML parser are chosen"; TOML parser line of the "AOT spike" work package (osx-arm64 part only) |
@@ -198,7 +198,7 @@ Details decided in this slice:
 ## Consequences
 
 - `src/Shelf.Core` references CsToml 1.8.6. The integrated adapter was additionally published as a Native AOT console app on `osx-arm64` (scratch project, not committed) with `-p:TrimmerSingleWarn=false`: 0 warnings, loads `sample/config.toml`, reports a line for a syntax error. `src/Shelf.Cli` does not call the parser in M0, so the CI `aot` job does not compile it; the `shelf` binary size is unchanged (3,061,848 B on `osx-arm64`).
-- **Hand-off to the AOT spike work package (owner decision Q8):** verify CsToml in an AOT binary on `osx-x64`, `linux-x64` and `linux-arm64`; only `osx-arm64` was verified here. The functional (JIT) behavior runs on all four platforms in the CI `test` job.
+- **Hand-off to the AOT spike work package (owner decision Q8), done 2026-10-17:** CsToml in an AOT binary on `linux-x64`. `experiments/toml-parser/check.sh <rid>` publishes the CsToml prototype with `-p:TrimmerSingleWarn=false` and runs the G5 checks, the conformance corpus and the round-trip; the non-required workflow `spike-toml.yml` ran it on `osx-arm64` and `linux-x64` (CI run 39041563501 on PR #20, both jobs green). `linux-x64`: 0 AOT/trim warnings, `proto-cstoml` 3,869,640 B, checks 22/22 (lines 6/6), corpus 61/61 (lines 23/23), round-trip ok (the unchanged round-trip is not byte-identical, as already recorded for CsToml on `osx-arm64`), `get grouping.auto_merge` under `de_DE` prints `0.9`. `osx-x64` and `linux-arm64` are no longer supported platforms (PRD 9.2) and were not run. The integrated `Shelf.Core` adapter was not published on `linux-x64`; only the prototype was. The functional (JIT) behavior runs on the supported platforms in the CI `test` job.
 - **Write capability (Q2):** CsToml cannot edit a config file without losing comments, order and formatting (1 of 5 points); Tomlyn's syntax tree could (4 of 5). Nothing in the PRD writes `config.toml` (no `shelf config` command). When a writer appears (for example `shelf config set` or `shelf init`), either generate a fresh commented template, use a targeted line edit, or re-open this ADR.
 - **Re-check triggers:** CsToml 2.0 or loss of its single maintainer; Tomlyn adding TOML 1.0 mode or the owner relaxing G6; a requirement for comment-preserving edits; the AOT spike failing on another platform.
 - **Follow-ups:** M1 wires config loading into `Shelf.Cli`; precedence between global and library files, key naming, unknown-key policy and the library list (F-LIB-1) are separate decisions (slice questions Q3, Q6, Q11). `experiments/toml-parser/` is kept until M0 closes and is then deleted, with this ADR pointing to the last commit that contains it.
