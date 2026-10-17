@@ -50,10 +50,10 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | Work package | Details | PRD reference |
 |---|---|---|
 | Solution skeleton | Projects as in 10.1, central package management, `Directory.Build.props`, nullable + warnings as errors | 10.1 |
-| CI | Build + test for `osx-arm64`, `osx-x64`, `linux-x64`, `linux-arm64`; AOT publish as a CI job | 9.2 |
+| CI | Build + test for `osx-arm64` and `linux-x64`; AOT publish as a CI job | 9.2 |
 | BDD setup | Reqnroll test project `tests/Shelf.Specs`, choice of test runner, CI runs all scenarios and fails on red ones; first feature file as a template | `CLAUDE.md` |
 | License and maintenance check | All candidates from 10.2; result documented as an ADR. **Done:** [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md) | 10.2 |
-| **AOT spike** | One AOT binary that loads and uses: Microsoft.Data.Sqlite + FTS5, sqlite-vec, VersOne.Epub, PdfPig, ONNX Runtime, ModelContextProtocol SDK, ASP.NET Core Minimal APIs + RazorSlices, TOML parser. Includes the `osx-x64` decision for ONNX Runtime (PRD 13.2 Q8, ADR 0001). **Progress:** storage part (Microsoft.Data.Sqlite + FTS5, sqlite-vec / brute-force fallback) measured on `osx-arm64`: [ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md); four-platform confirmation runs in the non-required `spike-storage` workflow; parser part (VersOne.Epub 3.3.6, PdfPig 0.1.16) measured on `osx-arm64`: all gates pass; E2/P2 on the other three RIDs pending the non-required `spike-parsers` workflow ([ADR 0005](adr/0005-epub-pdf-parsers-aot.md)); the other libraries are still open | Q1, Q2, risk "Native AOT" |
+| **AOT spike** | One AOT binary that loads and uses: Microsoft.Data.Sqlite + FTS5, sqlite-vec, VersOne.Epub, PdfPig, ONNX Runtime, ModelContextProtocol SDK, ASP.NET Core Minimal APIs + RazorSlices, TOML parser. `osx-x64` and `linux-arm64` are not supported, so the `osx-x64` decision for ONNX Runtime (PRD 13.2 Q8) no longer applies. **Progress:** storage part (Microsoft.Data.Sqlite + FTS5, sqlite-vec / brute-force fallback) measured on `osx-arm64`: [ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md); `linux-x64` confirmation run in the non-required `spike-storage` workflow; parser part (VersOne.Epub 3.3.6, PdfPig 0.1.16) measured on `osx-arm64`: all gates pass; E2/P2 on `linux-x64` pending the non-required `spike-parsers` workflow ([ADR 0005](adr/0005-epub-pdf-parsers-aot.md)); the other libraries are still open | Q1, Q2, risk "Native AOT" |
 | PDF cover rendering spike | Own slice `m0-spike-pdf-cover`: PDFtoImage 5.4.0 + SkiaSharp + PDFium natives per RID under Native AOT (ADR 0001 rows 6/7, risk row in [ADR 0005](adr/0005-epub-pdf-parsers-aot.md)). **Open**; F-IMP-5 stays in M4 | F-IMP-5, 9.2, G7 |
 | CLI framework decision | Spectre.Console.Cli vs. System.CommandLine, decided by AOT compatibility and cold start. **Done:** [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12) | 10.2, 7.1 |
 | Cold start measurement | Baseline of the spike binary against the < 150 ms target | 9.1 |
@@ -62,8 +62,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 **Exit criteria:**
 
-- The AOT spike runs on all four platforms, or every incompatible library has a documented fallback (ReadyToRun, Svelte instead of RazorSlices, brute-force cosine instead of sqlite-vec).
-- CLI framework and TOML parser are chosen. **Done:** CLI framework: [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12); TOML parser: [ADR 0003](adr/0003-toml-parser.md) (CsToml 1.8.6; AOT verified on `osx-arm64` only, the four-platform check belongs to the AOT spike).
+- The AOT spike runs on both supported platforms (`osx-arm64`, `linux-x64`), or every incompatible library has a documented fallback (ReadyToRun, Svelte instead of RazorSlices, brute-force cosine instead of sqlite-vec).
+- CLI framework and TOML parser are chosen. **Done:** CLI framework: [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12); TOML parser: [ADR 0003](adr/0003-toml-parser.md) (CsToml 1.8.6; AOT verified on `osx-arm64` only, the `linux-x64` check belongs to the AOT spike).
 - Reqnroll runs in CI; the template feature file is green.
 
 ### M1 – Foundation
@@ -176,7 +176,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | Web | Views Tags, Review, Organize; F-WEB-5 (keyboard control) |
 | MCP | Streamable HTTP transport |
 | CLI | Shell completion for bash, zsh, fish |
-| Distribution | GitHub Releases for all four platforms, Homebrew tap |
+| Distribution | GitHub Releases for both platforms (`osx-arm64`, `linux-x64`), Homebrew tap |
 
 **Exit criteria:**
 
