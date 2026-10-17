@@ -37,6 +37,37 @@ public static class Locators
         return "page=" + pageNumber.ToString(CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// A location for people: "page 212" for a PDF page, "section 3" for the third spine item of an EPUB (the
+    /// CFI step 6 is the third item); anything else as it is. A section is not always a chapter: a cover page counts.
+    /// </summary>
+    public static string Describe(string locator)
+    {
+        ArgumentNullException.ThrowIfNull(locator);
+        if (TryParsePdfPage(locator, out var page))
+        {
+            return "page " + page.ToString(CultureInfo.InvariantCulture);
+        }
+
+        const string prefix = "epubcfi(/6/";
+        if (locator.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            var digits = locator.AsSpan(prefix.Length);
+            var end = 0;
+            while (end < digits.Length && char.IsAsciiDigit(digits[end]))
+            {
+                end++;
+            }
+
+            if (end > 0 && int.TryParse(digits[..end], NumberStyles.None, CultureInfo.InvariantCulture, out var step) && step >= 2)
+            {
+                return "section " + (step / 2).ToString(CultureInfo.InvariantCulture);
+            }
+        }
+
+        return locator;
+    }
+
     /// <summary>True for <c>page=N</c> with N of 1 or more.</summary>
     public static bool TryParsePdfPage(string? locator, out int pageNumber)
     {

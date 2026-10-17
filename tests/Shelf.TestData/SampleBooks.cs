@@ -23,6 +23,30 @@ public static class SampleBooks
             Document = TextGenerator.Generate(language == "de" ? Languages.German : Languages.English, (ulong)seed, words),
         });
 
+    /// <summary>An EPUB 3 whose chapters are exactly the given ones (title and one paragraph of text each).</summary>
+    public static byte[] Epub(string? title, IReadOnlyList<string> authors, IReadOnlyList<(string Title, string Text)> chapters, string language = "en") =>
+        EpubWriter.Write(new EpubSpec
+        {
+            Version = 3,
+            Title = title,
+            Authors = [.. authors.Select(a => new EpubAuthor(a, a))],
+            Language = language,
+            IdentitySeed = $"sample-chapters-{title}",
+            Document = new TextDocument([.. chapters.Select(c => new Chapter(c.Title, [c.Text]))]),
+        });
+
+    /// <summary>A PDF with exactly the given pages (the text of each is wrapped into lines) and no title page.</summary>
+    public static byte[] Pdf(string? title, string? author, IReadOnlyList<string> pages) =>
+        PdfWriter.Write(new PdfSpec
+        {
+            Pages = [.. pages.Select(p => (IReadOnlyList<string>)PdfWriter.Wrap(p))],
+            HasInfo = true,
+            Title = title,
+            Author = author,
+            HasXmp = true,
+            IdentitySeed = $"sample-pages-{title}",
+        });
+
     /// <summary>
     /// A PDF whose first page shows title, author and ISBN, followed by the text. With <paramref name="withInfo"/>
     /// the Info dictionary names title and author too.

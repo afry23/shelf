@@ -52,9 +52,15 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _exitCode = -1;
     }
 
+    /// <summary>What the last run wrote to standard output.</summary>
+    public string StandardOutput => _stdout.ToString();
+
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
     {
+        // Each run starts with empty output: a scenario can run several commands and look at the last one.
+        _stdout.GetStringBuilder().Clear();
+        _stderr.GetStringBuilder().Clear();
         var args = ArgumentSplitter.Split(arguments);
         var cliEnvironment = CliEnvironment.FromVariables(
             name => environment.Variables.GetValueOrDefault(name),
@@ -84,6 +90,9 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("standard error starts with {string}")]
     public void ThenStandardErrorStartsWith(string prefix) =>
         Assert.StartsWith(prefix, _stderr.ToString(), StringComparison.Ordinal);
+
+    [Then("standard output is {string}")]
+    public void ThenStandardOutputIs(string expected) => Assert.Equal(expected, _stdout.ToString().TrimEnd('\r', '\n'));
 
     [Then("standard output is empty")]
     public void ThenStandardOutputIsEmpty() => Assert.Equal(string.Empty, _stdout.ToString());

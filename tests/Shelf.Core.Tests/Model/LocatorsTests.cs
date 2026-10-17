@@ -32,4 +32,15 @@ public sealed class LocatorsTests
         Assert.Equal(ok, Locators.TryParsePdfPage(locator, out var parsed));
         Assert.Equal(page, parsed);
     }
+
+    [Theory]
+    [InlineData("page=212", "page 212")]
+    [InlineData("epubcfi(/6/2[chapter1]!)", "section 1")]
+    [InlineData("epubcfi(/6/24[a^[1^]]!)", "section 12")]
+    [InlineData("epubcfi(/6/0!)", "epubcfi(/6/0!)")]
+    [InlineData("epubcfi(/6/x!)", "epubcfi(/6/x!)")]
+    [InlineData("page=0", "page=0")]
+    [InlineData("something else", "something else")]
+    public void Describe_names_a_location_for_people(string locator, string expected) =>
+        Assert.Equal(expected, Locators.Describe(locator));
 }
