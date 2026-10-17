@@ -1,6 +1,6 @@
 name: spike-parsers
 
-# Temporary, non-required: four-platform functional check of the parsers spike (ADR 0005).
+# Temporary, non-required: two-platform (osx-arm64, linux-x64) functional check of the parsers spike (ADR 0005).
 # Not part of the `ci` aggregate job in build.yml. Remove when M0 closes.
 on:
   workflow_dispatch:
