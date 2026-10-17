@@ -63,7 +63,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 **Exit criteria:**
 
 - The AOT spike runs on both supported platforms (`osx-arm64`, `linux-x64`), or every incompatible library has a documented fallback (ReadyToRun, brute-force cosine instead of sqlite-vec).
-- CLI framework and TOML parser are chosen. **Done:** CLI framework: [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12); TOML parser: [ADR 0003](adr/0003-toml-parser.md) (CsToml 1.8.6; AOT verified on `osx-arm64` only, the `linux-x64` check belongs to the AOT spike).
+- CLI framework and TOML parser are chosen. **Done:** CLI framework: [ADR 0002](adr/0002-cli-framework.md) (System.CommandLine 2.0.12); TOML parser: [ADR 0003](adr/0003-toml-parser.md) (CsToml 1.8.6; AOT verified on `osx-arm64` and `linux-x64`, see ADR 0003).
 - Reqnroll runs in CI; the template feature file is green.
 
 ### M1 – Foundation

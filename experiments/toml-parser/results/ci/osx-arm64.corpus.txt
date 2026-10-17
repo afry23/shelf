@@ -1,0 +1,63 @@
+pass valid/array-of-tables.toml
+pass valid/arrays-mixed-types.toml
+pass valid/arrays-multiline.toml
+pass valid/arrays.toml
+pass valid/bare-keys.toml
+pass valid/booleans.toml
+pass valid/comments-unicode.toml
+pass valid/comments.toml
+pass valid/crlf-line-endings.toml
+pass valid/date-local.toml
+pass valid/datetime-local.toml
+pass valid/datetime-offset.toml
+pass valid/dotted-keys-whitespace.toml
+pass valid/dotted-keys.toml
+pass valid/floats-special.toml
+pass valid/floats.toml
+pass valid/inline-table-in-array.toml
+pass valid/inline-tables.toml
+pass valid/integers-decimal.toml
+pass valid/integers-limits.toml
+pass valid/integers-radix.toml
+pass valid/no-final-newline.toml
+pass valid/quoted-keys.toml
+pass valid/shelf-like.toml
+pass valid/string-basic.toml
+pass valid/string-empty.toml
+pass valid/string-escapes.toml
+pass valid/string-literal.toml
+pass valid/string-multiline-basic.toml
+pass valid/string-multiline-literal.toml
+pass valid/string-multiline-quotes.toml
+pass valid/string-unicode-escapes.toml
+pass valid/tables-empty.toml
+pass valid/tables-implicit-super.toml
+pass valid/tables-nested.toml
+pass valid/tables-whitespace-in-header.toml
+pass valid/time-local.toml
+pass valid/whitespace-tabs-spaces.toml
+pass invalid/array-of-tables-redefines-table.toml line=3 col=none line-ok
+pass invalid/bare-key-with-space.toml line=1 col=none line-ok
+pass invalid/bare-word-value.toml line=1 col=none line-ok
+pass invalid/control-character-in-string.toml line=1 col=none line-ok
+pass invalid/duplicate-key.toml line=3 col=none line-ok
+pass invalid/duplicate-table.toml line=2 col=none line-ok
+pass invalid/empty-hex.toml line=1 col=none line-ok
+pass invalid/inline-table-extension.toml line=2 col=none line-ok
+pass invalid/integer-overflow.toml line=1 col=none line-ok
+pass invalid/invalid-date.toml line=1 col=none line-ok
+pass invalid/invalid-escape.toml line=1 col=none line-ok
+pass invalid/invalid-underscore.toml line=1 col=none line-ok
+pass invalid/leading-zero.toml line=1 col=none line-ok
+pass invalid/missing-key.toml line=1 col=none line-ok
+pass invalid/missing-value-after-comment.toml line=1 col=none line-ok
+pass invalid/missing-value.toml line=2 col=none line-ok
+pass invalid/mixed-up-brackets.toml line=2 col=none line-ok
+pass invalid/newline-in-basic-string.toml line=1 col=none line-ok
+pass invalid/redefine-table-via-dotted-keys.toml line=3 col=none line-ok
+pass invalid/trailing-comma-in-inline-table.toml line=1 col=none line-ok
+pass invalid/two-pairs-on-a-line.toml line=1 col=none line-ok
+pass invalid/unterminated-string.toml line=1 col=none line-ok
+pass invalid/unterminated-table-header.toml line=1 col=none line-ok
+passed 61/61
+lines 23/23
