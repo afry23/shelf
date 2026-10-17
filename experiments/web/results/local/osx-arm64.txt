@@ -1,0 +1,53 @@
+== environment
+date: 2026-10-17T14:24:55Z
+rid: osx-arm64
+uname: Darwin 25.6.0 arm64
+macOS: 26.6.2
+dotnet: 10.0.401
+aspnetcore runtime: Microsoft.AspNetCore.App 10.0.12 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]
+node: v26.10.0 (.node-version: v26.10.0)
+npm: 11.19.1
+== W2 Svelte build (npm ci && npm run build)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+✓ 110 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.39 kB │ gzip:  0.26 kB
+dist/assets/index-2b0F2EBd.css   0.05 kB │ gzip:  0.07 kB
+dist/assets/index-DlPIIf_m.js   30.16 kB │ gzip: 11.82 kB
+
+✓ built in 47ms
+observed X-1: svelte build (npm ci + build) 991 ms
+pass W2: dist: 3 files, 30607 B
+  svelte 5.57.2
+  vite 8.3.4
+  typescript 7.0.2
+  @sveltejs/vite-plugin-svelte 7.3.1
+== W1 AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
+pass W1: AOT/trim warnings: 0 (all warnings: 0)
+  15901896 B proto-web
+  96 B proto-web.dSYM
+  53 B proto-web.staticwebassets.endpoints.json
+observed X-1: size proto-web: 15901896 B
+== JIT builds (server for W11, client)
+== test file (1 MiB, byte i mod 251)
+== client against the AOT server (W3-W10)
+pass W3: assets/index-2b0F2EBd.css:200:text/css:51B:ok assets/index-DlPIIf_m.js:200:text/javascript:30161B:ok index.html:200:text/html:395B:ok cwd=empty-temp-dir distDir=dist.hidden
+pass W4: /library/abc=200 /missing.js=404:application/problem+json /api/v1/unknown=404:application/json
+pass W5: get={"id":"B1","title":"Event Streams in Practice","authors":["Jördis Ålander"],"formats":[{"kind":"pdf","sizeBytes":1048576,"pages":212},{"kind":"epub","sizeBytes":524288,"pages":null}],"tags":["tech/streams","reference"]} unknown=404 put={"id":"B1","tags":["x","y"]} invalidJson=400:application/problem+json emptyTag=400:application/json
+pass W6: full=200:1048576B 0-99=206:bytes 0-99/1048576 middle=206:bytes 500000-500999/1048576 suffix=206:bytes 1048476-1048575/1048576 beyond=416 openEnd=206:bytes 1048000-1048575/1048576
+observed W6-multirange: status=200 contentType=application/octet-stream bodyBytes=1048576
+pass W9: status=200 openapi=3.1.1 paths=[/api/v1/books/{id},/api/v1/books/{id}/tags,/api/v1/files/{id}] schemas=[Book,ErrorBody,FormatInfo,TagsRequest,TagsResponse] bookGetResponses=[200,404]
+pass W10: stdoutBytes=0 stderrLines=1
+observed W10-stderr: listening on http://127.0.0.1:54223 |
+pass W7: default=http://127.0.0.1:54225 loopbackOk=True connection to 192.168.178.95:54225 refused; 0.0.0.0 without token: exited=True exitCode=2 stderr='error: binding to 0.0.0.0 requires --token (F-WEB-2)'; non-IP bind: exited=True exitCode=2 stderr='error: --bind 'localhost.example' is not an IP address'; 0.0.0.0 with token: http://0.0.0.0:54228
+pass W8: noHeader=401 wrong=401 good=200 fileNoToken=401 fileToken=206 ui=200 unknownApiNoToken=401 wwwAuthenticate=Bearer
+passed 8/8
+== client against the JIT server
+passed 8/8
+== W11 response dumps, AOT vs JIT
+pass W11: dumps identical (564 lines)
+== X-2 start to first successful response (informational, not gated)
+observed X-2: 90 ms (AOT, includes process start and the polling loop)
+== check osx-arm64: ok

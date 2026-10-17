@@ -1,0 +1,12 @@
+bin/
+obj/
+out/
+Ui/node_modules/
+Ui/dist/
+results/*
+!results/local/
+results/local/*.log
+results/local/*.warnings.txt
+# The repository root ignores package.json and package-lock.json; the UI needs both for `npm ci`.
+!Ui/package.json
+!Ui/package-lock.json
