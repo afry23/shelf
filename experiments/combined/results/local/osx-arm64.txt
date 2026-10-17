@@ -1,0 +1,59 @@
+== environment
+date: 2026-10-17T14:53:48Z
+rid: osx-arm64
+uname: Darwin 25.6.0 arm64
+macOS: 26.6.2
+dotnet: 10.0.401
+node: v26.10.0, npm: 11.19.1
+== prerequisites (Svelte build, clients, sqlite-vec asset)
+vendor/osx-arm64/vec0.dylib (already verified)
+== C1 AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
+pass C1: AOT/trim warnings: 0 (all warnings of any kind: 0)
+publish directory (AOT):
+  1696624 B libe_sqlite3.dylib
+  30404136 B proto-shelf
+  96 B proto-shelf.dSYM
+  161896 B vec0.dylib
+== C2-C5 command rows (AOT)
+pass C2: version=0 help=0 unknownCommand=2 unknownOption=2 (0 means ok for version/help)
+pass C3: grouping.auto_merge=float:0.9 title=string:My Library search.limit=integer:20 duplicate-key: exit=1 '/Users/afry/code/dotnet/shelf/experiments/combined/../toml-parser/checks/invalid/duplicate-key.toml: line 3: A syntax error (CsTomlException) was thrown while parsing line 3.'
+pass C4: sqlite_version=3.53.3 fts5 match=streams order=1,2 vec_version=v0.1.9 knn nearest=1 
+pass C5: epub: format=epub title=Flatland: A Romance of Many Dimensions authors=Edwin Abbott Abbott language=en  pdf: format=pdf title=Event Streams in Practice author=Jördis Ålander pages=1 
+== C6 MCP client against proto-shelf mcp
+pass M2: serverInfo={
+pass M3: tools=add_tags,get_book,list_tags,read_passage read_passage.required=[id,location] maxChars={"type":"
+pass M4: structuredContent={"id":"B1","title":"Event Streams in Practice","authors":["J\u00F6rdis \u00C5lander
+pass M5: default.len=4008 100.len=108 30000.isError=true text='An error occurred invoking 'read_passage': maxC
+pass M6: list_tags={"name":"root","count":9,"children":[{"name":"tech","count":7,"children":[{"name":"streams"
+pass M7: unknown=error(-32602:Unknown tool: 'no_such_tool') badType=result.isError=true nextRequestTools=4
+pass M8: templates=[shelf://book/{id},shelf://book/{id}/toc] unknown=error(-32602:Unknown book 'NOPE'.)
+pass M9: stdoutLines=15 nonJsonRpc=0 stderrBytes=16619 exit=0
+passed 8/8
+passed 8/8
+pass C6-dump: AOT and JIT response dumps identical (439 lines)
+== C7 web client against proto-shelf serve (Ui/dist moved away, empty working directory)
+pass W3: assets/index-2b0F2EBd.css:200:text/css:51B:ok assets/index-DlPIIf_m.js:200:text/javascript:30161B:ok 
+pass W4: /library/abc=200 /missing.js=404:application/problem+json /api/v1/unknown=404:application/json
+pass W5: get={"id":"B1","title":"Event Streams in Practice","authors":["Jördis Ålander"],"formats":[{"kind":"p
+pass W6: full=200:1048576B 0-99=206:bytes 0-99/1048576 middle=206:bytes 500000-500999/1048576 suffix=206:bytes
+pass W9: status=200 openapi=3.1.1 paths=[/api/v1/books/{id},/api/v1/books/{id}/tags,/api/v1/files/{id}] schema
+pass W10: stdoutBytes=0 stderrLines=1
+pass W7: default=http://127.0.0.1:54527 loopbackOk=True connection to 192.168.178.95:54527 refused; 0.0.0.0 wi
+pass W8: noHeader=401 wrong=401 good=200 fileNoToken=401 fileToken=206 ui=200 unknownApiNoToken=401 wwwAuthent
+passed 8/8
+passed 8/8
+pass C7-dump: AOT and JIT response dumps identical (564 lines)
+== C8 publish directory copied to an empty location, other working directory
+pass C2-copy: version=0 help=0 unknownCommand=2 unknownOption=2 (0 means ok for version/help)
+pass C3-copy: grouping.auto_merge=float:0.9 title=string:My Library search.limit=integer:20 duplicate-key: exit=1 '/Users/afry/code/dotnet/shelf/experiments/combined/../toml-parser/checks/invalid/duplicate-key.toml: line 3: A syntax error (CsTomlException) was thrown while parsing line 3.'
+pass C4-copy: sqlite_version=3.53.3 fts5 match=streams order=1,2 vec_version=v0.1.9 knn nearest=1 
+pass C5-copy: epub: format=epub title=Flatland: A Romance of Many Dimensions authors=Edwin Abbott Abbott language=en  pdf: format=pdf title=Event Streams in Practice author=Jördis Ålander pages=1 
+files next to the binary: libe_sqlite3.dylib proto-shelf vec0.dylib 
+== X-1 sizes
+observed X-1: proto-shelf 30404136 B; libe_sqlite3.dylib 1696624 B; vec0.dylib 161896 B
+observed X-1 (single spikes, osx-arm64, from their results): observed X-1: size proto-mcp: 11622648 B; observed X-1: size proto-web: 15901896 B
+observed X-1: ui embedded: 30607 B
+== X-2 cold start (30 runs after 5 warm-up runs; informational, not gated)
+observed X-2: --version first=8.1 ms median=8.0 ms p95=8.6 ms min=7.4 ms
+observed X-2: --help first=9.7 ms median=8.1 ms p95=8.4 ms min=7.5 ms
+== check osx-arm64: ok

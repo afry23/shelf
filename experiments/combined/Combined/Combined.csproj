@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>proto-shelf</AssemblyName>
+    <RootNamespace>Proto</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- No satellite resource folders next to the binary (ADR 0002). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Not the Web SDK: the product keeps the web server in a class library with a framework reference. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Microsoft.NET.Sdk.Web defaults this to false (Microsoft.NET.Sdk.Web.ProjectSystem.targets) and turns it into the runtime feature
+         switch below; without it the trimmer keeps ModelMetadata.InitializeDynamicTypeInformation and reports IL2026/IL3050. -->
+    <MvcEnhancedModelMetadataSupport>false</MvcEnhancedModelMetadataSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Microsoft.AspNetCore.Mvc.ApiExplorer.IsEnhancedModelMetadataSupported"
+                                    Value="$(MvcEnhancedModelMetadataSupport)"
+                                    Trim="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The implicit usings of Microsoft.NET.Sdk.Web; a plain SDK project with the framework reference does not get them. -->
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="CsToml" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
+    <PackageReference Include="VersOne.Epub" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The Svelte build output of experiments/web, embedded under the logical folder "ui". Requires `npm run build` there. -->
+    <EmbeddedResource Include="..\..\web\Ui\dist\**\*" LinkBase="ui" />
+  </ItemGroup>
+
+</Project>
