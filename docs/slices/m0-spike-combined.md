@@ -29,7 +29,7 @@
 - **`linux-x64`.** Owner decision: only `osx-arm64`, no CI workflow. ADR 0008 and the roadmap state that the combined binary is **not verified** on `linux-x64`.
 - **Re-running every row of the earlier spikes.** The combined app uses each library through a small command, not through the full check suites of ADR 0003-0007 (about 3,700 lines of storage and parser check code are not linked in). Coverage of rarely used code paths per library is therefore lower than in the single spikes; this is a stated limit, not a gap to close here.
 - Product code: the real `src/Shelf.Cli`, `src/Shelf.Core`, any `Shelf.Web` / `Shelf.Mcp` library split. The combined app is one executable project with a `FrameworkReference` to `Microsoft.AspNetCore.App`; whether the product keeps web and MCP in separate class libraries is not tested here.
-- ONNX Runtime and PDF cover rendering (PDFtoImage/PDFium): not part of the AOT spike set (owner decisions); the binary does not contain them.
+- ONNX Runtime and PDF cover rendering (PDFtoImage/PDFium): the binary does not contain them. ONNX Runtime has no spike (the owner rejected the plan `m0-spike-onnx`; whether ONNX stays in M0 is open); PDF cover rendering is its own later slice.
 - Performance gates. Cold start of `--version` / `--help` is recorded as an **observation only** (owner decision), together with binary size.
 - A browser run of the UI, `mcp.readOnly`, real data (as in ADR 0006 and 0007).
 - Any change to `src/`, `tests/`, `shelf.slnx`, root `Directory.*.props`, `global.json`, `build.yml`.
