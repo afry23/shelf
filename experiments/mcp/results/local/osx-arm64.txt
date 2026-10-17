@@ -1,0 +1,42 @@
+== environment
+date: 2026-10-17T13:05:38Z
+rid: osx-arm64
+uname: Darwin 25.6.0 arm64
+macOS: 26.6.2
+dotnet: 10.0.401
+== M1 AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
+pass M1: AOT/trim warnings: 0
+  11622648 B proto-mcp
+  96 B proto-mcp.dSYM
+observed X-1: size proto-mcp: 11622648 B
+== JIT builds (server for M10, client)
+== client against the AOT server (M2-M9)
+pass M2: serverInfo={
+  "name": "proto-mcp",
+  "version": "0.0.1"
+} protocolVersion=2025-06-18 capabilities={
+  "logging": {},
+  "resources": {
+    "listChanged": true
+  },
+  "tools": {
+    "listChanged": true
+  }
+}
+pass M3: tools=add_tags,get_book,list_tags,read_passage read_passage.required=[id,location] maxChars={"type":"integer","default":4000} add_tags.tags={"type":"array","items":{"type":"string"}}
+observed M3-schemas: add_tags: in={"type":"object","properties":{"id":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}}},"required":["id","tags"]} out={"type":"object","properties":{"id":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"added":{"type":"integer"}},"required":["id","tags","added"]} | get_book: in={"type":"object","properties":{"id":{"type":"string"}},"required":["id"]} out={"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"authors":{"type":"array","items":{"type":"string"}},"formats":{"type":"array","items":{"type":"object","properties":{"kind":{"type":"string"},"sizeBytes":{"type":"integer"},"pages":{"type":["integer","null"]}},"required":["kind","sizeBytes","pages"]}},"tags":{"type":"array","items":{"type":"string"}}},"required":["id","title","authors","formats","tags"]} | list_tags: in={"type":"object","properties":{}} out={"type":"object","properties":{"name":{"type":"string"},"count":{"type":"integer"},"children":{"type":"array","items":{"$ref":"#"}}},"required":["name","count","children"]} | read_passage: in={"type":"object","properties":{"id":{"type":"string"},"location":{"type":"string"},"maxChars":{"type":"integer","default":4000}},"required":["id","location"]} out=none
+pass M4: structuredContent={"id":"B1","title":"Event Streams in Practice","authors":["J\u00F6rdis \u00C5lander"],"formats":[{"kind":"pdf","sizeBytes":1048576,"pages":212},{"kind":"epub","sizeBytes":524288}],"tags":["tech/streams","reference"]}
+observed M4-null-vs-schema: structuredContent omits null 'pages' for the EPUB; outputSchema formats.items.required=[kind,sizeBytes,pages]
+pass M5: default.len=4008 100.len=108 30000.isError=true text='An error occurred invoking 'read_passage': maxChars 30000 exceeds the hard maximum 20000.'
+pass M6: list_tags={"name":"root","count":9,"children":[{"name":"tech","count":7,"children":[{"name":"streams","count":4,"children":[]},{"name":"databases","count":3,"children":[]}]},{"name":"reference","count":2,"children":[]}]} add_tags={"id":"B1","tags":["tech/streams","reference","new"],"added":1}
+pass M7: unknown=error(-32602:Unknown tool: 'no_such_tool') badType=result.isError=true nextRequestTools=4
+pass M8: templates=[shelf://book/{id},shelf://book/{id}/toc] unknown=error(-32602:Unknown book 'NOPE'.)
+pass M9: stdoutLines=15 nonJsonRpc=0 stderrBytes=16598 exit=0
+passed 8/8
+== client against the JIT server
+passed 8/8
+== M10 response dumps, AOT vs JIT
+pass M10: dumps identical (439 lines)
+== X-2 wall time of one client run against the AOT server (informational, not gated)
+observed X-2: 0 s (whole client run, includes client JIT start)
+== check osx-arm64: ok
