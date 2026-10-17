@@ -134,8 +134,10 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | Same ISBN-13 | 1.0 |
 | Normalized title + author surname(s) identical, year identical or missing | 0.95 |
 | Normalized title + author surname(s) identical, year different | 0.6 (probably another edition, see F-GRP-5) |
-| SimHash (64 bit), Hamming distance ≤ 3 | 0.9 |
-| SimHash (64 bit), Hamming distance 4–10 | 0.6 |
+| Text fingerprint (64 bit SimHash of word triples), Hamming distance ≤ 3 (`auto_hamming`) | 0.9 |
+| Text fingerprint, Hamming distance 4–5 (`max_hamming`) | 0.6 |
+
+Calibrated on the generated reference library (1000 works, 1500 files): the files of one work are at most 5 bits apart, different works at least 6. Two guards keep a wrong merge from happening: a title + author match is capped at 0.6 if both files carry an ISBN-13 and the two differ, or if both have a fingerprint and the distance is above `max_hamming` (see `docs/slices/m1-import-scan.md`).
 
 **Thresholds (start values):**
 

@@ -10,6 +10,12 @@ public sealed record AuthorName(string? SurnameKey, string SortKey);
 /// <summary>Author names as they appear in files: "Martin Kleppmann", "Kleppmann, Martin", "Jan van der Berg" (F-GRP-1).</summary>
 public static class AuthorNames
 {
+    /// <summary>
+    /// The author written into a sidecar when neither the file nor its name says who wrote the book
+    /// (a sidecar needs one). It has no surname key, so unknown authors never match each other.
+    /// </summary>
+    public const string UnknownAuthor = "Unknown Author";
+
     private static readonly HashSet<string> Particles = new(StringComparer.Ordinal)
     {
         "van", "von", "der", "den", "de", "del", "della", "di", "da", "du", "la", "le", "ter", "ten", "zu", "zur",
@@ -25,6 +31,10 @@ public static class AuthorNames
     {
         ArgumentNullException.ThrowIfNull(name);
         var cleaned = string.Join(' ', name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (string.Equals(cleaned, UnknownAuthor, StringComparison.OrdinalIgnoreCase))
+        {
+            return new AuthorName(null, UnknownAuthor);
+        }
 
         string surnamePart;
         string sortKey;

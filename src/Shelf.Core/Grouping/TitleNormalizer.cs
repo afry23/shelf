@@ -12,16 +12,16 @@ public static partial class TitleNormalizer
 {
     private static readonly HashSet<string> Articles = new(StringComparer.Ordinal) { "der", "die", "das", "the", "a", "an" };
 
-    // "(German Edition)", "(Second Edition)" and the like; the word in front is a language or an ordinal.
-    [GeneratedRegex(@"\s*[\(\[]\s*[a-zäöüéèàçñ0-9\.\- ]{1,25}?\s+edition\s*[\)\]]", RegexOptions.CultureInvariant)]
+    // "(German Edition)", "(Second Edition)", "[Deutsche Ausgabe]": a few words and "edition" or "ausgabe", in brackets.
+    [GeneratedRegex(@"\s*[\(\[]\s*[a-zäöüéèàçñ0-9\.\- ]{1,25}?\s+(?:edition|ausgabe)\s*[\)\]]", RegexOptions.CultureInvariant)]
     private static partial Regex ParenthesizedEdition();
 
     // "2nd Edition", "third ed.", "revised edition"; "Edition 4" and "Special Edition" stay.
     [GeneratedRegex(@"\b(?:\d+(?:st|nd|rd|th)|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|revised|updated|expanded)\s+(?:edition\b|ed\b\.?)", RegexOptions.CultureInvariant)]
     private static partial Regex OrdinalEdition();
 
-    // "3. Auflage", "zweite Auflage".
-    [GeneratedRegex(@"\b(?:\d+\.\s*|erste\s+|zweite\s+|dritte\s+|vierte\s+|fünfte\s+|überarbeitete\s+|neu\s+bearbeitete\s+)(?:auflage\b|aufl\b\.?)", RegexOptions.CultureInvariant)]
+    // "3. Auflage", "zweite Auflage", "3. überarbeitete Auflage", "überarbeitete Ausgabe", "Neuauflage", "Neuausgabe".
+    [GeneratedRegex(@"\b(?:(?:\d+\.|erste|zweite|dritte|vierte|fünfte)\s*)?(?:(?:überarbeitete|erweiterte|aktualisierte|neu\s+bearbeitete)\s+)*(?:auflage\b|aufl\b\.?)|\b(?:überarbeitete|erweiterte|aktualisierte)\s+ausgabe\b|\bneu(?:auflage|ausgabe)\b", RegexOptions.CultureInvariant)]
     private static partial Regex GermanEdition();
 
     public static string Normalize(string title)

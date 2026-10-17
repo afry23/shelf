@@ -17,7 +17,7 @@
 
 1. `TitleNormalizer` (F-GRP-2): lower case, accents removed (`ß` → `ss`, `æ` → `ae`, `ø` → `o`, ...), edition notes removed (`(2nd Edition)`, `(German Edition)`, `third ed.`, `3. Auflage`), punctuation → spaces, a **leading** article (der, die, das, the, a, an) removed. A title that would become empty keeps its lower-case form.
 2. `AuthorNames`: surname key and sort key from "Martin Kleppmann", "Kleppmann, Martin", "Jan van der Berg", "Martin Luther King Jr."; two author lists match if they share a surname key.
-3. `SimHash`: 64 bit fingerprint over the first 5000 words, each distinct word weighted `1 + ln(count)`; fewer than 200 words → none.
+3. `SimHash`: 64 bit fingerprint over the first 5000 words; fewer than 200 words → none. **Superseded in `m1-import-scan`:** word triples instead of single words (see there).
 4. `WorkMatcher` (F-GRP-1, F-GRP-3, F-GRP-6): the cascade ISBN → title + surname → fingerprint with the confidences of PRD 6.3; merge only if the best match of the first sure stage is unique; otherwise a new work plus review candidates (confidence ≥ `grouping.review`).
 5. New setting `grouping.auto_hamming` (default 3, must not exceed `max_hamming`): the "≤ 3" boundary of the PRD table is a threshold too (F-GRP-6).
 6. `ReviewQueue` (F-IMP-7) on `.shelf/review.json`, schema 1: entries of the kinds `grouping`, `extraction-error`, `weak-metadata`, with ID, time, message, file, work and candidates (work, confidence, signals). Atomic save, strict reading, never overwrites a damaged file.
@@ -42,8 +42,8 @@
 - **Articles only at the start**, only the six of the PRD.
 - **Surname rule:** the last word of the surname part (lower-case particles such as van, von, de belong to the sort key only). "Jan van der Berg" and "van der Berg, Jan" meet at `berg`. Two authors with the same surname and the same title (Frank and Brian Herbert) are not told apart; the PRD asks for surnames.
 - **No guard for different ISBNs** (PRD table followed): the EPUB and the print PDF of a book usually have different ISBNs, so a mismatch must not block title + author. Revisit in `m1-calibration` if it produces wrong merges.
-- **Fingerprint weighting `1 + ln(count)`** was chosen by measurement on Zipf-distributed texts (6000 words; shared function words, individual tail): unrelated texts 20-29 bits apart, 1-3 % replaced words 0-5 bits, hyphenation/header/page-number artefacts 3-8 bits. Binary presence and `sqrt(tf)` were worse (unrelated down to 13-18 bits). Uniform random words from one vocabulary are **not** a valid test text: all texts then share nearly all words and look alike. The algorithm is frozen by a golden value in `SimHashTests`; a change forces every stored fingerprint to be recomputed.
-- **Real format pairs** will likely land at 4-8 bits (review band) rather than ≤ 3; `m1-calibration` decides whether `auto_hamming` rises.
+- **Fingerprint (first version, superseded):** single words weighted `1 + ln(count)`, chosen on simulated Zipf texts (unrelated 20-29 bits apart). On the generated reference library this failed: thousands of pairs of *different* works were within 3 bits, 108 of 882 works were wrong merges. The simulated texts were too different from each other. [`m1-import-scan`](m1-import-scan.md) replaced it with word triples and measured against the ground truth.
+- **Thresholds** are calibrated in `m1-import-scan` (`max_hamming` 5, `auto_hamming` 3); `m1-calibration` turns the measurement into a scenario.
 - **Review queue concurrency:** read-modify-write without a lock; import and review run one at a time.
 - A candidate's `notDuplicates.files` names block a merge of an incoming file of that name.
 

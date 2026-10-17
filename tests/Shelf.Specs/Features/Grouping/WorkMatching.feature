@@ -27,8 +27,8 @@ Feature: Deciding which work a file belongs to
       | Something Else Entirely     | Someone Else       |      |               | W1~0        | merge into W1             | 0.9        |
       | Something Else Entirely     | Someone Else       |      |               | W1~3        | merge into W1             | 0.9        |
       | Something Else Entirely     | Someone Else       |      |               | W1~4        | new work, review W1       | 0.6        |
-      | Something Else Entirely     | Someone Else       |      |               | W1~10       | new work, review W1       | 0.6        |
-      | Something Else Entirely     | Someone Else       |      |               | W1~11       | new work                  | 0          |
+      | Something Else Entirely     | Someone Else       |      |               | W1~5        | new work, review W1       | 0.6        |
+      | Something Else Entirely     | Someone Else       |      |               | W1~6        | new work                  | 0          |
       | Dune                        | Frank Herbert      | 1965 |               |             | merge into W2             | 0.95       |
       | Dune                        | Frank Herbert      | 1984 |               |             | merge into W3             | 0.95       |
       | Dune                        | Frank Smith        | 1965 |               |             | new work                  | 0          |
@@ -36,6 +36,10 @@ Feature: Deciding which work a file belongs to
       | Clean Code                  | Robert Martin      |      |               |             | merge into W4             | 0.95       |
       | Clean Code                  | Martin Fowler      |      |               |             | new work                  | 0          |
       | Unrelated                   | Nobody             |      |               |             | new work                  | 0          |
+      | The Hobbit                  | J. R. R. Tolkien   | 1937 | 9780306406157 |             | new work, review W1       | 0.6        |
+      | The Hobbit                  | J. R. R. Tolkien   | 1937 |               | W1~6        | new work, review W1       | 0.6        |
+      | The Hobbit                  | J. R. R. Tolkien   | 1937 |               | W1~5        | merge into W1             | 0.95       |
+      | Something Else Entirely     | Someone Else       |      | 9780306406157 | W1~2        | new work, review W1       | 0.6        |
 
   Scenario: Two works that fit equally well are never merged automatically
     When a file arrives with the title "Dune", the authors "Frank Herbert", the year "", the ISBN "" and the fingerprint ""

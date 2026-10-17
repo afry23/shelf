@@ -85,6 +85,18 @@ public sealed class SidecarSteps(ConfigSteps workspace)
         Assert.Contains(text, _writeError.Message, StringComparison.Ordinal);
     }
 
+    [Then("the sidecar {string} has the title {string} and the authors {string}")]
+    public void ThenTheSidecarHasTheTitleAndAuthors(string path, string title, string authors)
+    {
+        var sidecar = SidecarStore.Read(PathOf(path));
+        Assert.Equal(title, sidecar.Title);
+        Assert.Equal(authors.Split("; "), sidecar.Authors);
+    }
+
+    [Then("the sidecar {string} lists the files {string}")]
+    public void ThenTheSidecarListsTheFiles(string path, string files) =>
+        Assert.Equal(files.Split(", ").Order(StringComparer.Ordinal), SidecarStore.Read(PathOf(path)).Files.Select(f => f.Name).Order(StringComparer.Ordinal));
+
     [Then("the sidecar title is {string}")]
     public void ThenTheSidecarTitleIs(string title) => Assert.Equal(title, Read().Title);
 

@@ -48,6 +48,12 @@ public sealed record GroupingDecision(GroupingAction Action, Ulid? WorkId, doubl
 /// then text fingerprint. The first stage with a sure match decides. A match is merged only if it is the only
 /// best one; everything between the review and the auto-merge threshold is written to the review queue by the caller.
 /// </summary>
+/// <remarks>
+/// Two guards go beyond the table of the PRD, because a wrong merge is worse than a question: a title and author
+/// match is never sure if both files carry an ISBN-13 and the two differ (another edition), or if both have a text
+/// fingerprint and the texts are clearly different (distance above <c>max_hamming</c>). Such a match is capped at
+/// the confidence of "year differs" and goes to review. Equal ISBNs are not questioned.
+/// </remarks>
 public sealed class WorkMatcher
 {
     public const double IsbnConfidence = 1.0;
@@ -55,6 +61,9 @@ public sealed class WorkMatcher
     public const double TitleAuthorOtherYearConfidence = 0.6;
     public const double FingerprintNearConfidence = 0.9;
     public const double FingerprintFarConfidence = 0.6;
+
+    /// <summary>At most this many works are named as candidates of a review entry (the best ones).</summary>
+    public const int MaxReviewCandidates = 5;
 
     private readonly GroupingSettings _settings;
     private readonly List<WorkCandidate> _candidates = [];
@@ -121,7 +130,8 @@ public sealed class WorkMatcher
 
     private GroupingDecision NewWork(IReadOnlyList<GroupingMatch> all)
     {
-        var review = all.Where(m => m.Confidence >= _settings.Review).ToList();
+        // Combine() sorted the matches: the best come first.
+        var review = all.Where(m => m.Confidence >= _settings.Review).Take(MaxReviewCandidates).ToList();
         return new GroupingDecision(GroupingAction.CreateNewWork, null, review.Count == 0 ? 0 : review.Max(m => m.Confidence), review);
     }
 
@@ -160,10 +170,10 @@ public sealed class WorkMatcher
             }
 
             var otherYear = signature.Year is { } a && candidate.Signature.Year is { } b && a != b;
-            matches.Add(new GroupingMatch(
-                candidate.Id,
-                otherYear ? TitleAuthorOtherYearConfidence : TitleAuthorConfidence,
-                [otherYear ? "title and author match, year differs" : "title and author match"]));
+            var signals = new List<string> { otherYear ? "title and author match, year differs" : "title and author match" };
+            var confidence = otherYear ? TitleAuthorOtherYearConfidence : TitleAuthorConfidence;
+            ApplyGuards(candidate, file, signals, ref confidence);
+            matches.Add(new GroupingMatch(candidate.Id, confidence, signals));
         }
 
         return matches;
@@ -185,17 +195,37 @@ public sealed class WorkMatcher
             }
 
             var distance = candidate.Fingerprints.Min(f => SimHash.Distance(f, fingerprint));
-            if (distance <= _settings.AutoHamming)
+            if (distance > _settings.MaxHamming)
             {
-                matches.Add(new GroupingMatch(candidate.Id, FingerprintNearConfidence, [$"text fingerprint, distance {distance}"]));
+                continue;
             }
-            else if (distance <= _settings.MaxHamming)
-            {
-                matches.Add(new GroupingMatch(candidate.Id, FingerprintFarConfidence, [$"text fingerprint, distance {distance}"]));
-            }
+
+            var confidence = distance <= _settings.AutoHamming ? FingerprintNearConfidence : FingerprintFarConfidence;
+            var signals = new List<string> { $"text fingerprint, distance {distance}" };
+            ApplyGuards(candidate, file, signals, ref confidence);
+            matches.Add(new GroupingMatch(candidate.Id, confidence, signals));
         }
 
         return matches;
+    }
+
+    /// <summary>Caps the confidence at "review" when the ISBNs differ or the texts are clearly different.</summary>
+    private void ApplyGuards(WorkCandidate candidate, IncomingFile file, List<string> signals, ref double confidence)
+    {
+        var cap = TitleAuthorOtherYearConfidence;
+        if (file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
+        {
+            signals.Add("ISBN differs");
+            confidence = Math.Min(confidence, cap);
+        }
+
+        if (file.Fingerprint is { } fingerprint
+            && candidate.Fingerprints.Count > 0
+            && candidate.Fingerprints.Min(f => SimHash.Distance(f, fingerprint)) > _settings.MaxHamming)
+        {
+            signals.Add("texts differ");
+            confidence = Math.Min(confidence, cap);
+        }
     }
 
     private static IEnumerable<WorkCandidate> Allowed(IEnumerable<WorkCandidate> candidates, IncomingFile file) =>

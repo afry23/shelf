@@ -29,6 +29,32 @@ public sealed class IndexSteps(ConfigSteps workspace)
         Assert.Equal((long)rows, Scalar($"SELECT COUNT(*) FROM {table}"));
     }
 
+    [Then("the table {string} of the index has at least {int} rows")]
+    public void ThenTheTableHasAtLeastRows(string table, int rows)
+    {
+        Assert.Matches("^[a-z_]+$", table);
+        Assert.True((long)Scalar($"SELECT COUNT(*) FROM {table}")! >= rows, $"{table} has fewer than {rows} rows");
+    }
+
+    [Then("the chunk index finds the word {string}")]
+    public void ThenTheChunkIndexFindsTheWord(string word) =>
+        Assert.True((long)Scalar("SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH $v", word)! > 0, $"'{word}' is not in the chunk index");
+
+    [Then("the file {string} in the index has the text status {string}")]
+    public void ThenTheFileHasTheTextStatus(string name, string status) =>
+        Assert.Equal(status, Scalar("SELECT text_status FROM files WHERE rel_path = $v OR rel_path LIKE '%/' || $v", name));
+
+    [Then("the file {string} in the index has a hash and a fingerprint")]
+    public void ThenTheFileHasAHashAndAFingerprint(string name)
+    {
+        Assert.Equal(64, ((string?)Scalar("SELECT sha256 FROM files WHERE rel_path = $v OR rel_path LIKE '%/' || $v", name))?.Length);
+        Assert.NotNull(Scalar("SELECT simhash FROM files WHERE rel_path = $v OR rel_path LIKE '%/' || $v", name));
+    }
+
+    [Then("the file {string} in the index has the path {string}")]
+    public void ThenTheFileHasThePath(string name, string path) =>
+        Assert.Equal(path, Scalar("SELECT rel_path FROM files WHERE rel_path LIKE '%/' || $v OR rel_path = $v", name));
+
     [Then("the work {string} in the index has the title {string}")]
     public void ThenTheWorkHasTheTitle(string id, string title) =>
         Assert.Equal(title, Scalar("SELECT title FROM works WHERE id = $v", id));

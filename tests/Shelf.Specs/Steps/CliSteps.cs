@@ -43,6 +43,15 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _exitCode = -1;
     }
 
+    [Given("I have tried shelf with arguments {string}")]
+    public void GivenIHaveTriedShelfWithArguments(string arguments)
+    {
+        WhenIRunShelfWithArguments(arguments);
+        _stdout.GetStringBuilder().Clear();
+        _stderr.GetStringBuilder().Clear();
+        _exitCode = -1;
+    }
+
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
     {
@@ -138,11 +147,17 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
         using var document = JsonDocument.Parse(_stdout.ToString());
         var root = document.RootElement;
         var pairs = expected.Split(", ").Select(p => p.Split('=')).ToList();
-        Assert.Equal(pairs.Select(p => p[0]), root.EnumerateObject().Select(p => p.Name));
         foreach (var pair in pairs)
         {
             Assert.Equal(int.Parse(pair[1], System.Globalization.CultureInfo.InvariantCulture), root.GetProperty(pair[0]).GetInt32());
         }
+    }
+
+    [Then("the JSON property {string} of standard output has {int} items")]
+    public void ThenTheJsonPropertyHasItems(string property, int count)
+    {
+        using var document = JsonDocument.Parse(_stdout.ToString());
+        Assert.Equal(count, document.RootElement.GetProperty(property).GetArrayLength());
     }
 
     [Then("standard output is not a JSON document")]

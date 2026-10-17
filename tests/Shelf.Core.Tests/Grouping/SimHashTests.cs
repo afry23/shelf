@@ -13,7 +13,7 @@ public sealed class SimHashTests
     {
         // Fingerprints are stored in the index and compared across versions of shelf: the algorithm is frozen.
         // If this fails on purpose (new algorithm), every stored fingerprint must be recomputed by a reindex.
-        Assert.Equal(0x1C98ABAA765A72EDUL, SimHash.Compute([Text(1000)]));
+        Assert.Equal(0xFD964B054FCF80B6UL, SimHash.Compute([Text(1000)]));
     }
 
     [Fact]

@@ -7,7 +7,7 @@ namespace Shelf.Core.Configuration;
 /// <param name="AutoHamming">Largest SimHash Hamming distance that counts as a sure match.</param>
 public sealed record GroupingSettings(double AutoMerge, double Review, int MaxHamming, int AutoHamming)
 {
-    public static GroupingSettings Default { get; } = new(0.9, 0.5, 10, 3);
+    public static GroupingSettings Default { get; } = new(0.9, 0.5, 5, 3);
 }
 
 /// <summary>A library named in the global config (F-LIB-1).</summary>

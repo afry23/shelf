@@ -47,4 +47,14 @@ public sealed class NamesAndTitlesTests
         Assert.Equal("oreilly", AuthorNames.Parse("Tim O'Reilly").SurnameKey);
         Assert.Equal("smithjones", AuthorNames.Parse("Ann Smith-Jones").SurnameKey);
     }
+
+    [Theory]
+    [InlineData("Unknown Author")]
+    [InlineData("unknown author")]
+    [InlineData("  Unknown   Author ")]
+    public void The_placeholder_author_has_no_surname_key_and_never_matches(string name)
+    {
+        Assert.Null(AuthorNames.Parse(name).SurnameKey);
+        Assert.False(AuthorNames.Match([name], [AuthorNames.UnknownAuthor]));
+    }
 }

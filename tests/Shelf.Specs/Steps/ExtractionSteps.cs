@@ -35,7 +35,19 @@ public sealed class ExtractionSteps(ConfigSteps workspace)
     }
 
     [Given("the fixture {string} copied as {string}")]
-    public void GivenTheFixtureCopiedAs(string fixture, string name) => File.Copy(FixturePath(fixture), WorkspacePath(name));
+    public void GivenTheFixtureCopiedAs(string fixture, string name)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(WorkspacePath(name))!);
+        File.Copy(FixturePath(fixture), WorkspacePath(name));
+    }
+
+    [Given("the fixture {string} copied as {string} with a trailing line break")]
+    public void GivenTheFixtureCopiedWithATrailingLineBreak(string fixture, string name)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(WorkspacePath(name))!);
+        // Readers ignore bytes after the end-of-file marker: another hash, the same book.
+        File.WriteAllBytes(WorkspacePath(name), [.. File.ReadAllBytes(FixturePath(fixture)), (byte)'\n']);
+    }
 
     [Given("an EPUB {string} whose chapter claims to have {int} MiB when unpacked")]
     public void GivenAnEpubWithAHugeEntry(string name, int mebibytes)

@@ -84,4 +84,61 @@ public sealed class WorkMatcherTests
         Assert.Empty(decision.Matches);
         Assert.Equal(0, decision.Confidence);
     }
+
+    [Fact]
+    public void Different_ISBNs_make_a_title_and_author_match_a_review_case_not_a_merge()
+    {
+        var matcher = new WorkMatcher(GroupingSettings.Default, [new WorkCandidate(Id(1), Sig("Dune", "Frank Herbert", null, "9780306406157"))]);
+
+        var decision = matcher.Decide(File("Dune", "Frank Herbert", null, "9780000000019"));
+
+        Assert.Equal(GroupingAction.CreateNewWork, decision.Action);
+        var match = Assert.Single(decision.Matches);
+        Assert.Equal(0.6, match.Confidence);
+        Assert.Contains("ISBN differs", match.Signals);
+    }
+
+    [Fact]
+    public void A_missing_ISBN_on_one_side_is_no_conflict()
+    {
+        var matcher = new WorkMatcher(GroupingSettings.Default, [new WorkCandidate(Id(1), Sig("Dune", "Frank Herbert", null, "9780306406157"))]);
+
+        Assert.Equal(Id(1), matcher.Decide(File("Dune", "Frank Herbert")).WorkId);
+    }
+
+    [Fact]
+    public void Clearly_different_texts_make_a_title_and_author_match_a_review_case()
+    {
+        var matcher = new WorkMatcher(GroupingSettings.Default, [new WorkCandidate(Id(1), Sig("Dune", "Frank Herbert"), [0UL])]);
+
+        var far = matcher.Decide(File("Dune", "Frank Herbert", fingerprint: 0xFFFFUL));   // 16 bits away, above max_hamming
+        var near = matcher.Decide(File("Dune", "Frank Herbert", fingerprint: 0b11111UL)); // 5 bits away, still the same text
+
+        Assert.Equal(GroupingAction.CreateNewWork, far.Action);
+        Assert.Contains("texts differ", far.Matches[0].Signals);
+        Assert.Equal(Id(1), near.WorkId);
+    }
+
+    [Fact]
+    public void The_same_ISBN_is_trusted_even_if_the_texts_differ()
+    {
+        var matcher = new WorkMatcher(GroupingSettings.Default, [new WorkCandidate(Id(1), Sig("Dune", "Frank Herbert", null, "9780306406157"), [0UL])]);
+
+        var decision = matcher.Decide(File("Other", "Someone", null, "9780306406157", 0xFFFFFFFFUL));
+
+        Assert.Equal(Id(1), decision.WorkId);
+        Assert.Equal(1.0, decision.Confidence);
+    }
+
+    [Fact]
+    public void A_review_entry_names_at_most_five_candidates_the_best_first()
+    {
+        var candidates = Enumerable.Range(1, 8).Select(n => new WorkCandidate(Id(n), Sig("Dune", "Frank Herbert", 1950 + n))).ToList();
+        var matcher = new WorkMatcher(GroupingSettings.Default, candidates);
+
+        var decision = matcher.Decide(File("Dune", "Frank Herbert", 1990));
+
+        Assert.Equal(WorkMatcher.MaxReviewCandidates, decision.Matches.Count);
+        Assert.Equal([Id(1), Id(2), Id(3), Id(4), Id(5)], decision.Matches.Select(m => m.WorkId));
+    }
 }

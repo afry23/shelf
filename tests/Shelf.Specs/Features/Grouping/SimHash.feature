@@ -10,16 +10,17 @@ Feature: Text fingerprint
     When shelf computes the fingerprints
     Then the distance between "A" and "B" is 0
 
-  Scenario Outline: Small differences give a small distance
+  Scenario Outline: Changed words move the fingerprint a little, never as far as another text
     Given a text "A" of 6000 words from the seed 1
     And the text "B" is the text "A" with <percent> percent of the words replaced
     When shelf computes the fingerprints
     Then the distance between "A" and "B" is at most <distance>
+    And the distance between "A" and "B" is at least <least>
 
     Examples:
-      | percent | distance |
-      | 1       | 3        |
-      | 3       | 5        |
+      | percent | distance | least |
+      | 1       | 8        | 1     |
+      | 3       | 12       | 3     |
 
   Scenario Outline: Unrelated texts are far apart
     Given a text "A" of 6000 words from the seed 1

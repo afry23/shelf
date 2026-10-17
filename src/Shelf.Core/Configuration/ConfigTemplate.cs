@@ -12,7 +12,7 @@ public static class ConfigTemplate
         # [grouping]
         # auto_merge = 0.9
         # review = 0.5
-        # max_hamming = 10
+        # max_hamming = 5
         # auto_hamming = 3
         """ + "\n";
 }

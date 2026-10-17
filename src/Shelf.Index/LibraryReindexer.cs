@@ -1,9 +1,4 @@
-using System.Globalization;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
-using Shelf.Core.Grouping;
 using Shelf.Core.Model;
 using Shelf.Core.Review;
 
@@ -26,7 +21,7 @@ public sealed record ReindexResult(int Works, int Files, IReadOnlyList<ReindexPr
 /// </remarks>
 public static class LibraryReindexer
 {
-    private static readonly EnumerationOptions Recursive = new()
+    internal static readonly EnumerationOptions Recursive = new()
     {
         RecurseSubdirectories = true,
         IgnoreInaccessible = true,
@@ -35,8 +30,13 @@ public static class LibraryReindexer
         MatchCasing = MatchCasing.CaseSensitive,
     };
 
+    /// <param name="root">The library root.</param>
+    /// <param name="includeContent">
+    /// Also read every file (hash, text, fingerprint) as <see cref="LibraryScanner"/> does. Without it only the
+    /// metadata of the sidecars is rebuilt, which is fast; a later scan fills in the content.
+    /// </param>
     /// <exception cref="IndexException">The index cannot be written.</exception>
-    public static ReindexResult Rebuild(string root)
+    public static ReindexResult Rebuild(string root, bool includeContent = true)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
         root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
@@ -46,13 +46,28 @@ public static class LibraryReindexer
         var review = LoadReview(root, problems);
 
         using var connection = OpenIndex(IndexDatabase.PathFor(root));
-        int fileCount;
-        using (var transaction = connection.BeginTransaction())
+        int fileCount = 0;
+        using (var writer = new IndexWriter(connection))
+        using (var transaction = writer.BeginTransaction())
         {
             Reset(connection);
-            fileCount = Insert(connection, works);
-            InsertReview(connection, review);
+            foreach (var work in works)
+            {
+                writer.InsertWork(work.Sidecar, work.DirPath, work.SidecarModified);
+                foreach (var file in work.Files)
+                {
+                    writer.InsertFile(work.Sidecar.Id.ToString(), file.Entry.Name, file.RelPath, file.Size, file.Mtime, file.Entry.Progress);
+                    fileCount++;
+                }
+            }
+
+            writer.ReplaceReviewMirror(review);
             transaction.Commit();
+        }
+
+        if (includeContent)
+        {
+            LibraryScanner.Run(connection, root, problems, reconcileWorks: false);
         }
 
         IndexDatabase.Checkpoint(connection);
@@ -70,18 +85,6 @@ public static class LibraryReindexer
         {
             problems.Add(new ReindexProblem(path, e.Message));
             return new ReviewQueue();
-        }
-    }
-
-    private static void InsertReview(SqliteConnection connection, ReviewQueue queue)
-    {
-        using var insert = Prepare(connection, "INSERT INTO review_queue(kind, payload_json, created_at) VALUES ($kind, $payload, $created)");
-        foreach (var entry in queue.Entries)
-        {
-            Bind(insert, "$kind", ReviewQueue.KindName(entry.Kind));
-            Bind(insert, "$payload", ReviewQueue.EntryToJson(entry));
-            Bind(insert, "$created", ReviewQueue.FormatTime(entry.CreatedAt));
-            insert.ExecuteNonQuery();
         }
     }
 
@@ -121,7 +124,7 @@ public static class LibraryReindexer
                     continue;
                 }
 
-                files.Add(new IndexedFile(entry, RelativePath(root, info.FullName), info.Length, new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds()));
+                files.Add(new IndexedFile(entry, RelativePath(root, info.FullName), info.Length, IndexWriter.Mtime(info)));
             }
 
             if (files.Count > 0)
@@ -170,181 +173,10 @@ public static class LibraryReindexer
         }
     }
 
-    private static int Insert(SqliteConnection connection, List<IndexedWork> works)
-    {
-        using var insertWork = Prepare(connection, """
-            INSERT INTO works(id, title, title_norm, subtitle, authors_json, author_sort, language, year, isbn13, publisher,
-                              series, series_index, edition, description, rating, read_status, cover_path, dir_path, added_at, updated_at)
-            VALUES ($id, $title, $titleNorm, $subtitle, $authors, $authorSort, $language, $year, $isbn13, $publisher,
-                    $series, $seriesIndex, $edition, $description, $rating, $status, $cover, $dir, $added, $updated)
-            RETURNING seq
-            """);
-        using var insertFile = Prepare(connection,
-            "INSERT INTO files(work_id, format, rel_path, size, mtime) VALUES ($work, $format, $path, $size, $mtime) RETURNING id");
-        using var insertProgress = Prepare(connection,
-            "INSERT INTO reading_progress(file_id, locator, updated_at) VALUES ($file, $locator, $updated)");
-        using var insertTag = Prepare(connection, "INSERT OR IGNORE INTO tags(path) VALUES ($path)");
-        using var selectTag = Prepare(connection, "SELECT id FROM tags WHERE path = $path");
-        using var insertWorkTag = Prepare(connection, "INSERT OR IGNORE INTO work_tags(work_id, tag_id) VALUES ($work, $tag)");
-        using var insertIgnore = Prepare(connection, "INSERT OR IGNORE INTO dupe_ignores(a_id, b_id, kind) VALUES ($a, $b, $kind)");
-        using var insertFts = Prepare(connection,
-            "INSERT INTO works_fts(rowid, title, subtitle, authors, description, tags) VALUES ($seq, $title, $subtitle, $authors, $description, $tags)");
-
-        var tagIds = new Dictionary<string, long>(StringComparer.Ordinal);
-        var fileCount = 0;
-        foreach (var work in works)
-        {
-            var s = work.Sidecar;
-            var id = s.Id.ToString();
-            var dir = work.DirPath;
-
-            Bind(insertWork, "$id", id);
-            Bind(insertWork, "$title", s.Title);
-            Bind(insertWork, "$titleNorm", TitleNormalizer.Normalize(s.Title));
-            Bind(insertWork, "$subtitle", s.Subtitle);
-            Bind(insertWork, "$authors", JsonArray(s.Authors));
-            Bind(insertWork, "$authorSort", AuthorNames.Parse(s.Authors[0]).SortKey);
-            Bind(insertWork, "$language", s.Language);
-            Bind(insertWork, "$year", s.Year);
-            Bind(insertWork, "$isbn13", s.Isbn13);
-            Bind(insertWork, "$publisher", s.Publisher);
-            Bind(insertWork, "$series", s.Series);
-            Bind(insertWork, "$seriesIndex", s.SeriesIndex);
-            Bind(insertWork, "$edition", s.Edition);
-            Bind(insertWork, "$description", s.Description);
-            Bind(insertWork, "$rating", s.Rating);
-            Bind(insertWork, "$status", s.ReadStatus.ToString().ToLowerInvariant());
-            Bind(insertWork, "$cover", s.Cover is null ? null : JoinRelative(dir, s.Cover));
-            Bind(insertWork, "$dir", dir);
-            Bind(insertWork, "$added", s.Added is { } added ? Timestamp(added.UtcDateTime) : null);
-            Bind(insertWork, "$updated", Timestamp(work.SidecarModified));
-            var seq = (long)insertWork.ExecuteScalar()!;
-
-            foreach (var tag in s.Tags)
-            {
-                if (!tagIds.TryGetValue(tag, out var tagId))
-                {
-                    Bind(insertTag, "$path", tag);
-                    insertTag.ExecuteNonQuery();
-                    Bind(selectTag, "$path", tag);
-                    tagId = (long)selectTag.ExecuteScalar()!;
-                    tagIds.Add(tag, tagId);
-                }
-
-                Bind(insertWorkTag, "$work", id);
-                Bind(insertWorkTag, "$tag", tagId);
-                insertWorkTag.ExecuteNonQuery();
-            }
-
-            foreach (var file in work.Files)
-            {
-                Bind(insertFile, "$work", id);
-                Bind(insertFile, "$format", FormatOf(file.Entry.Name));
-                Bind(insertFile, "$path", file.RelPath);
-                Bind(insertFile, "$size", file.Size);
-                Bind(insertFile, "$mtime", file.Mtime);
-                var fileId = (long)insertFile.ExecuteScalar()!;
-                fileCount++;
-
-                if (file.Entry.Progress is { } progress)
-                {
-                    Bind(insertProgress, "$file", fileId);
-                    Bind(insertProgress, "$locator", progress.Locator);
-                    Bind(insertProgress, "$updated", Timestamp(progress.UpdatedAt.UtcDateTime));
-                    insertProgress.ExecuteNonQuery();
-                }
-            }
-
-            foreach (var other in s.NotDuplicates.Works)
-            {
-                InsertIgnore(insertIgnore, id, other.ToString(), "work");
-            }
-
-            foreach (var pair in s.NotDuplicates.Files)
-            {
-                InsertIgnore(insertIgnore, JoinRelative(dir, pair.A), JoinRelative(dir, pair.B), "file");
-            }
-
-            Bind(insertFts, "$seq", seq);
-            Bind(insertFts, "$title", s.Title);
-            Bind(insertFts, "$subtitle", s.Subtitle);
-            Bind(insertFts, "$authors", string.Join(' ', s.Authors));
-            Bind(insertFts, "$description", s.Description);
-            Bind(insertFts, "$tags", string.Join(' ', s.Tags));
-            insertFts.ExecuteNonQuery();
-        }
-
-        return fileCount;
-    }
-
-    private static void InsertIgnore(SqliteCommand command, string x, string y, string kind)
-    {
-        // The pair is unordered; the CHECK constraint wants a_id < b_id.
-        var (a, b) = string.CompareOrdinal(x, y) <= 0 ? (x, y) : (y, x);
-        if (a == b)
-        {
-            return;
-        }
-
-        Bind(command, "$a", a);
-        Bind(command, "$b", b);
-        Bind(command, "$kind", kind);
-        command.ExecuteNonQuery();
-    }
-
-    private static SqliteCommand Prepare(SqliteConnection connection, string sql)
-    {
-        var command = connection.CreateCommand();
-        command.CommandText = sql;
-        return command;
-    }
-
-    private static void Bind(SqliteCommand command, string name, object? value)
-    {
-        if (command.Parameters.Contains(name))
-        {
-            command.Parameters[name].Value = value ?? DBNull.Value;
-        }
-        else
-        {
-            command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-        }
-    }
-
-    private static string Timestamp(DateTime utc) =>
-        utc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-
-    private static string FormatOf(string fileName) => Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant() switch
-    {
-        "epub" => "epub",
-        "pdf" => "pdf",
-        var other when other.Length > 0 => other,
-        _ => "other",
-    };
-
-    private static string RelativePath(string root, string path)
+    internal static string RelativePath(string root, string path)
     {
         var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
         return relative;
-    }
-
-    private static string JoinRelative(string directory, string name) => directory == "." ? name : directory + "/" + name;
-
-    private static string JsonArray(IReadOnlyList<string> values)
-    {
-        using var buffer = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
-        {
-            writer.WriteStartArray();
-            foreach (var value in values)
-            {
-                writer.WriteStringValue(value);
-            }
-
-            writer.WriteEndArray();
-        }
-
-        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
     private sealed record IndexedFile(SidecarFile Entry, string RelPath, long Size, long Mtime);

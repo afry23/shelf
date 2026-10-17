@@ -29,6 +29,12 @@ Feature: Title normalization
       | Dune (Second Edition)                                | dune                                              |
       | A Tale of Two Cities, 3rd ed.                        | tale of two cities                                |
       | Python Crash Course, 3. Auflage                      | python crash course                               |
+      | Praxishandbuch Verteilung (Deutsche Ausgabe)         | praxishandbuch verteilung                         |
+      | Praxishandbuch Verteilung, Neuausgabe                | praxishandbuch verteilung                         |
+      | Praxishandbuch Verteilung (3. überarbeitete Auflage) | praxishandbuch verteilung                         |
+      | Praxishandbuch Verteilung, zweite Auflage            | praxishandbuch verteilung                         |
+      | Praxishandbuch Verteilung, Neuauflage                | praxishandbuch verteilung                         |
+      | Das Gesamtausgabe Projekt                            | gesamtausgabe projekt                             |
       | Clean Code: A Handbook of Agile Software Craftsmanship | clean code a handbook of agile software craftsmanship |
       | Flatland: A Romance of Many Dimensions               | flatland a romance of many dimensions             |
       | 1984                                                 | 1984                                              |

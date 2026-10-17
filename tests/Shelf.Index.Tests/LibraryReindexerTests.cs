@@ -38,7 +38,7 @@ public sealed class LibraryReindexerTests : IDisposable
         Directory.CreateDirectory(_temp.Combine(".shelf"));
         Work(".", "01J9Z3K0000000000000000001", "Root work", "a.epub");
 
-        var result = LibraryReindexer.Rebuild(_temp.Path);
+        var result = LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         Assert.Equal(1, result.Works);
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(_temp.Path));
@@ -53,7 +53,7 @@ public sealed class LibraryReindexerTests : IDisposable
         Work("A/Visible", "01J9Z3K0000000000000000001", "Visible", "v.epub");
         Work(".git/Hidden", "01J9Z3K0000000000000000002", "Hidden", "h.epub");
 
-        var result = LibraryReindexer.Rebuild(_temp.Path);
+        var result = LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         Assert.Equal(1, result.Works);
         Assert.Empty(result.Problems);
@@ -66,7 +66,7 @@ public sealed class LibraryReindexerTests : IDisposable
         File.WriteAllText(IndexDatabase.PathFor(_temp.Path), "this is not sqlite, but it is long enough to look like a header....");
         Work("A/B", "01J9Z3K0000000000000000001", "T", "t.epub");
 
-        var result = LibraryReindexer.Rebuild(_temp.Path);
+        var result = LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         Assert.Equal(1, result.Works);
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(_temp.Path));
@@ -81,7 +81,7 @@ public sealed class LibraryReindexerTests : IDisposable
         File.Delete(_temp.Combine("A", "B", "t.epub"));
         File.Delete(_temp.Combine("A", "B", "t.pdf"));
 
-        var result = LibraryReindexer.Rebuild(_temp.Path);
+        var result = LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         Assert.Equal(0, result.Works);
         Assert.Equal(2, result.Problems.Count);
@@ -106,7 +106,7 @@ public sealed class LibraryReindexerTests : IDisposable
                 NotDuplicates = new NotDuplicates([], [new FilePair("b.epub", "a.epub"), new FilePair("a.epub", "b.epub")]),
             });
 
-        LibraryReindexer.Rebuild(_temp.Path);
+        LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(_temp.Path));
         Assert.Equal(1L, Count(connection, "SELECT COUNT(*) FROM dupe_ignores"));
@@ -118,14 +118,14 @@ public sealed class LibraryReindexerTests : IDisposable
     {
         Directory.CreateDirectory(_temp.Combine(".shelf"));
         Work("A/B", "01J9Z3K0000000000000000001", "First", "t.epub");
-        LibraryReindexer.Rebuild(_temp.Path);
+        LibraryReindexer.Rebuild(_temp.Path, includeContent: false);
 
         // A reader transaction cannot block a WAL writer, so force a failure inside the transaction instead:
         // a second writer holds the lock for longer than the 5 s busy timeout.
         using (var other = IndexDatabase.OpenWrite(IndexDatabase.PathFor(_temp.Path)))
         {
             IndexDatabase.Execute(other, "BEGIN IMMEDIATE");
-            Assert.Throws<SqliteException>(() => LibraryReindexer.Rebuild(_temp.Path));
+            Assert.Throws<SqliteException>(() => LibraryReindexer.Rebuild(_temp.Path, includeContent: false));
             IndexDatabase.Execute(other, "ROLLBACK");
         }
 

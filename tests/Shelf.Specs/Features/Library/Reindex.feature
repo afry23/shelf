@@ -7,7 +7,7 @@ Feature: The index is rebuilt completely from the sidecars
   Background:
     Given an empty working directory
     And I have run shelf with arguments "init library"
-    And a work folder "library/Kleppmann, Martin/Designing Data-Intensive Applications (2017)" with the files "ddia.epub, ddia.pdf" and the sidecar:
+    And a work folder "library/Kleppmann, Martin/Designing Data-Intensive Applications (2017)" with the fixture files "ddia.epub=derived/epub3-isbn-series.epub, ddia.pdf=derived/Event Streams in Practice.pdf" and the sidecar:
       """
       {
         "schema": 1,
@@ -27,7 +27,7 @@ Feature: The index is rebuilt completely from the sidecars
         "notDuplicates": { "works": ["01J8XQ20000000000000000002"], "files": [["ddia.epub", "ddia.pdf"]] }
       }
       """
-    And a work folder "library/Abbott, Edwin A./Flatland" with the files "flatland.epub" and the sidecar:
+    And a work folder "library/Abbott, Edwin A./Flatland" with the fixture files "flatland.epub=upstream/gutenberg/pg201-flatland.epub3.epub" and the sidecar:
       """
       { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Flatland", "authors": ["Edwin A. Abbott"], "tags": ["datenbanken", "klassiker"], "files": [{ "name": "flatland.epub" }] }
       """
@@ -96,6 +96,19 @@ Feature: The index is rebuilt completely from the sidecars
     Then the work "01J9Z3K0000000000000000002" in the index has the title "Flatland: A Romance of Many Dimensions"
     And the full-text index finds the work "01J9Z3K0000000000000000002" for the query "romance"
     And the table "tags" of the index has 2 rows
+
+  Scenario: Reindex reads the content of every file
+    When I run shelf with arguments "reindex --library library"
+    Then the table "chunks" of the index has at least 3 rows
+    And the file "ddia.pdf" in the index has the text status "done"
+    And the file "ddia.pdf" in the index has a hash and a fingerprint
+
+  Scenario: The metadata-only variant skips the content
+    When I run shelf with arguments "reindex --metadata-only --library library"
+    Then the exit code is 0
+    And standard output contains "Indexed 2 works with 3 files"
+    And the table "chunks" of the index has 0 rows
+    And the file "ddia.pdf" in the index has the text status "pending"
 
   Scenario: The index database uses WAL and leaves no WAL file behind
     When I run shelf with arguments "reindex --library library"

@@ -1,5 +1,6 @@
 using System.Text;
 using Reqnroll;
+using Shelf.TestData;
 using Xunit;
 
 namespace Shelf.Specs.Steps;
@@ -42,6 +43,67 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
     [Given("the file {string} has the content {string}")]
     public void GivenTheFileHasTheContent(string name, string content) => WriteFile(name, content);
 
+    [Given("a work folder {string} with the fixture files {string} and the sidecar:")]
+    public void GivenAWorkFolderWithFixtures(string folder, string files, string sidecar)
+    {
+        foreach (var entry in files.Split(", "))
+        {
+            var parts = entry.Split('=');
+            CopyFixture(parts[1], Path.Combine(folder, parts[0]));
+        }
+
+        WriteFile(Path.Combine(folder, "book.json"), sidecar.Replace("\r\n", "\n", StringComparison.Ordinal));
+    }
+
+    [Given("the folder {string} contains the fixtures {string}")]
+    public void GivenTheFolderContainsTheFixtures(string folder, string fixtures)
+    {
+        foreach (var fixture in fixtures.Split(", "))
+        {
+            CopyFixture(fixture, Path.Combine(folder, Path.GetFileName(fixture)));
+        }
+    }
+
+    [Given("the file {string} is replaced by the fixture {string}")]
+    public void GivenTheFileIsReplacedByTheFixture(string name, string fixture)
+    {
+        var path = PathOf(name);
+        var modified = File.GetLastWriteTimeUtc(path);
+        File.Copy(FixturePath(fixture), path, overwrite: true);
+        // A change of content comes with a change of time (the scan looks at size and time first).
+        File.SetLastWriteTimeUtc(path, modified.AddMinutes(5));
+    }
+
+    [Given("the file {string} has a new modification time")]
+    public void GivenTheFileHasANewModificationTime(string name)
+    {
+        var path = PathOf(name);
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddHours(2));
+    }
+
+    [Given("I delete the folder {string}")]
+    public void GivenIDeleteTheFolder(string name) => Directory.Delete(PathOf(name), recursive: true);
+
+    [Given("I move the folder {string} to {string}")]
+    public void GivenIMoveTheFolder(string from, string to) => Directory.Move(PathOf(from), PathOf(to));
+
+    [Given("a sample PDF {string} with the title {string}, the author {string} and the text seed {int}")]
+    public void GivenASamplePdf(string name, string title, string author, int seed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathOf(name))!);
+        File.WriteAllBytes(PathOf(name), SampleBooks.Pdf(title, author, isbn13: null, seed));
+    }
+
+    [Given("a sample EPUB {string} with the title {string}, the authors {string} and the text seed {int}")]
+    public void GivenASampleEpub(string name, string title, string authors, int seed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathOf(name))!);
+        File.WriteAllBytes(PathOf(name), SampleBooks.Epub(title, authors.Split("; "), isbn13: null, seed));
+    }
+
+    [Then("the file {string} exists")]
+    public void ThenTheFileExists(string name) => Assert.True(File.Exists(PathOf(name)), $"Missing file {name}");
+
     [Then("the file {string} does not exist")]
     public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");
 
@@ -50,6 +112,15 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
 
     [Then("the directory {string} does not exist")]
     public void ThenTheDirectoryDoesNotExist(string name) => Assert.False(Directory.Exists(PathOf(name)), $"Unexpected directory {name}");
+
+    private void CopyFixture(string fixture, string target)
+    {
+        var path = PathOf(target);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.Copy(FixturePath(fixture), path);
+    }
+
+    private static string FixturePath(string relative) => Path.Combine(RepositoryPaths.Root(), "tests", "fixtures", relative);
 
     private void WriteFile(string name, string content)
     {

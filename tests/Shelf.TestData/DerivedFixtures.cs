@@ -166,7 +166,7 @@ public static class DerivedFixtures
 
     private static TextDocument QuietSystemsText() => TextGenerator.Generate(Languages.English, 9, Words);
 
-    private static void AddBody(List<string> lines, TextDocument document)
+    internal static void AddBody(List<string> lines, TextDocument document)
     {
         foreach (var chapter in document.Chapters)
         {
@@ -180,7 +180,7 @@ public static class DerivedFixtures
         }
     }
 
-    private static List<IReadOnlyList<string>> Paginate(List<string> lines)
+    internal static List<IReadOnlyList<string>> Paginate(List<string> lines)
     {
         var pages = new List<IReadOnlyList<string>>();
         for (var from = 0; from < lines.Count; from += PdfWriter.LinesPerPage)

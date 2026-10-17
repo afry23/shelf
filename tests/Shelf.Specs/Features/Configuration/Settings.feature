@@ -8,7 +8,7 @@ Feature: Settings from the global and the per-library config
     When shelf resolves the settings
     Then the setting "grouping.auto_merge" is "0.9"
     And the setting "grouping.review" is "0.5"
-    And the setting "grouping.max_hamming" is "10"
+    And the setting "grouping.max_hamming" is "5"
     And the setting "grouping.auto_hamming" is "3"
     And there are no warnings
 

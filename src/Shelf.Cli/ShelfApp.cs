@@ -58,6 +58,8 @@ public static class ShelfApp
 
         root.Subcommands.Add(InitCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ReindexCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ImportCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ScanCommand.Create(json, stdout, stderr, environment));
 
         // Without a command there is nothing to run: that is a usage error, not success.
         root.SetAction(_ =>

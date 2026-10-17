@@ -65,6 +65,22 @@ public sealed class ReviewQueueSteps(ConfigSteps workspace)
     [Then("the review queue has {int} entry/entries")]
     public void ThenTheQueueHasEntries(int count) => Assert.Equal(count, Queue().Entries.Count);
 
+    [Then("the review queue of {string} has {int} entry/entries")]
+    public void ThenTheQueueOfHasEntries(string library, int count) =>
+        Assert.Equal(count, ReviewQueue.Load(QueuePath(library)).Entries.Count);
+
+    [Then("review entry {int} has the kind {string}")]
+    public void ThenReviewEntryHasTheKind(int number, string kind) =>
+        Assert.Equal(ReviewQueue.ParseKind(kind), ReviewQueue.Load(QueuePath("library")).Entries[number - 1].Kind);
+
+    [Then("review entry {int} has a message containing {string}")]
+    public void ThenReviewEntryHasAMessageContaining(int number, string text) =>
+        Assert.Contains(text, ReviewQueue.Load(QueuePath("library")).Entries[number - 1].Message, StringComparison.Ordinal);
+
+    [Then("the review entries include the kind {string}")]
+    public void ThenTheReviewEntriesIncludeTheKind(string kind) =>
+        Assert.Contains(ReviewQueue.Load(QueuePath("library")).Entries, e => e.Kind == ReviewQueue.ParseKind(kind));
+
     [Then("the review queue of {string} still has {int} entries")]
     public void ThenTheQueueStillHasEntries(string library, int count) =>
         Assert.Equal(count, ReviewQueue.Load(QueuePath(library)).Entries.Count);

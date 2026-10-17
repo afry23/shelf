@@ -31,6 +31,38 @@ public static class WorkCandidateStore
             }
         }
 
+        // "Not a duplicate" markings of files: the work holding one file must not take a new file named like the other.
+        var notDuplicates = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT d.a_id, d.b_id, fa.work_id, fb.work_id
+                FROM dupe_ignores d
+                LEFT JOIN files fa ON fa.rel_path = d.a_id
+                LEFT JOIN files fb ON fb.rel_path = d.b_id
+                WHERE d.kind = 'file'
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                void Add(object? work, string otherPath)
+                {
+                    if (work is string id)
+                    {
+                        if (!notDuplicates.TryGetValue(id, out var list))
+                        {
+                            notDuplicates[id] = list = [];
+                        }
+
+                        list.Add(Path.GetFileName(otherPath));
+                    }
+                }
+
+                Add(reader.IsDBNull(2) ? null : reader.GetString(2), reader.GetString(1));
+                Add(reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetString(0));
+            }
+        }
+
         var candidates = new List<WorkCandidate>();
         using (var command = connection.CreateCommand())
         {
@@ -45,7 +77,7 @@ public static class WorkCandidateStore
                     AuthorNames.SurnameKeys(authors),
                     reader.IsDBNull(3) ? null : reader.GetInt32(3),
                     reader.IsDBNull(4) ? null : reader.GetString(4));
-                candidates.Add(new WorkCandidate(Ulid.Parse(id), signature, fingerprints.GetValueOrDefault(id)));
+                candidates.Add(new WorkCandidate(Ulid.Parse(id), signature, fingerprints.GetValueOrDefault(id), notDuplicates.GetValueOrDefault(id)));
             }
         }
 
