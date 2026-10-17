@@ -1,8 +1,0 @@
-bin/
-obj/
-out/
-results/*
-!results/measure.out
-!results/ci/
-results/ci/*.log
-results/ci/*.warnings.txt

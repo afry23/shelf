@@ -1,8 +1,0 @@
-bin/
-obj/
-out/
-vendor/
-results/*
-!results/local/
-results/local/*.log
-results/local/*.warnings.txt

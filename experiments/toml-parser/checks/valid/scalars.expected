@@ -1,5 +1,0 @@
-title = string:My Library
-grouping.auto_merge = float:0.9
-grouping.review = float:0.5
-grouping.max_hamming = integer:10
-mcp.readOnly = boolean:true
