@@ -16,6 +16,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private bool _stdoutIsTerminal;
     private int _exitCode = -1;
     private LogLevel? _logLevel;
+    private string? _folder;
 
     [Given("the environment variable {string} is set to {string}")]
     public void GivenTheEnvironmentVariableIsSetTo(string name, string value) => environment.Variables[name] = value;
@@ -28,6 +29,9 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     /// <summary>The home directory of scenarios that have a working directory: a folder inside it.</summary>
     public const string HomeFolder = ".home";
+
+    [Given("I am in the folder {string}")]
+    public void GivenIAmInTheFolder(string folder) => _folder = folder;
 
     [Given("I have run shelf with arguments {string}")]
     public void GivenIHaveRunShelfWithArguments(string arguments)
@@ -49,7 +53,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
         if (workspace.HasWorkingDirectory)
         {
             cliEnvironment = cliEnvironment.WithDirectories(
-                workspace.WorkingDirectory,
+                _folder is null ? workspace.WorkingDirectory : Path.Combine(workspace.WorkingDirectory, _folder),
                 Path.Combine(workspace.WorkingDirectory, HomeFolder));
         }
 
@@ -126,6 +130,19 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
         var value = root.GetProperty(property);
         Assert.Equal(JsonValueKind.String, value.ValueKind);
         Assert.Matches(new Regex(pattern), value.GetString()!);
+    }
+
+    [Then("standard output is a JSON object with the integer properties {string}")]
+    public void ThenStandardOutputIsAJsonObjectWithTheIntegerProperties(string expected)
+    {
+        using var document = JsonDocument.Parse(_stdout.ToString());
+        var root = document.RootElement;
+        var pairs = expected.Split(", ").Select(p => p.Split('=')).ToList();
+        Assert.Equal(pairs.Select(p => p[0]), root.EnumerateObject().Select(p => p.Name));
+        foreach (var pair in pairs)
+        {
+            Assert.Equal(int.Parse(pair[1], System.Globalization.CultureInfo.InvariantCulture), root.GetProperty(pair[0]).GetInt32());
+        }
     }
 
     [Then("standard output is not a JSON document")]

@@ -241,3 +241,13 @@ Retrieved 2026-10-16. ADR 0001 sources are cited as "ADR 0001 Sxx" (for example 
 ## M0 close: prototype removed (2026-10-17)
 
 M0 is closed (see the roadmap). `experiments/storage/`, `.github/workflows/spike-storage.yml` were deleted from the repository. The last commit that contains them is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.
+
+## M1 follow-up: WAL policy (slice `m1-index-db`)
+
+The open M1 risk (WAL growth under readers) is settled as follows; implemented in `Shelf.Index/IndexDatabase.cs`:
+
+- Connection setup as in the hand-off, plus `journal_size_limit = 64 MiB` and an explicit `PRAGMA busy_timeout = 5000` (Microsoft.Data.Sqlite retries on its own `Default Timeout`, but `PRAGMA busy_timeout` reported 0 without the explicit statement). Pooling is off, so the last closed connection checkpoints and removes the WAL file.
+- Bulk writers (`reindex`, later `scan` and `import`) call `wal_checkpoint(TRUNCATE)` when they are done. A busy result is ignored: the log is only larger than necessary.
+- Readers are `query_only` connections at file level read-write (a `ReadOnly` connection cannot checkpoint and leaves `-wal` and `-shm` behind). A reader transaction must be `BeginTransaction(deferred: true)`; the default `BEGIN IMMEDIATE` is refused.
+- Pattern that is not protected: readers that query without any pause (measured: 1 GB in 30 s). Interactive CLI, web and MCP use pauses of milliseconds or more; a unit test with one writer and four readers that sleep 20 ms keeps the WAL below 32 MiB (measured in the spike: 8 MB). `serve`/`mcp` (M3/M4) must not hold read transactions open while idle.
+- Two connections that close at the same moment can both leave the WAL cleanup to the other; the next single connection removes the file.

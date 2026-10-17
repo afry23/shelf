@@ -15,6 +15,33 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
     public void GivenAGlobalConfigFileWithContent(string content) =>
         WriteFile(Path.Combine(CliSteps.HomeFolder, ".config", "shelf", "config.toml"), content.Replace("\r\n", "\n", StringComparison.Ordinal));
 
+    [Given("a work folder {string} with the files {string} and the sidecar:")]
+    public void GivenAWorkFolder(string folder, string files, string sidecar)
+    {
+        foreach (var name in files.Split(", "))
+        {
+            WriteFile(Path.Combine(folder, name), "data");
+        }
+
+        WriteFile(Path.Combine(folder, "book.json"), sidecar.Replace("\r\n", "\n", StringComparison.Ordinal));
+    }
+
+    [Given("the sidecar {string} is replaced by:")]
+    public void GivenTheSidecarIsReplacedBy(string path, string content) =>
+        WriteFile(path, content.Replace("\r\n", "\n", StringComparison.Ordinal));
+
+    [Given("I delete the file {string}")]
+    public void GivenIDeleteTheFile(string name)
+    {
+        foreach (var suffix in new[] { string.Empty, "-wal", "-shm" })
+        {
+            File.Delete(PathOf(name) + suffix);
+        }
+    }
+
+    [Then("the file {string} does not exist")]
+    public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");
+
     [Then("the directory {string} exists")]
     public void ThenTheDirectoryExists(string name) => Assert.True(Directory.Exists(PathOf(name)), $"Missing directory {name}");
 

@@ -16,6 +16,7 @@ Feature: Creating a library with shelf init
     And the directory "library/.shelf" exists
     And the file "library/.shelf/config.toml" contains "auto_merge"
     And the file "library/.shelf/review.json" contains '"entries": []'
+    And the table "works" of the index has 0 rows
 
   Scenario: Init can turn a folder that already holds books into a library without touching them
     Given a file "books/Flatland.epub" in the working directory

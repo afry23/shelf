@@ -7,8 +7,8 @@ namespace Shelf.Cli.Commands;
 /// <summary>Small JSON objects for <c>--json</c> output, written without reflection (Native AOT).</summary>
 internal static class JsonOutput
 {
-    /// <summary>A single-line object whose values are all strings.</summary>
-    public static string Object(params (string Name, string Value)[] properties)
+    /// <summary>A single-line object. Values are strings or integers.</summary>
+    public static string Object(params (string Name, object Value)[] properties)
     {
         using var buffer = new MemoryStream();
         using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
@@ -16,7 +16,17 @@ internal static class JsonOutput
             writer.WriteStartObject();
             foreach (var (name, value) in properties)
             {
-                writer.WriteString(name, value);
+                switch (value)
+                {
+                    case string text:
+                        writer.WriteString(name, text);
+                        break;
+                    case int number:
+                        writer.WriteNumber(name, number);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unsupported JSON value for '{name}'.", nameof(properties));
+                }
             }
 
             writer.WriteEndObject();

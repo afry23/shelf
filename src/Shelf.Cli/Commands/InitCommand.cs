@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Shelf.Core.Libraries;
+using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
 
@@ -30,7 +31,7 @@ internal static class InitCommand
             SettingsLoader.Load(environment, stderr);
 
             var path = Path.GetFullPath(parseResult.GetRequiredValue(root), environment.WorkingDirectory);
-            LibraryInitializer.Initialize(path);
+            LibraryInitializer.Initialize(path, IndexDatabase.Create);
             path = Path.TrimEndingDirectorySeparator(path);
 
             if (parseResult.GetValue(json))

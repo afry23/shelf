@@ -21,8 +21,10 @@ public static class LibraryInitializer
     /// <c>.shelf/config.toml</c> (a commented template) and <c>.shelf/review.json</c>. Existing books are not touched.
     /// If anything fails, the <c>.shelf</c> folder this call created is removed again.
     /// </summary>
+    /// <param name="root">Absolute path of the new library.</param>
+    /// <param name="createIndex">Creates the index database at the given path; part of the same all-or-nothing step.</param>
     /// <exception cref="LibraryInitException"/>
-    public static void Initialize(string root)
+    public static void Initialize(string root, Action<string>? createIndex = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
         if (!Path.IsPathRooted(root))
@@ -58,6 +60,7 @@ public static class LibraryInitializer
                 var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
                 File.WriteAllText(Path.Combine(marker, ConfigFileName), Configuration.ConfigTemplate.Library, utf8);
                 File.WriteAllText(Path.Combine(marker, ReviewFileName), EmptyReviewQueue, utf8);
+                createIndex?.Invoke(Path.Combine(marker, "index.db"));
             }
             catch
             {
