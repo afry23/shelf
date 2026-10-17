@@ -54,7 +54,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 | 10 | sqlite-vec | v0.1.9 (2026-03-31); v0.1.10-alpha.4 prerelease | Apache-2.0 and MIT (two license files) | yes | flag: single maintainer; pre-v1 | n/a (native, loaded as extension) | Y / Y / Y / Y (GitHub release assets, no official NuGet) | adopt with fallback | S1, S67-S74 |
 | 11 | Microsoft.ML.OnnxRuntime | 1.31.0 (2026-10-09) | MIT | yes | ok (Microsoft) | no claim for the managed part | Y / **N** / Y / Y | **pending** (osx-x64 gap; fallback: pin 1.23.x) | S1, S75-S81, S138 |
 | 12 | Microsoft.ML.Tokenizers | 2.0.0 (2025-11-11); 3.0.0-preview.26457.2 | MIT | yes | ok (Microsoft/.NET) | no claim | - | adopt | S1, S82-S91 |
-| 13 | ModelContextProtocol (+ .Core, .AspNetCore) | 2.2.0 (2026-08-13) | Apache-2.0 (package); repo notes a transition from MIT | yes | ok | claimed (`IsAotCompatible=true`) | - | adopt | S1, S92-S96 |
+| 13 | ModelContextProtocol (+ .Core, .AspNetCore) | 2.2.0 (2026-08-13) | Apache-2.0 (package); repo notes a transition from MIT | yes | ok | claimed (`IsAotCompatible=true`); measured pass on `osx-arm64` (ADR 0006) | - | adopt | S1, S92-S96 |
 | 14 | RazorSlices | 0.12.1 (2026-09-28) | MIT | yes | flag: single maintainer; pre-1.0 | claimed (README + `IsAotCompatible=true`) | - | adopt with fallback | S1, S97-S102 |
 | 15 | htmx | v4.0.0 (2026-08-28) | 0BSD (LICENSE file; GitHub shows NOASSERTION) | yes | ok | n/a (JS) | - | adopt | S1, S103-S106 |
 | 16 | Alpine.js (optional) | v3.17.4 (2026-09-21) | MIT | yes | ok | n/a (JS) | - | adopt (optional use; PRD allows vanilla JS instead) | S1, S107-S110 |
@@ -238,7 +238,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - Version: 2.2.0 stable (2026-08-13); 2.0.0 stable 2026-07-28; no newer prerelease (S93).
 - License: nuspec `Apache-2.0` (S92). The repo's `LICENSE` states that the project is "undergoing a licensing transition from the MIT License to the Apache License, Version 2.0"; contributions without relicensing consent remain MIT; documentation is CC-BY-4.0 (S94). GitHub reports NOASSERTION because of this. Apache-2.0 and MIT are both GPL-3.0-compatible and CC-BY-4.0 is compatible with all GPL versions (S1). Compatible.
 - Maintenance: organization `modelcontextprotocol`; 9 stable releases in the last 12 months; 100+ commits in the last 6 months (API page limit); top contributors include `stephentoub` and `halter73` (S94, S95).
-- AOT/trimming: `IsAotCompatible=true` in `ModelContextProtocol.Core`, `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` project files at `6fa38259` (S96). Value: `claimed`.
+- AOT/trimming: `IsAotCompatible=true` in `ModelContextProtocol.Core`, `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` project files at `6fa38259` (S96). Value: `claimed`. Measured by [ADR 0006](0006-mcp-sdk-aot.md): `ModelContextProtocol.Core` 2.2.0 publishes with 0 AOT/trim warnings and passes the stdio checks on `osx-arm64`.
 - Native assets: none.
 - Risks: major version 2.x was released 2026-07-28; check API stability when the MCP slice starts.
 - Verdict: **adopt**.
