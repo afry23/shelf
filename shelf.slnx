@@ -2,11 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/Shelf.Cli/Shelf.Cli.csproj" />
     <Project Path="src/Shelf.Core/Shelf.Core.csproj" />
+    <Project Path="src/Shelf.Extraction/Shelf.Extraction.csproj" />
     <Project Path="src/Shelf.Index/Shelf.Index.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
     <Project Path="tests/Shelf.Core.Tests/Shelf.Core.Tests.csproj" />
+    <Project Path="tests/Shelf.Extraction.Tests/Shelf.Extraction.Tests.csproj" />
     <Project Path="tests/Shelf.Index.Tests/Shelf.Index.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
     <Project Path="tests/Shelf.TestData.Tests/Shelf.TestData.Tests.csproj" />
