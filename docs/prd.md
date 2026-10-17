@@ -112,7 +112,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-IMP-2 | Metadata is extracted from EPUB (OPF) and PDF (info dictionary, XMP). | M |
 | F-IMP-3 | Fallback heuristic: if metadata is missing, it is parsed from the file name, e.g. `Author - Title (Year).pdf`. | M |
 | F-IMP-4 | ISBN detection via regex in the first and last pages of the text. | S |
-| F-IMP-5 | Cover extraction: the cover image for EPUB, a rendering of the first page for PDF. Stored as `cover.<ext>` in the work folder in the original image format of the source (no transcoding); for EPUB this is the format of the embedded cover, the format for the PDF rendering is decided in `m0-spike-pdf-cover`. | S |
+| F-IMP-5 | Cover extraction: the cover image for EPUB, a rendering of the first page for PDF. Stored as `cover.<ext>` in the work folder in the original image format of the source (no transcoding); for EPUB this is the format of the embedded cover, the PDF rendering is a JPEG (quality 85) of page 1 with the longest edge at 600 px, `cover.jpg` (decided 2026-10-17, ADR 0010). | S |
 | F-IMP-6 | Optional online enrichment via Open Library or Google Books by ISBN. **Off** by default, only on explicit command. | C |
 | F-IMP-7 | Uncertain detections end up in a review queue (`shelf review`) instead of being filed incorrectly. The queue is persisted in `.shelf/review.json` and survives `shelf reindex`. | S |
 
