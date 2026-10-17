@@ -55,9 +55,9 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 | 11 | Microsoft.ML.OnnxRuntime | 1.31.0 (2026-10-09) | MIT | yes | ok (Microsoft) | no claim for the managed part | Y / **N** / Y / Y | **pending** (osx-x64 gap; fallback: pin 1.23.x) | S1, S75-S81, S138 |
 | 12 | Microsoft.ML.Tokenizers | 2.0.0 (2025-11-11); 3.0.0-preview.26457.2 | MIT | yes | ok (Microsoft/.NET) | no claim | - | adopt | S1, S82-S91 |
 | 13 | ModelContextProtocol (+ .Core, .AspNetCore) | 2.2.0 (2026-08-13) | Apache-2.0 (package); repo notes a transition from MIT | yes | ok | claimed (`IsAotCompatible=true`); measured pass on `osx-arm64` (ADR 0006) | - | adopt | S1, S92-S96 |
-| 14 | RazorSlices | 0.12.1 (2026-09-28) | MIT | yes | flag: single maintainer; pre-1.0 | claimed (README + `IsAotCompatible=true`) | - | adopt with fallback | S1, S97-S102 |
-| 15 | htmx | v4.0.0 (2026-08-28) | 0BSD (LICENSE file; GitHub shows NOASSERTION) | yes | ok | n/a (JS) | - | adopt | S1, S103-S106 |
-| 16 | Alpine.js (optional) | v3.17.4 (2026-09-21) | MIT | yes | ok | n/a (JS) | - | adopt (optional use; PRD allows vanilla JS instead) | S1, S107-S110 |
+| 14 | RazorSlices | 0.12.1 (2026-09-28) | MIT | yes | flag: single maintainer; pre-1.0 | claimed (README + `IsAotCompatible=true`) | - | not used (PRD Q1 changed to Svelte, 2026-10-17); verdict at the time of the check: adopt with fallback | S1, S97-S102 |
+| 15 | htmx | v4.0.0 (2026-08-28) | 0BSD (LICENSE file; GitHub shows NOASSERTION) | yes | ok | n/a (JS) | - | not used (PRD Q1 changed to Svelte, 2026-10-17); verdict at the time: adopt | S1, S103-S106 |
+| 16 | Alpine.js (optional) | v3.17.4 (2026-09-21) | MIT | yes | ok | n/a (JS) | - | not used (PRD Q1 changed to Svelte, 2026-10-17); verdict at the time: adopt | S1, S107-S110 |
 | 17 | PDF.js | v6.4.299 (2026-10-03) | Apache-2.0 (PRD claim verified) | yes | ok (Mozilla) | n/a (JS) | - | adopt | S1, S111-S114 |
 | 18 | foliate-js | no release, no tag; last commit 2026-05-01 | MIT (PRD claim verified) | yes | flag: no release, single maintainer; README says "not stable" | n/a (JS) | - | adopt with fallback | S1, S115-S121 |
 | 19 | Reqnroll + Reqnroll.xunit.v3 (test-only) | 3.3.4 (2026-03-23) | BSD-3-Clause | n/a (not distributed) | ok | n/a | - | adopt | S1, S122-S124 |
@@ -68,7 +68,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 | # | Candidate | Revision (date) | License | Redistribution | Size | Verdict | Sources |
 |---|---|---|---|---|---|---|---|
 | 21 | multilingual-e5-small (`intfloat/multilingual-e5-small`) | `614241f6` (2026-04-02) | MIT (model card metadata) | MIT permits it; training-data terms unverified | ONNX 470,268,510 bytes | adopt (download at runtime, not mirrored) | S128-S131, S85 |
-| 22 | Svelte | 5.57.2 (2026-10-06) | MIT | n/a (fallback only) | n/a | adopt (PRD fallback only; not in use) | S1, S132-S135 |
+| 22 | Svelte | 5.57.2 (2026-10-06) | MIT | n/a (fallback only) | n/a | adopt (frontend since PRD Q1 of 2026-10-17; checked here as the fallback) | S1, S132-S135 |
 | 23 | bge-m3 (`BAAI/bge-m3`) | `5617a9f6` (2024-07-03) | MIT (model card metadata) | MIT permits it; training-data terms unverified | ONNX external data 2,266,820,608 bytes | deferred, informational (license acceptable) | S136, S137 |
 
 ## Candidate notes
@@ -254,6 +254,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - Native assets: none.
 - Risks: pre-1.0 API, single maintainer. The PRD's web frontend depends on it (PRD Q1).
 - Verdict: **adopt with fallback**: Svelte (PRD Q1; adds a Node.js build toolchain).
+- **Update 2026-10-17:** not used. The project owner chose Svelte as the frontend (PRD Q1), so the fallback became the plan. The facts above stay as checked.
 - Sources: S1, S97-S102.
 
 ### 15. htmx
@@ -265,6 +266,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - AOT/trimming: n/a (JS asset, embedded).
 - Native assets: none.
 - Verdict: **adopt**.
+- **Update 2026-10-17:** not used (PRD Q1: Svelte).
 - Sources: S1, S103-S106.
 
 ### 16. Alpine.js (optional)
@@ -275,6 +277,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - Maintenance: last push 2026-10-05; 64 commits in the last 6 months; main contributor `calebporzio` 1317 commits, others 124/81/74 (S107, S110). Not flagged.
 - AOT/trimming: n/a. Native: none.
 - Verdict: **adopt**. Note: optional; the PRD allows "vanilla JS" instead.
+- **Update 2026-10-17:** not used (PRD Q1: Svelte).
 - Sources: S1, S107-S110.
 
 ### 17. PDF.js
@@ -337,7 +340,8 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 - License: MIT (S132, S134). Compatible (S1).
 - Maintenance: organization `sveltejs`; last push 2026-10-12; 1142 open issues+PRs; top contributors Rich-Harris 5250, dummdidumm 815 (S132, S135). Not flagged.
 - Toolchain: PRD Q1 states that Svelte brings a Node.js build toolchain; this was not verified separately here.
-- Verdict: **adopt**. Note: PRD fallback only (PRD Q1); not in use.
+- Verdict: **adopt**.
+- **Update 2026-10-17:** Svelte is the frontend (PRD Q1: Svelte 5 + Vite + TypeScript, single-page application). **Not checked with this ADR's method:** Vite, TypeScript and Node.js (build-time tools), and the npm dependency tree of the UI. That check is open and belongs to the first web slice or the web AOT spike.
 - Sources: S1, S132-S135.
 
 ### 23. bge-m3 (deferred, informational)
@@ -351,23 +355,23 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
 
 ## Decision
 
-- **Adopted:** .NET 10 (1), Spectre.Console.Cli (2) and System.CommandLine (3) (license and maintenance; selection: CLI framework decision (Spectre documents `IsAotCompatible=false`, System.CommandLine `=true`)), PdfPig (5), Microsoft.Data.Sqlite (8), SQLitePCLRaw bundle_e_sqlite3 with bundled SQLite (9), Microsoft.ML.Tokenizers (12), ModelContextProtocol (13), htmx (15), Alpine.js, optional (16), PDF.js (17), Reqnroll (19), xunit.v3 (20), multilingual-e5-small downloaded at runtime (21).
+- **Adopted:** .NET 10 (1), Spectre.Console.Cli (2) and System.CommandLine (3) (license and maintenance; selection: CLI framework decision (Spectre documents `IsAotCompatible=false`, System.CommandLine `=true`)), PdfPig (5), Microsoft.Data.Sqlite (8), SQLitePCLRaw bundle_e_sqlite3 with bundled SQLite (9), Microsoft.ML.Tokenizers (12), ModelContextProtocol (13), PDF.js (17), Svelte (22; frontend since 2026-10-17), Reqnroll (19), xunit.v3 (20), multilingual-e5-small downloaded at runtime (21).
 - **Adopted with fallback:**
   - VersOne.Epub (4): single maintainer; ReadyToRun if AOT fails; replacement open.
   - PDFtoImage and PDFium (6, 7): single maintainer (binding and packager); replacement open; ReadyToRun if AOT fails.
   - sqlite-vec (10): brute-force cosine in C# (PRD risk table).
-  - RazorSlices (14): Svelte (PRD Q1).
   - foliate-js (18): pin a commit and vendor it; replacement open.
 - **Pending:**
   - Microsoft.ML.OnnxRuntime (11): no prebuilt `osx-x64` native in 1.31.0 although `osx-x64` is a PRD 9.2 target. Deciding step: AOT/packaging spike and a project-owner decision on `osx-x64`.
-- **Fallback only / deferred:** Svelte (22) is the PRD fallback and not in use (license and maintenance verdict: adopt); bge-m3 (23) is deferred and informational.
+- **Not used since 2026-10-17:** RazorSlices (14), htmx (15) and Alpine.js (16): PRD Q1 now chooses Svelte (22).
+- **Deferred:** bge-m3 (23) is deferred and informational.
 - **Rejected:** none. No candidate failed the license policy and none is abandoned.
 
 ## Consequences
 
 **Inputs for the AOT spike**
 
-- Documented not AOT-compatible: Spectre.Console.Cli (row 2). No documented claim: VersOne.Epub, PdfPig, Microsoft.ML.Tokenizers, Microsoft.ML.OnnxRuntime (managed part), SQLitePCLRaw (rows 4, 5, 12, 11, 9). Claimed in the project file: System.CommandLine, Microsoft.Data.Sqlite.Core, PDFtoImage, ModelContextProtocol (core, hosting, AspNetCore), RazorSlices (rows 3, 8, 6, 13, 14). All claims are unverified until the spike runs. Corrected by ADR 0005 R3: PdfPig does claim `IsAotCompatible=true` via `src/Directory.Build.targets` for net8.0+ TFMs.
+- Documented not AOT-compatible: Spectre.Console.Cli (row 2). No documented claim: VersOne.Epub, PdfPig, Microsoft.ML.Tokenizers, Microsoft.ML.OnnxRuntime (managed part), SQLitePCLRaw (rows 4, 5, 12, 11, 9). Claimed in the project file: System.CommandLine, Microsoft.Data.Sqlite.Core, PDFtoImage, ModelContextProtocol (core, hosting, AspNetCore), RazorSlices (rows 3, 8, 6, 13, 14; RazorSlices is no longer used). All claims are unverified until the spike runs. Corrected by ADR 0005 R3: PdfPig does claim `IsAotCompatible=true` via `src/Directory.Build.targets` for net8.0+ TFMs.
 - RIDs without a prebuilt native asset: `osx-x64` for ONNX Runtime (row 11). All other native components have assets for all four RIDs: SQLite (row 9), PDFium and SkiaSharp (rows 6, 7), sqlite-vec (row 10, as release assets and not as an official NuGet package).
 - Packaging questions that belong in the spike: sqlite-vec as a loadable extension in a single-file AOT binary (extension lookup uses OS library paths, S55); the 3.x vs 2.1.x SQLitePCLRaw lines (row 9); SkiaSharp being pulled in by PDFtoImage (row 6); FTS5 in the 3.x SQLite builds is unverified.
 
