@@ -55,6 +55,14 @@ commands_rows() {
   echo "$ep" | grep -q "^title=Flatland: A Romance of Many Dimensions$" && echo "$ep" | grep -q "^authors=Edwin Abbott Abbott$" && echo "$ep" | grep -q "^language=en$" \
     && echo "$pp" | grep -q "^title=Event Streams in Practice$" && echo "$pp" | grep -q "^author=Jördis Ålander$" && echo "$pp" | grep -q "^pages=1$" && x_ok=0
   row "C5$L" $x_ok "epub: $(echo "$ep" | tr '\n' ' ') pdf: $(echo "$pp" | tr '\n' ' ')"
+
+  # K8 (m0-spike-pdf-cover): page 1 of a PDF rendered with PDFtoImage inside the combined binary
+  local cv cvrc cdir="$WORK/cover$L"
+  set +e; cv="$("$BIN" cover "$FIX/derived/Event Streams in Practice.pdf" "$cdir" 2>&1)"; cvrc=$?; set -e
+  local k_ok=1
+  [ $cvrc = 0 ] && echo "$cv" | grep -q " size=463x600 " && [ -s "$cdir/cover.png" ] && [ -s "$cdir/cover.jpg" ] && [ -s "$cdir/cover.webp" ] \
+    && [ "$(sips -g pixelWidth "$cdir/cover.webp" 2>/dev/null | awk '/pixelWidth/ {print $2}')" = 463 ] && k_ok=0
+  row "K8$L" $k_ok "exit=$cvrc $(echo "$cv" | cut -c1-160)"
 }
 
 main() {

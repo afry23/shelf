@@ -147,6 +147,7 @@ Legend: RIDs are `osx-arm64 / osx-x64 / linux-x64 / linux-arm64`, `Y` = prebuilt
   - SkiaSharp (`SkiaSharp.NativeAssets.macOS` 4.150.1): `runtimes/osx/native/libSkiaSharp.dylib`, a universal binary with x86_64 and arm64 slices (S42, `file` output). `SkiaSharp.NativeAssets.Linux.NoDependencies` 4.150.1: `linux-x64` Y, `linux-arm64` Y (S43).
 - Risks: pulls in SkiaSharp (a second native library and a large managed API) only to get a bitmap; single maintainer.
 - Verdict: **adopt with fallback**. Replacement for the binding: open. AOT failure: ReadyToRun.
+- **Update 2026-10-17:** measured by [ADR 0010](0010-pdf-cover-rendering-aot.md): publishes under Native AOT with 0 AOT/trim warnings, renders page 1 on `osx-arm64`, and works inside the combined binary (`linux-x64` not verified). The `claimed` value is confirmed for `osx-arm64`.
 - Sources: S1, S33-S43.
 
 ### 7. PDFium (library and prebuilt binaries)

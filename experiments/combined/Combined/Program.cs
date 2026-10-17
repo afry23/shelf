@@ -29,6 +29,12 @@ internal static class ShelfApp
         extract.SetAction(async (pr, ct) => await ExtractCommand.RunAsync(pr.GetRequiredValue(path), stdout, stderr));
         root.Subcommands.Add(extract);
 
+        var coverPdf = new Argument<string>("pdf") { Description = "PDF file" };
+        var coverOut = new Argument<string>("out") { Description = "Output directory for cover.png, cover.jpg and cover.webp" };
+        var cover = new Command("cover", "Render page 1 of a PDF (longest edge 600 px)") { coverPdf, coverOut };
+        cover.SetAction(pr => Proto.Cover.CoverCommand.Run(pr.GetRequiredValue(coverPdf), pr.GetRequiredValue(coverOut), stdout, stderr));
+        root.Subcommands.Add(cover);
+
         var mcp = new Command("mcp", "Run the MCP server on stdio");
         mcp.SetAction(async (_, _) => await Proto.Mcp.McpHost.RunAsync());
         root.Subcommands.Add(mcp);
