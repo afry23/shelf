@@ -420,7 +420,7 @@ The candidates must be checked for license and maintenance status before the pro
 | Embeddings | Microsoft.ML.OnnxRuntime + tokenizer (Microsoft.ML.Tokenizers) |
 | MCP | Official ModelContextProtocol C# SDK |
 | Web backend | ASP.NET Core Minimal APIs |
-| Web frontend | htmx + RazorSlices (decision Q1); small interactions via vanilla JS or Alpine.js |
+| Web frontend | Svelte 5 + Vite + TypeScript as a single-page application against the REST API (decision Q1). Node.js is a build-time dependency only; the build output is embedded into the binary (F-WEB-3) |
 | PDF reader | PDF.js (Apache 2.0) |
 | EPUB reader | foliate-js (MIT) |
 | Logging | Microsoft.Extensions.Logging, output to stderr (important for MCP stdio) |
@@ -511,7 +511,7 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 | Q5 | Annotations/highlights | **Later**, not in v1. A separate sidecar `annotations.json` remains the preferred direction. |
 | Q6 | Sync scenario | **No sync.** A library is used on one machine only. |
 | Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. |
-| Q1 | Frontend technology | **htmx + RazorSlices** (server-rendered HTML fragments, minimal JS, no Node.js toolchain). RazorSlices is chosen over Razor Pages/MVC because those are not Native AOT-compatible and would break the single AOT binary (Q2). AOT compatibility is verified in an M0 spike; fallback is Svelte. |
+| Q1 | Frontend technology | **Svelte** (Svelte 5 + Vite + TypeScript, single-page application without SvelteKit), decided 2026-10-17 by the project owner. It replaces the earlier choice htmx + RazorSlices (RazorSlices: pre-1.0, single maintainer, Native AOT claim unverified). The server only provides JSON under `/api/v1`, files and the embedded static UI. The UI is built at build time and embedded as static assets (F-WEB-3); Node.js is needed for the build and for UI development, not at runtime. Razor Pages/MVC stay excluded (not Native AOT-compatible, Q2). |
 
 ### 13.2 Open
 
@@ -526,4 +526,4 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 | Poor metadata in PDFs | Incorrect grouping and sorting | Confidence scores, review queue, file-name heuristic, ISBN search in text |
 | sqlite-vec as a native dependency | Build/distribution effort per platform | Prebuilt binaries in the package; fallback: brute-force cosine in C# (fast enough at 10k works) |
 | Initial embedding indexing takes long | Poor first experience | Background job, work level first, chunks afterwards, resumable |
-| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M0 (incl. RazorSlices, MCP SDK, ONNX Runtime); ReadyToRun if necessary |
+| Native AOT incompatible with libraries | Slower CLI start | Early AOT spike in M0 (incl. ASP.NET Core Minimal APIs, MCP SDK, ONNX Runtime); ReadyToRun if necessary |
