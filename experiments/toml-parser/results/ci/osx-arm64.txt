@@ -1,0 +1,28 @@
+== environment
+date: 2026-10-17T14:37:34Z
+rid: osx-arm64
+uname: Darwin 25.6.0 arm64
+dotnet: 10.0.401
+macOS: 26.6.2
+== AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
+AOT/trim warnings: 0
+  3774656 B proto-cstoml
+  96 B proto-cstoml.dSYM
+size proto-cstoml: 3774656 B
+== checks (G5)
+passed 22/22
+lines 6/6
+== corpus
+passed 61/61
+lines 23/23
+== error output (first lines)
+  [missing-value] checks/invalid/missing-value.toml:2: A syntax error (CsTomlException) was thrown while parsing line 2. CsToml.Error.CsTomlException: Unexpected value found.
+  [duplicate-key] checks/invalid/duplicate-key.toml:3: A syntax error (CsTomlException) was thrown while parsing line 3. CsToml.Error.CsTomlException: Key 'x' is already defined.
+  [unterminated-string] checks/invalid/unterminated-string.toml:1: A syntax error (CsTomlException) was thrown while parsing line 1. CsToml.Error.CsTomlException: Escape characters 10 were included.
+== round-trip
+  result: ok
+  unchanged round-trip byte-identical: no
+  edited value present: yes
+== get under de_DE (float output must not depend on the culture; informational)
+  float:0.9
+== check osx-arm64: ok
