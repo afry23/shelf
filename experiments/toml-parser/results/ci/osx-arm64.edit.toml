@@ -1,7 +1,0 @@
-title = "My Library"
-locale = "en_US"
-grouping = {auto_merge = 0.85, review = 0.5, max_hamming = 10, stop_words = [ "the", "a", "an", "of", "and", "der", "die", "das" ], normalization = {strip_edition = true, strip_series = true, patterns = [ '\(.*?\)', '\[.*?\]' ]}, new_key = "x"}
-search = {limit = 20, snippet_chars = 160, fuzzy = {enabled = true, max_edits = 2}}
-mcp = {readOnly = true, port = 8765, host = "127.0.0.1", started = 2026-10-14T08:30:00+02:00}
-library = [ {name = "ebooks", root = "/Users/ada/Ebooks"}, {name = "papers", root = "/Users/ada/Papers"} ]
-logging = {level = "info", file = "", rotate_bytes = 1048576}

@@ -165,3 +165,7 @@ No fallback (another builder, own endpoints, ReadyToRun) was needed. Options B, 
 - W5's invalid-body row needed `UseStatusCodePages()` (observation 2); the first smoke run without it returned an empty 400 body. The gate was not weakened.
 - The W11 comparison removes `traceId` from problem documents and `servers` from the OpenAPI document (observation 4); the plan only named `Date`, `Server` and other volatile headers.
 - X-2 is measured with a polling loop in `check.sh` and includes the loop's own latency.
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/web/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

@@ -237,3 +237,7 @@ Retrieved 2026-10-16. ADR 0001 sources are cited as "ADR 0001 Sxx" (for example 
 | S8 | `https://api.nuget.org/v3-flatcontainer/<id>/<version>/<id>.nuspec` for `microsoft.data.sqlite` 10.0.12, `microsoft.data.sqlite.core` 10.0.12, `sqlitepclraw.bundle_e_sqlite3` 2.1.12, `system.numerics.tensors` 10.0.12 (license, dependencies, target frameworks); version list of `system.numerics.tensors` |
 | S9 | Local inspection of the downloaded `vec0.dylib` / `vec0.so` files (`file`, `nm -gU`, `nm -D`, `otool -L`, `codesign -dv`, `xattr -l`, `llvm-objdump -T`, `llvm-readelf -d`); output in `experiments/storage/results/measure.out` and `results/ci/osx-arm64.txt` |
 | S10 | `https://api.nuget.org/v3-flatcontainer/hiraokahypertools.sqlite-vec/0.1.9/hiraokahypertools.sqlite-vec.0.1.9.nupkg` (unzipped, listed, SHA-256 compared; also ADR 0001 S74) |
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/storage/`, `.github/workflows/spike-storage.yml` were deleted from the repository. The last commit that contains them is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

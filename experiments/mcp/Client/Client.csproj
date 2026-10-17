@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <AssemblyName>proto-mcp-client</AssemblyName>
-    <RootNamespace>ProtoClient</RootNamespace>
-  </PropertyGroup>
-
-</Project>

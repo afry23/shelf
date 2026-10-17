@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <AssemblyName>proto-web-client</AssemblyName>
-    <RootNamespace>ProtoClient</RootNamespace>
-  </PropertyGroup>
-
-</Project>

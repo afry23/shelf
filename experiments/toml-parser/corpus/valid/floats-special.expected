@@ -1,4 +1,0 @@
-a = float:Infinity
-b = float:Infinity
-c = float:-Infinity
-d = float:NaN

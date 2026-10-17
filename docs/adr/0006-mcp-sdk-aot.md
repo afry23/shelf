@@ -159,3 +159,7 @@ No fallback (ReadyToRun, hand-written JSON-RPC layer) is required. The estimate 
 - The plan's M10 said "identical response JSON (modulo server-generated ids/timestamps)". The dumps are identical after sorting the `tools` and `resourceTemplates` lists by name, because the order of the template list is not stable between runs (observation 1) and the tool list was not checked. No other normalization was applied.
 - The expected `get_book` result in M4 omits `pages` for the EPUB (observation 2), after a first run showed the SDK omits null properties. The expectation was adapted to the measured SDK behavior and the discrepancy with the output schema is documented instead.
 - Decision rule step 2 (explicit registration path) was used from the start; the attribute-based path was never tried, so no fallback to it was needed.
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/mcp/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

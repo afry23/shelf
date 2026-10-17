@@ -117,3 +117,7 @@ Toolchain verdicts: **adopt T1-T9**; no candidate is rejected and none violates 
 | S11 | `gh api repos/parcel-bundler/lightningcss` (same endpoints) |
 | S12 | `gh api repos/postcss/postcss` (same endpoints) |
 | S13 | `gh api repos/fsevents/fsevents` (same endpoints); `npm ls fsevents`; `npm install-scripts ls` (npm 11.19.1) |
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/web/Ui/ (the lock file and the build that were assessed)` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.

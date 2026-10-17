@@ -248,3 +248,7 @@ Retrieved 2026-10-16. ADR 0001 sources are cited as "ADR 0001 Sxx"; this index s
 | S5 | `https://raw.githubusercontent.com/dotnet/runtime/v10.0.0/src/libraries/System.Private.Xml.Linq/src/System/Xml/Linq/XNode.cs` (`GetXmlReaderSettings`) and `.../System.Private.Xml/src/System/Xml/Core/XmlReaderSettings.cs` (`AllowDefaultResolver`, `MaxCharactersFromEntities`) at tag `v10.0.0` (the SDK in use runs runtime 10.0.12; the XML defaults were not compared between the two tags) |
 | S6 | `https://raw.githubusercontent.com/dotnet/docs/main/docs/core/deploying/native-aot/index.md`, `docs/core/deploying/trimming/trimming-options.md` (`TrimmerSingleWarn`), `docs/standard/base-types/regular-expression-source-generators.md` (`RegexOptions.Compiled`) |
 | S7 | Measurements: `experiments/parsers/results/measure.out` (run of 2026-10-16) and `results/ci/osx-arm64.txt` |
+
+## M0 close: prototype removed (2026-10-17)
+
+M0 is closed (see the roadmap). `experiments/parsers/`, `.github/workflows/spike-parsers.yml` were deleted from the repository. The last commit that contains them is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.
