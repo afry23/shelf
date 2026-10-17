@@ -107,6 +107,10 @@ C1-C8 all pass on `osx-arm64`.
 - **Re-check triggers:** a new library in the binary (PDF cover rendering, ONNX), .NET 11, a change of the ASP.NET Core version, the product's `Shelf.Web` class-library split.
 - **Prototype:** `experiments/combined/` is kept until M0 closes together with the other experiments, then deleted with a note pointing to the last commit that contains it.
 
+## Update 2026-10-17: PDF cover rendering
+
+[ADR 0010](0010-pdf-cover-rendering-aot.md) added PDFtoImage 5.4.0 (SkiaSharp, PDFium) and a `cover` command to `proto-shelf`. C1 stayed at 0 AOT/trim warnings (2 `CA1416` platform-analyzer warnings), C2-C8 pass, the binary grew from 30,404,136 B to 30,571,192 B, and the new side files `libpdfium.dylib` (7.2 MB) and `libSkiaSharp.dylib` (15.8 MB) join `libe_sqlite3.dylib` and `vec0.dylib` in the distribution list. The cold start of `--version` stayed at about 8 ms.
+
 ## Deviations from the plan
 
 - The plan listed an explicit `Microsoft.Extensions.Logging` package; it is not referenced (finding 3).

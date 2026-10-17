@@ -1,0 +1,61 @@
+== environment
+date: 2026-10-17T15:20:26Z
+rid: osx-arm64
+uname: Darwin 25.6.0 arm64
+macOS: 26.6.2
+dotnet: 10.0.401
+== K1 AOT publish (-c Release -r osx-arm64 -p:TrimmerSingleWarn=false)
+pass K1: AOT/trim warnings: 0 (other warnings:  2 CA1416 )
+publish directory (AOT):
+  7151568 B libpdfium.dylib
+  15811648 B libSkiaSharp.dylib
+  2050792 B proto-cover
+  96 B proto-cover.dSYM
+-- info
+PDFtoImage 5.4.0.0
+SkiaSharp 4.150.0.0
+base /Users/afry/code/dotnet/shelf/experiments/pdf-cover/out/AOT/
+== K2 / K3 rendering and formats (AOT)
+pass K2-text: page=612x792pt size=463x600 stddev=34.40
+pass K3-text: all three formats decode with sips at 463 x 600; png=67122 jpg=41578 webp=25854 bytes
+pass K2-nometa: page=612x792pt size=463x600 stddev=33.79
+pass K3-nometa: all three formats decode with sips at 463 x 600; png=62049 jpg=40307 webp=24812 bytes
+pass K2-scanned: page=612x792pt size=463x600 stddev=33.03
+pass K3-scanned: all three formats decode with sips at 463 x 600; png=147045 jpg=68795 webp=41316 bytes
+pass K2-arxiv: page=595x842pt size=423x600 stddev=23.53
+pass K3-arxiv: all three formats decode with sips at 423 x 600; png=75840 jpg=37853 webp=20310 bytes
+== K4 determinism; AOT vs JIT pixel hashes
+pass K4: repeat renders equal: yes; AOT and JIT render lines identical: yes
+== K5 robustness (one child process per input, 10 s timeout)
+  empty: exit=3 peakRssMB=17 error kind=bad-pdf type=PdfInvalidFormatException message=File not in PDF format or corrupted
+  random: exit=3 peakRssMB=17 error kind=bad-pdf type=PdfInvalidFormatException message=File not in PDF format or corrupted
+  truncated: exit=3 peakRssMB=17 error kind=bad-pdf type=PdfInvalidFormatException message=File not in PDF format or corrupted
+  zeropage: exit=3 peakRssMB=17 error kind=io type=ArgumentOutOfRangeException message=The page number must be between 0 and -1
+  encrypted: exit=3 peakRssMB=17 error kind=encrypted type=PdfPasswordProtectedException message=Password required or incorrect password
+pass K5: five broken or protected inputs end with a controlled error (exit 3), no crash, no timeout, RSS < 512 MB
+== K6 thread safety (no lock of ours)
+  stress threads=8 renders=40 mismatches=0 exceptions=0 hashes=1413246007C6,44EFB030BCF1
+  observed stress-wall: sequential2=23.1 ms parallel40=153.2 ms
+pass K6: stress threads=8 renders=40 mismatches=0 exceptions=0 hashes=1413246007C6,44EFB030BCF1
+== K9 normalized AOT vs JIT dump (K2-K6)
+pass K9: identical (10 lines)
+== K7 publish directory copied to an empty location, other working directory
+pass K7: render from the copy equals the original; files next to the binary: libpdfium.dylib libSkiaSharp.dylib proto-cover 
+== X-1 observations
+observed X-1: bench Event Streams in Practice.pdf first=15.2 ms median=1.8 ms min=1.7 ms max=2.2 ms (render + JPEG encode)
+observed X-1: bench Jane Doe - Quiet Systems (2004).pdf first=14.1 ms median=1.6 ms min=1.6 ms max=1.9 ms (render + JPEG encode)
+observed X-1: bench scanned-page.pdf first=5.0 ms median=1.8 ms min=1.7 ms max=2.0 ms (render + JPEG encode)
+observed X-1: bench arxiv-2403.02174v1.pdf first=20.0 ms median=7.4 ms min=7.2 ms max=7.7 ms (render + JPEG encode)
+observed X-1: proto-cover 2050792 B; libpdfium.dylib 7151568 B; libSkiaSharp.dylib 15811648 B; 
+observed X-1: formats text size=463x600 png=67122 jpg=41578 webp=25854 
+observed X-1: formats nometa size=463x600 png=62049 jpg=40307 webp=24812 
+observed X-1: formats scanned size=463x600 png=147045 jpg=68795 webp=41316 
+observed X-1: formats arxiv size=423x600 png=75840 jpg=37853 webp=20310 
+observed X-1: stress observed stress-wall: sequential2=23.1 ms parallel40=153.2 ms
+== K8 combined binary (experiments/combined/check.sh, then pixel hashes against proto-cover)
+== check osx-arm64: ok
+pass C1: AOT/trim warnings: 0 (all warnings of any kind: 2)
+pass K8: exit=0 page=612x792pt size=463x600 png=67122 jpg=41578 webp=25854 pixelhash=1413246007C60D81D510EA0D1799C2D5EADD9FF5C735B24067389B4659E38094 stddev=34.
+pass K8-copy: exit=0 page=612x792pt size=463x600 png=67122 jpg=41578 webp=25854 pixelhash=1413246007C60D81D510EA0D1799C2D5EADD9FF5C735B24067389B4659E38094 stdde
+pass K8: proto-shelf cover gives the pixel hashes of proto-cover on three fixtures; combined C1-C8 and its cover rows passed
+== check osx-arm64: ok

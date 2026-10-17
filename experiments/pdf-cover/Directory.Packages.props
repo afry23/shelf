@@ -1,0 +1,12 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pin of ADR 0001 row 6; SkiaSharp 4.150.1 and PDFium 152.0.7961 come in transitively. -->
+    <PackageVersion Include="PDFtoImage" Version="5.4.0" />
+  </ItemGroup>
+
+</Project>

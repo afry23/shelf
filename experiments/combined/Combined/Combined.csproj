@@ -46,6 +46,7 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="VersOne.Epub" />
     <PackageReference Include="PdfPig" />
+    <PackageReference Include="PDFtoImage" />
     <PackageReference Include="ModelContextProtocol.Core" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" />
