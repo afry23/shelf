@@ -6,7 +6,7 @@
 | **Status** | v1.0 |
 | **Date** | 2026-10-12 |
 | **Author** | Afry |
-| **Platforms** | macOS (arm64, x64), Linux (x64, arm64) |
+| **Platforms** | macOS (arm64), Linux (x64) |
 | **Technology** | C# / .NET 10 |
 
 ---
@@ -347,7 +347,7 @@ Reference: 10,000 works, approx. 15,000 files, Apple M-series or a current x64 l
 
 ### 9.2 Platform and Operation
 
-- Self-contained single-file binaries for `osx-arm64`, `osx-x64`, `linux-x64`, and `linux-arm64`.
+- Self-contained single-file binaries for `osx-arm64` and `linux-x64`. `osx-x64` and `linux-arm64` are not supported.
 - CLI, MCP server, and web host ship as **one** binary (decision Q2). Native AOT is the goal; if a required library is not AOT-compatible, ReadyToRun is the fallback.
 - No external services (no Python, no Docker, no vector DB) at runtime.
 - The embedding model is downloaded once on first need and stored in `.shelf/models/`. Offline installation is possible via `shelf model install <path>`.
@@ -517,7 +517,7 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 
 | # | Topic | Question |
 |---|---|---|
-| Q8 | ONNX Runtime on `osx-x64` | The `Microsoft.ML.OnnxRuntime` NuGet package ships no `osx-x64` native since 1.24.1 (1.22.0 to 1.23.2 do). `osx-x64` is a target platform (9.2). Options: pin 1.23.x, build ONNX Runtime ourselves, or no semantic search on `osx-x64`. Decided in the M0 AOT spike. See [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md). |
+| Q8 | ONNX Runtime on `osx-x64` | **Obsolete.** `osx-x64` is not a supported platform (9.2), so the missing `osx-x64` native in `Microsoft.ML.OnnxRuntime` since 1.24.1 does not matter. See [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md). |
 
 ## 14. Risks
 
