@@ -50,6 +50,31 @@ public sealed class CliEnvironmentTests
         Assert.Equal(LogLevel.Warning, CliEnvironment.FromVariables(_ => null, stdoutIsTerminal: false).MinimumLogLevel);
     }
 
+    [Theory]
+    [InlineData("Trace", LogLevel.Trace)]
+    [InlineData("trace", LogLevel.Trace)]
+    [InlineData("DEBUG", LogLevel.Debug)]
+    [InlineData("None", LogLevel.None)]
+    public void SHELF_LOG_LEVEL_selects_the_level_by_name(string value, LogLevel expected)
+    {
+        var environment = CliEnvironment.FromVariables(n => n == "SHELF_LOG_LEVEL" ? value : null, stdoutIsTerminal: false);
+
+        Assert.Equal(expected, environment.MinimumLogLevel);
+        Assert.Null(environment.IgnoredLogLevel);
+    }
+
+    [Theory]
+    [InlineData("verbose")]
+    [InlineData("3")]
+    [InlineData("warn")]
+    public void SHELF_LOG_LEVEL_with_a_non_name_keeps_the_default_and_is_reported(string value)
+    {
+        var environment = CliEnvironment.FromVariables(n => n == "SHELF_LOG_LEVEL" ? value : null, stdoutIsTerminal: false);
+
+        Assert.Equal(LogLevel.Warning, environment.MinimumLogLevel);
+        Assert.Equal(value, environment.IgnoredLogLevel);
+    }
+
     [Fact]
     public void WithMinimumLogLevel_returns_a_copy_with_the_new_level()
     {

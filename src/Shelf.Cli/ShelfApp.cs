@@ -27,6 +27,11 @@ public static class ShelfApp
         ArgumentNullException.ThrowIfNull(environment);
         // `environment` carries the log level; M1 adds color output (until then the NO_COLOR scenarios are weak).
 
+        if (environment.IgnoredLogLevel is { } ignored)
+        {
+            stderr.WriteLine($"warning: ignoring invalid SHELF_LOG_LEVEL '{ignored}'");
+        }
+
         using var provider = new StderrLoggerProvider(stderr);
         using var factory = new LoggerFactory([provider], new LoggerFilterOptions { MinLevel = environment.MinimumLogLevel });
         var logger = factory.CreateLogger("Shelf.Cli.ShelfApp");

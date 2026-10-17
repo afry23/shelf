@@ -29,7 +29,7 @@ public sealed class CliSteps(ScenarioEnvironment environment)
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
     {
-        var args = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var args = ArgumentSplitter.Split(arguments);
         var cliEnvironment = CliEnvironment.FromVariables(
             name => environment.Variables.GetValueOrDefault(name),
             _stdoutIsTerminal);
