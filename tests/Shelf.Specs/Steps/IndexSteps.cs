@@ -33,6 +33,13 @@ public sealed class IndexSteps(ConfigSteps workspace)
     public void ThenTheWorkHasTheTitle(string id, string title) =>
         Assert.Equal(title, Scalar("SELECT title FROM works WHERE id = $v", id));
 
+    [Then("the work {string} in the index has the normalized title {string} and the author sort key {string}")]
+    public void ThenTheWorkHasTheNormalizedTitleAndSortKey(string id, string title, string sortKey)
+    {
+        Assert.Equal(title, Scalar("SELECT title_norm FROM works WHERE id = $v", id));
+        Assert.Equal(sortKey, Scalar("SELECT author_sort FROM works WHERE id = $v", id));
+    }
+
     [Then("the work {string} in the index has the tags {string}")]
     public void ThenTheWorkHasTheTags(string id, string tags)
     {

@@ -9,6 +9,7 @@ Feature: Settings from the global and the per-library config
     Then the setting "grouping.auto_merge" is "0.9"
     And the setting "grouping.review" is "0.5"
     And the setting "grouping.max_hamming" is "10"
+    And the setting "grouping.auto_hamming" is "3"
     And there are no warnings
 
   Scenario Outline: The library config overrides the global config, which overrides the default
@@ -26,6 +27,8 @@ Feature: Settings from the global and the per-library config
       | grouping.auto_merge = 0.8  | grouping.auto_merge = 0.95 | grouping.auto_merge  | 0.95     |
       | grouping.review = 0.4      | # nothing                  | grouping.review      | 0.4      |
       | grouping.max_hamming = 6   | grouping.max_hamming = 8   | grouping.max_hamming | 8        |
+      | grouping.auto_hamming = 2  | # nothing                  | grouping.auto_hamming | 2       |
+      | grouping.auto_hamming = 1  | grouping.auto_hamming = 4  | grouping.auto_hamming | 4       |
       | grouping.auto_merge = 1    | # nothing                  | grouping.auto_merge  | 1        |
 
   Scenario Outline: Invalid threshold values are rejected with the key and the file
@@ -38,6 +41,9 @@ Feature: Settings from the global and the per-library config
       | grouping.auto_merge = 1.5 | library.toml: grouping.auto_merge: must be between 0 and 1 |
       | grouping.auto_merge = -0.1 | library.toml: grouping.auto_merge: must be between 0 and 1 |
       | grouping.review = 0.95    | grouping.review: must not exceed grouping.auto_merge     |
+      | grouping.auto_hamming = 11 | library.toml: grouping.auto_hamming: must not exceed grouping.max_hamming |
+      | grouping.auto_hamming = -1 | library.toml: grouping.auto_hamming: must be between 0 and 64 |
+      | grouping.max_hamming = 2   | library.toml: grouping.auto_hamming: must not exceed grouping.max_hamming |
       | grouping.max_hamming = 65 | library.toml: grouping.max_hamming: must be between 0 and 64 |
       | grouping.max_hamming = -1 | library.toml: grouping.max_hamming: must be between 0 and 64 |
       | grouping.max_hamming = 2.5 | library.toml: grouping.max_hamming: expected integer, found float |

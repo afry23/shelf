@@ -3,10 +3,11 @@ namespace Shelf.Core.Configuration;
 /// <summary>Thresholds of the grouping cascade (PRD 6.3, F-GRP-6).</summary>
 /// <param name="AutoMerge">Confidence from which a match is merged automatically.</param>
 /// <param name="Review">Confidence from which a match becomes a review entry instead of a new work.</param>
-/// <param name="MaxHamming">Largest SimHash Hamming distance that still counts as a match.</param>
-public sealed record GroupingSettings(double AutoMerge, double Review, int MaxHamming)
+/// <param name="MaxHamming">Largest SimHash Hamming distance that still counts as a match (needs review).</param>
+/// <param name="AutoHamming">Largest SimHash Hamming distance that counts as a sure match.</param>
+public sealed record GroupingSettings(double AutoMerge, double Review, int MaxHamming, int AutoHamming)
 {
-    public static GroupingSettings Default { get; } = new(0.9, 0.5, 10);
+    public static GroupingSettings Default { get; } = new(0.9, 0.5, 10, 3);
 }
 
 /// <summary>A library named in the global config (F-LIB-1).</summary>
@@ -21,11 +22,12 @@ public sealed class ShelfSettings
     private const string AutoMergeKey = "grouping.auto_merge";
     private const string ReviewKey = "grouping.review";
     private const string MaxHammingKey = "grouping.max_hamming";
+    private const string AutoHammingKey = "grouping.auto_hamming";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
@@ -70,6 +72,7 @@ public sealed class ShelfSettings
         var autoMerge = GroupingSettings.Default.AutoMerge;
         var review = GroupingSettings.Default.Review;
         var maxHamming = GroupingSettings.Default.MaxHamming;
+        var autoHamming = GroupingSettings.Default.AutoHamming;
         foreach (var layer in new[] { global, library })
         {
             if (layer is null)
@@ -79,13 +82,20 @@ public sealed class ShelfSettings
 
             autoMerge = ReadThreshold(layer, AutoMergeKey) ?? autoMerge;
             review = ReadThreshold(layer, ReviewKey) ?? review;
-            maxHamming = ReadMaxHamming(layer) ?? maxHamming;
+            maxHamming = ReadHamming(layer, MaxHammingKey) ?? maxHamming;
+            autoHamming = ReadHamming(layer, AutoHammingKey) ?? autoHamming;
         }
 
         if (review > autoMerge)
         {
             var source = (library ?? global)!.SourceName;
             throw new ConfigException($"{source}: {ReviewKey}: must not exceed {AutoMergeKey}", source, key: ReviewKey);
+        }
+
+        if (autoHamming > maxHamming)
+        {
+            var source = (library ?? global)!.SourceName;
+            throw new ConfigException($"{source}: {AutoHammingKey}: must not exceed {MaxHammingKey}", source, key: AutoHammingKey);
         }
 
         var libraries = global is null ? [] : ReadLibraries(global);
@@ -98,7 +108,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming), libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -123,15 +133,15 @@ public sealed class ShelfSettings
         return value;
     }
 
-    private static int? ReadMaxHamming(ConfigDocument document)
+    private static int? ReadHamming(ConfigDocument document, string key)
     {
-        var value = document.GetInteger(MaxHammingKey);
+        var value = document.GetInteger(key);
         if (value is < 0 or > 64)
         {
             throw new ConfigException(
-                $"{document.SourceName}: {MaxHammingKey}: must be between 0 and 64",
+                $"{document.SourceName}: {key}: must be between 0 and 64",
                 document.SourceName,
-                key: MaxHammingKey);
+                key: key);
         }
 
         return (int?)value;

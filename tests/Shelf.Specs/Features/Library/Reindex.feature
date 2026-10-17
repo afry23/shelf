@@ -52,6 +52,11 @@ Feature: The index is rebuilt completely from the sidecars
       | dupe_ignores      | 2    |
       | works_fts         | 2    |
 
+  Scenario: The index holds the comparable title and the sort key of the author
+    When I run shelf with arguments "reindex --library library"
+    Then the work "01J9Z3K0000000000000000001" in the index has the normalized title "designing data intensive applications" and the author sort key "Kleppmann, Martin"
+    And the work "01J9Z3K0000000000000000002" in the index has the normalized title "flatland" and the author sort key "Abbott, Edwin A."
+
   Scenario: The JSON output counts works, files and problems
     When I run shelf with arguments "reindex --library library --json"
     Then the exit code is 0

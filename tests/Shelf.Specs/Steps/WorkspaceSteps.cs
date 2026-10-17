@@ -39,6 +39,9 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         }
     }
 
+    [Given("the file {string} has the content {string}")]
+    public void GivenTheFileHasTheContent(string name, string content) => WriteFile(name, content);
+
     [Then("the file {string} does not exist")]
     public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");
 

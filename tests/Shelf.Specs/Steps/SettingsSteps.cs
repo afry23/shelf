@@ -81,6 +81,7 @@ public sealed class SettingsSteps
             "grouping.auto_merge" => grouping.AutoMerge.ToString(CultureInfo.InvariantCulture),
             "grouping.review" => grouping.Review.ToString(CultureInfo.InvariantCulture),
             "grouping.max_hamming" => grouping.MaxHamming.ToString(CultureInfo.InvariantCulture),
+            "grouping.auto_hamming" => grouping.AutoHamming.ToString(CultureInfo.InvariantCulture),
             _ => throw new ArgumentException($"Unknown setting '{key}'.", nameof(key)),
         };
         Assert.Equal(expected, actual);

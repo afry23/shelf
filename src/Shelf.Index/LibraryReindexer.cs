@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Shelf.Core.Grouping;
 using Shelf.Core.Model;
+using Shelf.Core.Review;
 
 namespace Shelf.Index;
 
@@ -19,8 +21,8 @@ public sealed record ReindexResult(int Works, int Files, IReadOnlyList<ReindexPr
 /// </summary>
 /// <remarks>
 /// Not rebuilt here: hashes, page counts, SimHash and chunks (they come from extracting the files, slice
-/// <c>m1-import-scan</c>), and the review queue (its entry format comes with <c>m1-grouping</c>).
-/// <c>title_norm</c> and <c>author_sort</c> are simple placeholders until <c>m1-grouping</c> defines the real rules.
+/// <c>m1-import-scan</c>). The review queue is mirrored from <c>.shelf/review.json</c>; a damaged queue file is
+/// reported as a problem and mirrored as empty, the file itself is never touched.
 /// </remarks>
 public static class LibraryReindexer
 {
@@ -41,6 +43,7 @@ public static class LibraryReindexer
 
         var problems = new List<ReindexProblem>();
         var works = Discover(root, problems);
+        var review = LoadReview(root, problems);
 
         using var connection = OpenIndex(IndexDatabase.PathFor(root));
         int fileCount;
@@ -48,11 +51,38 @@ public static class LibraryReindexer
         {
             Reset(connection);
             fileCount = Insert(connection, works);
+            InsertReview(connection, review);
             transaction.Commit();
         }
 
         IndexDatabase.Checkpoint(connection);
         return new ReindexResult(works.Count, fileCount, problems);
+    }
+
+    private static ReviewQueue LoadReview(string root, List<ReindexProblem> problems)
+    {
+        var path = ReviewQueue.PathFor(root);
+        try
+        {
+            return ReviewQueue.Load(path);
+        }
+        catch (ReviewQueueException e)
+        {
+            problems.Add(new ReindexProblem(path, e.Message));
+            return new ReviewQueue();
+        }
+    }
+
+    private static void InsertReview(SqliteConnection connection, ReviewQueue queue)
+    {
+        using var insert = Prepare(connection, "INSERT INTO review_queue(kind, payload_json, created_at) VALUES ($kind, $payload, $created)");
+        foreach (var entry in queue.Entries)
+        {
+            Bind(insert, "$kind", ReviewQueue.KindName(entry.Kind));
+            Bind(insert, "$payload", ReviewQueue.EntryToJson(entry));
+            Bind(insert, "$created", ReviewQueue.FormatTime(entry.CreatedAt));
+            insert.ExecuteNonQuery();
+        }
     }
 
     private static List<IndexedWork> Discover(string root, List<ReindexProblem> problems)
@@ -170,10 +200,10 @@ public static class LibraryReindexer
 
             Bind(insertWork, "$id", id);
             Bind(insertWork, "$title", s.Title);
-            Bind(insertWork, "$titleNorm", s.Title.ToLowerInvariant());
+            Bind(insertWork, "$titleNorm", TitleNormalizer.Normalize(s.Title));
             Bind(insertWork, "$subtitle", s.Subtitle);
             Bind(insertWork, "$authors", JsonArray(s.Authors));
-            Bind(insertWork, "$authorSort", s.Authors[0]);
+            Bind(insertWork, "$authorSort", AuthorNames.Parse(s.Authors[0]).SortKey);
             Bind(insertWork, "$language", s.Language);
             Bind(insertWork, "$year", s.Year);
             Bind(insertWork, "$isbn13", s.Isbn13);
