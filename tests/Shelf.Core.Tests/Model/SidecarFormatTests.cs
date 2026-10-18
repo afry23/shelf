@@ -31,6 +31,7 @@ public sealed class SidecarFormatTests
             new SidecarFile("a.pdf"),
         ],
         NotDuplicates = new NotDuplicates([Ulid.Parse("01J8XQ20000000000000000000")], [new FilePair("a.epub", "b.epub")]),
+        Related = [Ulid.Parse("01J8XQ30000000000000000000")],
     };
 
     [Fact]
@@ -46,6 +47,39 @@ public sealed class SidecarFormatTests
         Assert.Equal(ReadStatus.Reading, parsed.ReadStatus);
         Assert.Equal(new DateTimeOffset(2026, 10, 17, 7, 30, 15, TimeSpan.Zero), parsed.Added);
         Assert.Equal(new FilePair("a.epub", "b.epub"), Assert.Single(parsed.NotDuplicates.Files));
+        Assert.Equal(Ulid.Parse("01J8XQ30000000000000000000"), Assert.Single(parsed.Related));
+    }
+
+    [Fact]
+    public void Related_is_left_out_when_empty_and_is_not_an_unknown_field()
+    {
+        var text = SidecarFormat.Serialize(Full() with { Related = [] });
+
+        var parsed = SidecarFormat.Parse(text, "book.json");
+
+        Assert.DoesNotContain("related", text, StringComparison.Ordinal);
+        Assert.Empty(parsed.Related);
+        Assert.DoesNotContain("related", parsed.UnknownFields.Keys);
+    }
+
+    [Fact]
+    public void A_work_cannot_be_related_to_itself()
+    {
+        var sidecar = Full();
+
+        var error = Assert.Throws<SidecarException>(() => SidecarFormat.Validate(sidecar with { Related = [sidecar.Id] }, "x"));
+
+        Assert.Equal("x: related[1]: must not be the work's own ID", error.Message);
+    }
+
+    [Fact]
+    public void A_related_entry_that_is_not_an_ID_names_the_key()
+    {
+        var text = SidecarFormat.Serialize(Full()).Replace("01J8XQ30000000000000000000", "nope", StringComparison.Ordinal);
+
+        var error = Assert.Throws<SidecarException>(() => SidecarFormat.Parse(text, "book.json"));
+
+        Assert.Equal("book.json: related[1]: not a valid ULID", error.Message);
     }
 
     [Fact]

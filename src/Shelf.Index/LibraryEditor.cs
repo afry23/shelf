@@ -104,6 +104,7 @@ public static class LibraryEditor
             Added = added == default ? null : added,
             Files = files,
             NotDuplicates = new NotDuplicates(works, pairs),
+            Related = [.. t.Related.Concat(s.Related).Where(id => id != target.Id && id != source.Id).Distinct()],
         };
         SidecarStore.Write(targetPath, merged);
 
@@ -205,6 +206,36 @@ public static class LibraryEditor
             {
                 SidecarStore.Write(path, sidecar with { NotDuplicates = sidecar.NotDuplicates with { Works = [.. sidecar.NotDuplicates.Works, other.Id] } });
             }
+        }
+
+        Reconcile(root);
+    }
+
+    /// <summary>Records in both sidecars that the two works are editions of one book (F-GRP-5).</summary>
+    /// <exception cref="LibraryEditException">The works are the same.</exception>
+    public static void MarkRelated(string root, LibraryWork a, LibraryWork b) => ChangeRelated(root, a, b, related: true);
+
+    /// <summary>Takes the mark away from both sidecars; nothing happens if the works were not related.</summary>
+    /// <exception cref="LibraryEditException">The works are the same.</exception>
+    public static void UnmarkRelated(string root, LibraryWork a, LibraryWork b) => ChangeRelated(root, a, b, related: false);
+
+    private static void ChangeRelated(string root, LibraryWork a, LibraryWork b, bool related)
+    {
+        if (a.Id == b.Id)
+        {
+            throw new LibraryEditException("a work cannot be related to itself");
+        }
+
+        foreach (var (work, other) in new[] { (a, b), (b, a) })
+        {
+            var path = SidecarPath(root, work);
+            var sidecar = SidecarStore.Read(path);
+            if (sidecar.Related.Contains(other.Id) == related)
+            {
+                continue;
+            }
+
+            SidecarStore.Write(path, sidecar with { Related = related ? [.. sidecar.Related, other.Id] : [.. sidecar.Related.Where(id => id != other.Id)] });
         }
 
         Reconcile(root);

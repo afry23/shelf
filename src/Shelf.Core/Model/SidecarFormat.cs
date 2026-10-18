@@ -18,7 +18,7 @@ public static class SidecarFormat
     [
         "schema", "id", "title", "subtitle", "authors", "language", "year", "isbn10", "isbn13", "publisher",
         "series", "seriesIndex", "edition", "description", "tags", "rating", "readStatus", "added", "cover",
-        "files", "notDuplicates",
+        "files", "notDuplicates", "related",
     ];
 
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -150,6 +150,14 @@ public static class SidecarFormat
             }
         }
 
+        for (var i = 0; i < sidecar.Related.Count; i++)
+        {
+            if (sidecar.Related[i] == sidecar.Id)
+            {
+                Fail($"related[{i + 1}]", "must not be the work's own ID");
+            }
+        }
+
         for (var i = 0; i < sidecar.NotDuplicates.Files.Count; i++)
         {
             var pair = sidecar.NotDuplicates.Files[i];
@@ -256,6 +264,17 @@ public static class SidecarFormat
                 w.WriteEndObject();
             }
 
+            if (sidecar.Related.Count > 0)
+            {
+                w.WriteStartArray("related");
+                foreach (var work in sidecar.Related)
+                {
+                    w.WriteStringValue(work.ToString());
+                }
+
+                w.WriteEndArray();
+            }
+
             foreach (var (name, value) in sidecar.UnknownFields)
             {
                 w.WritePropertyName(name);
@@ -342,6 +361,7 @@ public static class SidecarFormat
                 Cover = String(root, "cover", ""),
                 Files = Files(root),
                 NotDuplicates = NotDuplicates(root),
+                Related = Related(root),
                 UnknownFields = unknown,
             };
         }
@@ -398,6 +418,22 @@ public static class SidecarFormat
             }
 
             return files;
+        }
+
+        private List<Ulid> Related(JsonElement root)
+        {
+            var related = new List<Ulid>();
+            foreach (var (item, index) in Items(root, "related", ""))
+            {
+                if (item.ValueKind != JsonValueKind.String || !Ulid.TryParse(item.GetString(), out var work))
+                {
+                    throw Fail($"related[{index}]", "not a valid ULID");
+                }
+
+                related.Add(work);
+            }
+
+            return related;
         }
 
         private NotDuplicates NotDuplicates(JsonElement root)

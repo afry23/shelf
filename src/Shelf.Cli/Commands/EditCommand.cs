@@ -27,13 +27,15 @@ internal static class EditCommand
         var tags = Many("--tag", "Tag (repeat for several); replaces all tags, \"\" removes them all");
         var addTags = Many("--add-tag", "Tag to add (repeatable)");
         var removeTags = Many("--remove-tag", "Tag to remove (repeatable)");
+        var addRelated = Many("--add-related", "Work that is another edition of this one (repeatable); marked on both works");
+        var removeRelated = Many("--remove-related", "Work that is not another edition of this one (repeatable)");
         var rating = Text("--rating", "Rating from 1 to 5; \"\" removes it");
         var status = Text("--status", "unread, reading or read");
         var library = LibraryContext.CreateOption();
 
         var command = new Command("edit", "Change the metadata of a work");
         command.Arguments.Add(reference);
-        foreach (var option in new Option[] { title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, description, tags, addTags, removeTags, rating, status, library })
+        foreach (var option in new Option[] { title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, description, tags, addTags, removeTags, addRelated, removeRelated, rating, status, library })
         {
             command.Options.Add(option);
         }
@@ -124,6 +126,13 @@ internal static class EditCommand
                 else { var st = Enum.Parse<ReadStatus>(v, ignoreCase: true); changed.Add("status"); edits.Add(s => s with { ReadStatus = st }); }
             }
 
+            var relatedAdd = parseResult.GetValue(addRelated) ?? [];
+            var relatedRemove = parseResult.GetValue(removeRelated) ?? [];
+            if (relatedAdd.Length + relatedRemove.Length > 0)
+            {
+                changed.Add("related");
+            }
+
             if (problem is null && changed.Count == 0)
             {
                 problem = "nothing to change; give at least one option such as --title";
@@ -137,7 +146,20 @@ internal static class EditCommand
 
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
-            LibraryEditor.Update(context.Root, work, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)));
+            if (edits.Count > 0)
+            {
+                LibraryEditor.Update(context.Root, work, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)));
+            }
+
+            foreach (var reference in relatedAdd)
+            {
+                LibraryEditor.MarkRelated(context.Root, work, WorkSupport.Resolve(context, environment, reference));
+            }
+
+            foreach (var reference in relatedRemove)
+            {
+                LibraryEditor.UnmarkRelated(context.Root, work, WorkSupport.Resolve(context, environment, reference));
+            }
 
             if (parseResult.GetValue(json))
             {

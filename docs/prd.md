@@ -479,9 +479,12 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
     "works": ["01J8XQ2…"],
     "files": [["Designing Data-Intensive Applications.epub",
                "Designing Data-Intensive Applications (1).epub"]]
-  }
+  },
+  "related": ["01J7AB1…"]
 }
 ```
+
+`related` (F-GRP-5, added in M2) lists the works that are another edition of this one. It is optional (left out when empty), written on both works, and `schema` stays 1: a shelf that does not know the field keeps it as an unknown field.
 
 ## 11. Milestones
 

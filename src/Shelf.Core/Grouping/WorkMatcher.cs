@@ -39,7 +39,11 @@ public enum GroupingAction
     CreateNewWork,
 }
 
-public sealed record GroupingMatch(Ulid WorkId, double Confidence, IReadOnlyList<string> Signals);
+public sealed record GroupingMatch(Ulid WorkId, double Confidence, IReadOnlyList<string> Signals)
+{
+    /// <summary>The match is probably another edition of the same book (F-GRP-5): the year or the ISBN differs.</summary>
+    public bool IsOtherEdition => Signals.Contains(WorkMatcher.OtherYearSignal) || Signals.Contains(WorkMatcher.IsbnDiffersSignal);
+}
 
 public sealed record GroupingDecision(GroupingAction Action, Ulid? WorkId, double Confidence, IReadOnlyList<GroupingMatch> Matches);
 
@@ -59,6 +63,8 @@ public sealed class WorkMatcher
     public const double IsbnConfidence = 1.0;
     public const double TitleAuthorConfidence = 0.95;
     public const double TitleAuthorOtherYearConfidence = 0.6;
+    public const string OtherYearSignal = "title and author match, year differs";
+    public const string IsbnDiffersSignal = "ISBN differs";
     public const double FingerprintNearConfidence = 0.9;
     public const double FingerprintFarConfidence = 0.6;
 
@@ -170,7 +176,7 @@ public sealed class WorkMatcher
             }
 
             var otherYear = signature.Year is { } a && candidate.Signature.Year is { } b && a != b;
-            var signals = new List<string> { otherYear ? "title and author match, year differs" : "title and author match" };
+            var signals = new List<string> { otherYear ? OtherYearSignal : "title and author match" };
             var confidence = otherYear ? TitleAuthorOtherYearConfidence : TitleAuthorConfidence;
             ApplyGuards(candidate, file, signals, ref confidence);
             matches.Add(new GroupingMatch(candidate.Id, confidence, signals));
@@ -215,7 +221,7 @@ public sealed class WorkMatcher
         var cap = TitleAuthorOtherYearConfidence;
         if (file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
         {
-            signals.Add("ISBN differs");
+            signals.Add(IsbnDiffersSignal);
             confidence = Math.Min(confidence, cap);
         }
 
