@@ -245,13 +245,14 @@ shelf reindex [--embeddings]              Rebuild index
 shelf search <query> [--limit] [--json]   Metadata/full-text search
 shelf semantic <text> [--chunks] [--json] Semantic search
 shelf show <work-id|path>                 Details of a work
-shelf edit <work-id> [--title ...]        Change metadata
+shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf tag add|rm|list|rename|merge        Manage tags
 shelf dupes [--interactive]               Find and clean up duplicates
+shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>
 shelf review                              Review uncertain assignments
 shelf organize [--apply] [--pattern ...]  Organize by pattern
-shelf undo                                Revert last file operation
+shelf undo                                Revert the last organize, tag or dupes run
 shelf open <work-id> [--format pdf]       Open with default app
 shelf serve [--port 8420]                 Start web UI + API
 shelf mcp [--http]                        MCP server (stdio, optionally HTTP)

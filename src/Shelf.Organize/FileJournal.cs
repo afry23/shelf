@@ -35,6 +35,7 @@ public sealed class FileJournal
         root = Normalize(root);
         clock ??= TimeProvider.System;
         JournalRecovery.Recover(root);
+        JournalRetention.Prune(root);
 
         var directory = LibraryPaths.JournalDirectory(root);
         Directory.CreateDirectory(directory);
