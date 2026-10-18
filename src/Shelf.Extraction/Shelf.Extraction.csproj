@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- The only project that references the EPUB and PDF libraries (ADR 0005). -->
+  <ItemGroup>
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="VersOne.Epub" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Extraction.Tests" />
+  </ItemGroup>
+
+</Project>

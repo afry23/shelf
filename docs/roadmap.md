@@ -75,15 +75,17 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | Gap | Lands in | Note |
 |---|---|---|
 | ONNX Runtime and the XLM-R tokenizer under Native AOT (managed and native part, token-ID parity) | first slice of M3 | no spike was done; [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md) row 11 stays `pending` |
-| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | Storage, parsers and TOML are already confirmed there |
-| Cold start of the real commands against < 150 ms | M1 exit criteria (performance) | the spike binary measured about 8 ms for `--version` and `--help` on `osx-arm64`, observation only |
-| Project setup for the executable: Web SDK or `MvcEnhancedModelMetadataSupport=false` with the runtime feature switch and the `<Using>` items; `CA1416` handling (assembly-level `SupportedOSPlatform`) with warnings as errors | M1 (executable) and M4 (web) | [ADR 0008](adr/0008-combined-aot-binary.md) findings 1 and 2, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) finding 2 |
+| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | **CLI parts done in M1:** the `aot` job publishes the real `shelf` on `linux-x64` and runs an end-to-end check; MCP, web and covers remain |
+| Cold start of the real commands against < 150 ms | M1 exit criteria (performance) | **Done in M1:** 30 ms for `--version` on `osx-arm64` ([ADR 0011](adr/0011-m1-performance.md)) |
+| Project setup for the executable: Web SDK or `MvcEnhancedModelMetadataSupport=false` with the runtime feature switch and the `<Using>` items; `CA1416` handling (assembly-level `SupportedOSPlatform`) with warnings as errors | M4 (web): the CLI of M1 has no web reference, so the setup does not apply yet | [ADR 0008](adr/0008-combined-aot-binary.md) findings 1 and 2, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) finding 2 |
 | UI build in CI: `actions/setup-node` with Node.js 26, `npm ci`, a type-check step, `allowScripts` decision for fsevents; negation in the root `.gitignore` for `package.json` and `package-lock.json` | M4 | [ADR 0009](adr/0009-frontend-toolchain-licenses-and-maintenance.md) |
 | `mcp.readOnly` (hiding write tools), one error format for `/api/v1`, OpenAPI path and token flow in the browser | M3 and M4 | [ADR 0006](adr/0006-mcp-sdk-aot.md), [ADR 0007](adr/0007-web-backend-aot.md) |
 | Signature and quarantine of the native libraries on macOS (`vec0`, `libpdfium`, `libSkiaSharp`) | M5 distribution | [ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md) R5, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) R5 |
-| The integrated CsToml adapter in `Shelf.Core` published on `linux-x64` | with the first CI AOT job that includes config loading (M1) | only the prototype was published there ([ADR 0003](adr/0003-toml-parser.md)) |
+| The integrated CsToml adapter in `Shelf.Core` published on `linux-x64` | **Done in M1:** the `aot` job publishes the integrated adapter on `linux-x64` and the end-to-end check reads a config | only the prototype was published there ([ADR 0003](adr/0003-toml-parser.md)) |
 
 ### M1 – Foundation
+
+**Status: closed 2026-10-18, pre-release `v0.1.0`.** Slice plans: `docs/slices/m1-*.md`; performance: [ADR 0011](adr/0011-m1-performance.md).
 
 **Goal:** A library can be created, imported, grouped, and searched via the CLI.
 
@@ -108,6 +110,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 - Feature files exist for all M1 requirements, and all BDD scenarios are green.
 - Acceptance criteria 1 and 3 are met.
 - Performance on the synthetic library: search p95 < 100 ms, incremental scan without changes < 3 s, initial indexing < 15 min, cold start < 150 ms.
+
+**Result:** all exit criteria met. BDD green (1321 tests). Acceptance 1: 99-100 of 100 pairs merged, no wrong merge (`Calibration.feature`); acceptance 3: `reindex` restores everything from the sidecars. Performance on `osx-arm64`, reference library of 10,000 works / 15,000 files: cold start 30 ms, scan 0.9 s, initial index 0.9 min, search p95 98 ms for typical queries (176 ms for words in nearly every passage; see ADR 0011). F-LIB-3 stays out of M1. Not yet run on shared `linux-x64` runners: `perf.yml` does that on `main`.
 
 ### M2 – Order
 

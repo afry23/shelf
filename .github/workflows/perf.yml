@@ -1,0 +1,62 @@
+name: perf
+
+# Measures the performance targets of PRD 9.1 with the Native AOT binary on the generated reference library
+# (10,000 works, 15,000 files). Not part of the pull request gate: it needs several minutes and a runner with a
+# stable disk. Runs on main, weekly and on request. Shared runners are slower than the reference hardware, so the
+# targets are applied with a factor (see --tolerance); the numbers are in the job log.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/perf/**'
+      - 'tests/Shelf.TestData/**'
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      tolerance:
+        description: Factor applied to every target
+        default: '2'
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  perf:
+    name: perf (linux-x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install AOT prerequisites
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish (Native AOT)
+        run: >
+          dotnet publish src/Shelf.Cli/Shelf.Cli.csproj
+          -c Release -r linux-x64 -p:PublishAot=true -o "$RUNNER_TEMP/aot"
+      - name: Generate the reference library
+        run: >
+          dotnet run --project tests/Shelf.TestData -c Release --
+          generate --preset reference --out "$RUNNER_TEMP/generated"
+      - name: Import
+        run: |
+          "$RUNNER_TEMP/aot/shelf" init "$RUNNER_TEMP/library"
+          time "$RUNNER_TEMP/aot/shelf" import "$RUNNER_TEMP/generated/input" --library "$RUNNER_TEMP/library"
+      - name: Measure
+        run: >
+          python3 tests/perf/measure.py
+          --shelf "$RUNNER_TEMP/aot/shelf" --library "$RUNNER_TEMP/library"
+          --tolerance "${{ github.event.inputs.tolerance || '2' }}"

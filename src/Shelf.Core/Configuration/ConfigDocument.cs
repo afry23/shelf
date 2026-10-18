@@ -13,11 +13,13 @@ namespace Shelf.Core.Configuration;
 public sealed class ConfigDocument
 {
     private readonly FrozenDictionary<string, ConfigNode> _root;
+    private readonly string _keyPrefix;
 
-    internal ConfigDocument(string sourceName, FrozenDictionary<string, ConfigNode> root)
+    internal ConfigDocument(string sourceName, FrozenDictionary<string, ConfigNode> root, string keyPrefix = "")
     {
         SourceName = sourceName;
         _root = root;
+        _keyPrefix = keyPrefix;
     }
 
     /// <summary>A document without any value.</summary>
@@ -59,6 +61,58 @@ public sealed class ConfigDocument
     public bool? GetBoolean(string key) =>
         Find(key) is { } node ? (bool)Expect(node, key, ConfigValueKind.Boolean).Value : null;
 
+    /// <summary>
+    /// The dotted keys of all values that are not tables, in a stable order. An array (including an array
+    /// of tables) is one value. Used to find keys that shelf does not know.
+    /// </summary>
+    public IReadOnlyList<string> LeafKeys()
+    {
+        var keys = new List<string>();
+        Collect(_root, prefix: string.Empty, keys);
+        return keys;
+    }
+
+    /// <summary>
+    /// The tables of an array of tables (<c>[[key]]</c>) as documents; empty if absent.
+    /// Throws <see cref="ConfigException"/> if the value is not an array of tables.
+    /// Keys in errors of an element read <c>key[1].name</c> (1-based).
+    /// </summary>
+    public IReadOnlyList<ConfigDocument> GetTables(string key)
+    {
+        if (Find(key) is not { } node)
+        {
+            return [];
+        }
+
+        var items = (System.Collections.Immutable.ImmutableArray<ConfigNode>)Expect(node, key, ConfigValueKind.Array).Value;
+        var tables = new List<ConfigDocument>(items.Length);
+        for (var i = 0; i < items.Length; i++)
+        {
+            var elementKey = $"{key}[{i + 1}]";
+            tables.Add(new ConfigDocument(
+                SourceName,
+                Expect(items[i], elementKey, ConfigValueKind.Table).AsTable(),
+                _keyPrefix + elementKey + "."));
+        }
+
+        return tables;
+    }
+
+    private static void Collect(FrozenDictionary<string, ConfigNode> table, string prefix, List<string> keys)
+    {
+        foreach (var (name, node) in table.OrderBy(e => e.Key, StringComparer.Ordinal))
+        {
+            if (node.Kind == ConfigValueKind.Table)
+            {
+                Collect(node.AsTable(), prefix + name + ".", keys);
+            }
+            else
+            {
+                keys.Add(prefix + name);
+            }
+        }
+    }
+
     private ConfigNode Expect(ConfigNode node, string key, ConfigValueKind expected)
     {
         if (node.Kind == expected)
@@ -66,10 +120,11 @@ public sealed class ConfigDocument
             return node;
         }
 
+        var fullKey = _keyPrefix + key;
         throw new ConfigException(
-            $"{SourceName}: {key}: expected {ConfigNode.NameOf(expected)}, found {node.KindName}",
+            $"{SourceName}: {fullKey}: expected {ConfigNode.NameOf(expected)}, found {node.KindName}",
             SourceName,
-            key: key);
+            key: fullKey);
     }
 
     private ConfigNode? Find(string key)

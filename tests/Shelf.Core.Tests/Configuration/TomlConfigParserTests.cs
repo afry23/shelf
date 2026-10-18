@@ -141,4 +141,27 @@ public sealed class TomlConfigParserTests
         // The reader is pinned to TOML 1.0.0 (ADR 0003, Q9).
         Assert.Throws<ConfigException>(() => Parse(toml));
     }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("\n\n", true)]
+    [InlineData("# a\r\n  # b\t\r\n\t\n", true)]
+    [InlineData("# a = [1, 2]\n# [t]", true)]
+    [InlineData("a = 1", false)]
+    [InlineData("# a\na = 1", false)]
+    [InlineData("[t]", false)]
+    [InlineData("  a = 1 # c", false)]
+    [InlineData("# \u00e4", false)]
+    [InlineData("# a\u0001", false)]
+    [InlineData("# a\u007f", false)]
+    public void HasNoContent_is_true_only_for_plain_ASCII_blank_and_comment_lines(string text, bool expected) =>
+        Assert.Equal(expected, TomlConfigParser.HasNoContent(Encoding.UTF8.GetBytes(text)));
+
+    [Fact]
+    public void A_comment_with_a_byte_order_mark_still_goes_through_the_library()
+    {
+        var document = ConfigFile.Parse("\uFEFF# nothing\n", "test.toml");
+
+        Assert.False(document.Contains("a"));
+    }
 }
