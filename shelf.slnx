@@ -8,6 +8,7 @@
     <Project Path="src/Shelf.Mcp/Shelf.Mcp.csproj" />
     <Project Path="src/Shelf.Organize/Shelf.Organize.csproj" />
     <Project Path="src/Shelf.Semantic/Shelf.Semantic.csproj" />
+    <Project Path="src/Shelf.Web/Shelf.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
@@ -19,6 +20,7 @@
     <Project Path="tests/Shelf.Semantic.Tests/Shelf.Semantic.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
     <Project Path="tests/Shelf.TestData.Tests/Shelf.TestData.Tests.csproj" />
+    <Project Path="tests/Shelf.Web.Tests/Shelf.Web.Tests.csproj" />
     <Project Path="tests/Shelf.TestData/Shelf.TestData.csproj" />
   </Folder>
 </Solution>

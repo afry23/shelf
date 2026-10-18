@@ -35,6 +35,18 @@ public sealed record McpSettings(int MaxChars, bool ReadOnly = false)
     public static McpSettings Default { get; } = new(DefaultMaxChars);
 }
 
+/// <summary>The web server (F-WEB-1, F-WEB-2). Set in the global config only: a token must not travel with a library folder.</summary>
+/// <param name="Port">The port; 0 lets the system choose one.</param>
+/// <param name="Bind">The IP address to listen on; a loopback address unless a token is set.</param>
+/// <param name="Token">The access token; null when none is set (an empty value counts as none).</param>
+public sealed record WebSettings(int Port, string Bind, string? Token)
+{
+    public const int DefaultPort = 8420;
+    public const string DefaultBind = "127.0.0.1";
+
+    public static WebSettings Default { get; } = new(DefaultPort, DefaultBind, null);
+}
+
 /// <summary>A library named in the global config (F-LIB-1).</summary>
 public sealed record LibraryEntry(string Name, string Path);
 
@@ -52,17 +64,21 @@ public sealed class ShelfSettings
     private const string ModelKey = "semantic.model";
     private const string McpMaxCharsKey = "mcp.max_chars";
     private const string McpReadOnlyKey = "mcp.read_only";
+    private const string WebPortKey = "web.port";
+    private const string WebBindKey = "web.bind";
+    private const string WebTokenKey = "web.token";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
     private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
         OrganizeSettings organize,
         SemanticSettings semantic,
         McpSettings mcp,
+        WebSettings web,
         IReadOnlyList<LibraryEntry> libraries,
         string? defaultLibrary,
         IReadOnlyList<string> warnings)
@@ -71,6 +87,7 @@ public sealed class ShelfSettings
         Organize = organize;
         Semantic = semantic;
         Mcp = mcp;
+        Web = web;
         Libraries = libraries;
         DefaultLibrary = defaultLibrary;
         Warnings = warnings;
@@ -84,6 +101,8 @@ public sealed class ShelfSettings
 
     public McpSettings Mcp { get; }
 
+    public WebSettings Web { get; }
+
     /// <summary>Libraries from <c>[[libraries]]</c> of the global config; the per-library config cannot add any.</summary>
     public IReadOnlyList<LibraryEntry> Libraries { get; }
 
@@ -94,7 +113,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, WebSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -147,6 +166,7 @@ public sealed class ShelfSettings
             throw new ConfigException($"{source}: {AutoHammingKey}: must not exceed {MaxHammingKey}", source, key: AutoHammingKey);
         }
 
+        var web = global is null ? WebSettings.Default : ReadWeb(global);
         var libraries = global is null ? [] : ReadLibraries(global);
         var defaultLibrary = global?.GetString(DefaultLibraryKey);
         if (defaultLibrary is not null && !libraries.Any(l => l.Name == defaultLibrary))
@@ -157,7 +177,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars, readOnly), libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars, readOnly), web, libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -194,6 +214,24 @@ public sealed class ShelfSettings
         }
 
         return (int?)value;
+    }
+
+    private static WebSettings ReadWeb(ConfigDocument document)
+    {
+        var port = document.GetInteger(WebPortKey);
+        if (port is < 0 or > 65535)
+        {
+            throw new ConfigException($"{document.SourceName}: {WebPortKey}: must be between 0 and 65535", document.SourceName, key: WebPortKey);
+        }
+
+        var bind = document.GetString(WebBindKey);
+        if (bind is { Length: 0 })
+        {
+            throw new ConfigException($"{document.SourceName}: {WebBindKey}: must not be empty", document.SourceName, key: WebBindKey);
+        }
+
+        var token = document.GetString(WebTokenKey);
+        return new WebSettings((int?)port ?? WebSettings.DefaultPort, bind ?? WebSettings.DefaultBind, string.IsNullOrEmpty(token) ? null : token);
     }
 
     private static string? ReadModel(ConfigDocument document)

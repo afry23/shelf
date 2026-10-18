@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- The Web SDK switches these on for AOT; a plain SDK project must do it by hand, or MapGet binds to the reflection-based
+         overload (IL2026, IL3050). The generator emits interceptors in this namespace. -->
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+    <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
+    <ProjectReference Include="..\Shelf.Library\Shelf.Library.csproj" />
+  </ItemGroup>
+
+  <!-- A plain SDK project with a FrameworkReference lacks the implicit usings of Microsoft.NET.Sdk.Web; without them the
+       Minimal API request delegate generator emits invalid code (ADR 0008, finding 1). -->
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Web.Tests" />
+  </ItemGroup>
+
+</Project>
