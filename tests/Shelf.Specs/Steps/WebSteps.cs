@@ -31,6 +31,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private byte[] _bytes = [];
     private string? _cookie;
     private JsonNode? _json;
+
+    /// <summary>The address of the running server, as a browser reaches it.</summary>
+    public Uri BaseAddress => new($"http://127.0.0.1:{_port}/");
+
+    /// <summary>The standard error of the running server.</summary>
+    public string ServerErrors => _stderr.ToString();
     private string _workId = string.Empty;
     private string _script = string.Empty;
     private string _style = string.Empty;
@@ -216,6 +222,11 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     [Then("the JSON document has the path {string} with the method {string}")]
     public void ThenTheDocumentHasThePath(string path, string method) => Assert.NotNull(Json()["paths"]![path]![method]);
+
+    // Before the working directory is deleted (the hook of ConfigSteps has the default order): a server that still runs keeps writing
+    // into the index folder while it is being removed.
+    [AfterScenario(Order = 200)]
+    public void StopTheServer() => Stop();
 
     public void Dispose()
     {

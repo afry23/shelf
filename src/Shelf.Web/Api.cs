@@ -215,20 +215,41 @@ internal static class Api
                 0,
                 0,
                 null,
-                [.. found.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, r.Passages))]);
+                [.. found.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, [.. r.Passages.Select(p => Passage(r.Id, p))]))]);
         }
 
         var semantic = service.SemanticSearch(q, level, hybrid: mode == "hybrid", count);
+
+        // At the level of passages every hit is a passage, and one book can have several: the answer has one result per book,
+        // in the order of its best passage, with all its passages.
+        var books = new List<SearchItem>();
+        foreach (var hit in semantic.Results)
+        {
+            var passages = hit.Passage is { } p ? new[] { Passage(hit.Id, p) } : [];
+            var at = books.FindIndex(b => b.Id == hit.Id);
+            if (at < 0)
+            {
+                books.Add(new SearchItem(hit.Id, hit.Title, hit.Authors, hit.Year, hit.Language, hit.Formats, hit.Score, passages));
+            }
+            else
+            {
+                books[at] = books[at] with { Passages = [.. books[at].Passages, .. passages] };
+            }
+        }
+
         return new SearchResponse(
             semantic.Query,
             mode,
             semantic.Level,
-            semantic.Total,
+            books.Count,
             semantic.PendingFiles,
             semantic.WorksWithoutEmbedding,
             semantic.Note,
-            [.. semantic.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, r.Passage is { } p ? [p] : []))]);
+            [.. books]);
     }
+
+    private static Passage Passage(string work, PassageRef p) =>
+        new(FileIds.Make(work, Path.GetFileName(p.File)), p.File, p.Format, p.Location, p.Where, p.Snippet);
 
     /// <summary>The ID of a work, or a refusal. The service also reads folder and file paths; a web client must not probe the disk with them.</summary>
     private static string RequireId(string id) =>

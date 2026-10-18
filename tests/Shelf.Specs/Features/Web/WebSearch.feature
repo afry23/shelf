@@ -49,6 +49,7 @@ Feature: Searching over HTTP
     And the JSON field "results[0].id" of the response is "01J9Z3K0000000000000000001"
     And the JSON field "results[0].title" of the response is "Kubernetes Patterns"
     And the JSON field "results[0].passages[0].format" of the response is "epub"
+    And the JSON field "results[0].passages[0].fileId" of the response is "01J9Z3K0000000000000000001~kp.epub"
     And the JSON field "results[0].passages[0].location" of the response is not empty
     And the JSON field "results[0].passages[0].snippet" of the response contains "[sidecar]"
 
@@ -132,3 +133,12 @@ Feature: Searching over HTTP
     Given the web server is running on the library "library" with the arguments "--token s3cret"
     When I request "GET /api/v1/search?q=event"
     Then the response status is 401
+
+  Scenario: At the level of passages a book appears once, with all its passages
+    When I request "GET /api/v1/search?q=event+sourcing+projection+read+model&mode=semantic&level=chunk"
+    Then the response status is 200
+    And the JSON field "level" of the response is "chunk"
+    And the JSON field "total" of the response is 3
+    And the JSON array "results" of the response has 3 entries
+    And the JSON field "results[0].title" of the response is "Event Sourcing in Practice"
+    And the JSON array "results[0].passages" of the response has 2 entries

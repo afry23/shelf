@@ -81,6 +81,13 @@ jobs:
         with:
           path: ${{ runner.temp }}/e5
           key: e5-small-614241f6
+      - name: Cache the browser of the UI tests
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+          key: playwright-${{ matrix.rid }}-1.63.0
       - name: Fetch the embedding model (pinned checksum)
         run: tools/fetch-e5-model.sh "$RUNNER_TEMP/e5"
       - run: dotnet --info

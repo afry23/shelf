@@ -32,6 +32,13 @@ public sealed record Facets(
 /// <summary>One page of the library, and the counts of every facet over all the works that pass the filter.</summary>
 public sealed record WorkList(int Total, int Offset, int Limit, WorkItem[] Items, Facets Facets);
 
+/// <summary>A place in a file where a search found something, with the ID of the file, so that a hit can link to the reader.</summary>
+/// <param name="FileId">See <see cref="FileIds"/>.</param>
+/// <param name="File">Library-relative path.</param>
+/// <param name="Location"><c>page=N</c> or an EPUB location.</param>
+/// <param name="Where">The location for people: "page 12".</param>
+public sealed record Passage(string FileId, string File, string Format, string Location, string Where, string Snippet);
+
 /// <summary>A work found by a search, with the places in its text (none for a search by meaning at the level of works).</summary>
 public sealed record SearchItem(
     string Id,
@@ -41,7 +48,7 @@ public sealed record SearchItem(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Language,
     string[] Formats,
     double Score,
-    PassageRef[] Passages);
+    Passage[] Passages);
 
 /// <param name="Mode"><c>fulltext</c>, <c>semantic</c> or <c>hybrid</c>.</param>
 /// <param name="Level"><c>work</c>, or <c>chunk</c> for passages (semantic and hybrid only).</param>
