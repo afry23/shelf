@@ -113,6 +113,9 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
     [Then("the file {string} exists")]
     public void ThenTheFileExists(string name) => Assert.True(File.Exists(PathOf(name)), $"Missing file {name}");
 
+    [Then("the file {string} has the content {string}")]
+    public void ThenTheFileHasTheContent(string name, string content) => Assert.Equal(content, File.ReadAllText(PathOf(name)));
+
     [Then("the file {string} does not exist")]
     public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");
 

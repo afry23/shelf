@@ -244,6 +244,7 @@ shelf scan                                Incremental scan
 shelf reindex [--embeddings]              Rebuild index
 shelf search <query> [--limit] [--json]   Metadata/full-text search
 shelf semantic <text> [--chunks] [--json] Semantic search
+shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf tag add|rm|list|rename|merge        Manage tags

@@ -83,6 +83,7 @@ public sealed class SettingsSteps
             "grouping.max_hamming" => grouping.MaxHamming.ToString(CultureInfo.InvariantCulture),
             "grouping.auto_hamming" => grouping.AutoHamming.ToString(CultureInfo.InvariantCulture),
             "organize.pattern" => Settings().Organize.Pattern.Text,
+            "semantic.model" => Settings().Semantic.Model,
             _ => throw new ArgumentException($"Unknown setting '{key}'.", nameof(key)),
         };
         Assert.Equal(expected, actual);
