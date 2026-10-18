@@ -222,7 +222,7 @@ public static class LibraryEditor
     // ---- helpers ----
 
     /// <summary>Moves a file through the journal; a target that is taken is an error, never overwritten (F-ORG-7).</summary>
-    private static void Move(FileJournal journal, string from, string to)
+    internal static void Move(FileJournal journal, string from, string to)
     {
         switch (journal.Move(from, to))
         {
@@ -256,7 +256,7 @@ public static class LibraryEditor
     }
 
     /// <summary>Deletes the folder, and empty parents up to the root, if nothing is left in it.</summary>
-    private static bool RemoveFolderIfEmpty(string root, string directory)
+    internal static bool RemoveFolderIfEmpty(string root, string directory)
     {
         if (!Directory.Exists(directory) || Directory.EnumerateFileSystemEntries(directory).Any())
         {
@@ -301,7 +301,7 @@ public static class LibraryEditor
     private static void SaveQueue(string root, ReviewQueue queue) => queue.Save(ReviewQueue.PathFor(root));
 
     /// <summary>Brings the index in line with the folders and the review queue file.</summary>
-    private static void Reconcile(string root)
+    internal static void Reconcile(string root)
     {
         LibraryScanner.Scan(root);
         RefreshMirror(root, LoadQueue(root));

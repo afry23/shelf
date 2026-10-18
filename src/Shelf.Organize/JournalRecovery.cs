@@ -40,9 +40,12 @@ public static class JournalRecovery
                     continue;
                 }
 
-                var happened = op.Kind == JournalOpKind.Mkdir
-                    ? Directory.Exists(LibraryPaths.Absolute(root, op.To))
-                    : !File.Exists(LibraryPaths.Absolute(root, op.From)) && File.Exists(LibraryPaths.Absolute(root, op.To));
+                var happened = op.Kind switch
+                {
+                    JournalOpKind.Mkdir => Directory.Exists(LibraryPaths.Absolute(root, op.To)),
+                    JournalOpKind.Create => File.Exists(LibraryPaths.Absolute(root, op.To)) && LibraryPaths.Hash(LibraryPaths.Absolute(root, op.To)) == op.Sha256,
+                    _ => !File.Exists(LibraryPaths.Absolute(root, op.From)) && File.Exists(LibraryPaths.Absolute(root, op.To)),
+                };
                 if (happened)
                 {
                     data.Ops[i] = op with { Status = JournalOpStatus.Done };
@@ -50,7 +53,7 @@ public static class JournalRecovery
                     continue;
                 }
 
-                if (op.Kind != JournalOpKind.Mkdir && !File.Exists(LibraryPaths.Absolute(root, op.From)))
+                if (op.Kind is JournalOpKind.Move or JournalOpKind.Trash && !File.Exists(LibraryPaths.Absolute(root, op.From)))
                 {
                     problems.Add($"{op.From}: gone from both places after a crash ({System.IO.Path.GetFileName(path)})");
                 }

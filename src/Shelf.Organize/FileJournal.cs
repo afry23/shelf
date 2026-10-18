@@ -70,6 +70,50 @@ public sealed class FileJournal
         return Execute(JournalOpKind.Trash, full, free);
     }
 
+    /// <summary>
+    /// Writes a new file that must not exist yet. Undo deletes it again, if it is unchanged by then.
+    /// </summary>
+    public MoveStatus Create(string path, byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var full = System.IO.Path.GetFullPath(path);
+        var relative = LibraryPaths.Relative(_root, full);
+        if (File.Exists(full) || Directory.Exists(full))
+        {
+            return MoveStatus.Collision;
+        }
+
+        EnsureParents(System.IO.Path.GetDirectoryName(full)!);
+        var op = new JournalOp(JournalOpKind.Create, string.Empty, relative, LibraryPaths.Hash(content), JournalOpStatus.Pending);
+        _data.Ops.Add(op);
+        Save();
+        LibraryPaths.WriteAtomic(full, content);
+        _data.Ops[^1] = op with { Status = JournalOpStatus.Done };
+        Save();
+        return MoveStatus.Moved;
+    }
+
+    /// <summary>
+    /// Replaces the content of a file. The old file is kept next to the journal (<c>&lt;timestamp&gt;.backup/</c>), so
+    /// undo can bring back its exact bytes.
+    /// </summary>
+    /// <exception cref="JournalException">The file does not exist.</exception>
+    public void Replace(string path, byte[] content)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        var relative = LibraryPaths.Relative(_root, full);
+        var backup = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_path)!, _stamp + ".backup", relative.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        if (Execute(JournalOpKind.Move, full, backup) != MoveStatus.Moved)
+        {
+            throw new JournalException($"cannot replace '{relative}': the file is missing or its backup name is taken");
+        }
+
+        if (Create(full, content) != MoveStatus.Moved)
+        {
+            throw new JournalException($"cannot replace '{relative}': the path was taken again");
+        }
+    }
+
     /// <summary>Marks the run as complete. Without it, the next run recovers the journal.</summary>
     public void Finish()
     {

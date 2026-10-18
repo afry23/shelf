@@ -59,6 +59,22 @@ public static class JournalUndo
             }
 
             var current = LibraryPaths.Absolute(root, op.To);
+            if (op.Kind == JournalOpKind.Create)
+            {
+                var problem = !File.Exists(current) ? "missing" : LibraryPaths.Hash(current) != op.Sha256 ? "changed since" : null;
+                if (problem is not null)
+                {
+                    skipped.Add(new UndoSkip(op.To, problem));
+                    continue;
+                }
+
+                File.Delete(current);
+                data.Ops[i] = op with { Status = JournalOpStatus.Undone };
+                reverted++;
+                LibraryPaths.WriteAtomic(path, JournalFormat.Serialize(data));
+                continue;
+            }
+
             var original = LibraryPaths.Absolute(root, op.From);
             string? reason = null;
             if (!File.Exists(current))

@@ -29,6 +29,8 @@ internal static class LibraryPaths
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
+    public static string Hash(byte[] content) => Convert.ToHexStringLower(SHA256.HashData(content));
+
     /// <summary>Writes through a temporary file, flushed to disk, so a crash leaves the old or the new content.</summary>
     public static void WriteAtomic(string path, byte[] content)
     {

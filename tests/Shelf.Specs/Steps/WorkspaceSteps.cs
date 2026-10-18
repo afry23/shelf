@@ -9,6 +9,8 @@ namespace Shelf.Specs.Steps;
 [Binding]
 public sealed class WorkspaceSteps(ConfigSteps workspace)
 {
+    private Dictionary<string, string>? _snapshot;
+
     [Given("a file {string} in the working directory")]
     public void GivenAFileInTheWorkingDirectory(string name) => WriteFile(name, "data");
 
@@ -112,6 +114,42 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
 
     [Then("the directory {string} does not exist")]
     public void ThenTheDirectoryDoesNotExist(string name) => Assert.False(Directory.Exists(PathOf(name)), $"Unexpected directory {name}");
+
+    [Given("I take a snapshot of the folder {string}")]
+    public void GivenISnapshot(string folder) => _snapshot = Snapshot(PathOf(folder));
+
+    [Then("the folder {string} equals the snapshot")]
+    public void ThenTheFolderEqualsTheSnapshot(string folder)
+    {
+        Assert.NotNull(_snapshot);
+        var now = Snapshot(PathOf(folder));
+        Assert.Equal(
+            _snapshot.Select(p => $"{p.Key} {p.Value}").Order(StringComparer.Ordinal),
+            now.Select(p => $"{p.Key} {p.Value}").Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Every file (SHA-256) and every folder below <paramref name="root"/>, except the index database and the
+    /// journal: the state that "undo restores exactly" (acceptance criterion 2).
+    /// </summary>
+    private static Dictionary<string, string> Snapshot(string root)
+    {
+        var snapshot = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(root, entry).Replace(Path.DirectorySeparatorChar, '/');
+            if (relative.StartsWith(".shelf/index.db", StringComparison.Ordinal) || relative.StartsWith(".shelf/journal", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            snapshot[relative] = Directory.Exists(entry)
+                ? "<folder>"
+                : Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(entry)));
+        }
+
+        return snapshot;
+    }
 
     private void CopyFixture(string fixture, string target)
     {

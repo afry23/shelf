@@ -295,6 +295,103 @@ public class JournalTests
         Assert.True(string.CompareOrdinal(a.Path, b.Path) < 0);
     }
 
+    [Fact]
+    public void Create_writes_a_new_file_and_refuses_a_taken_path()
+    {
+        using var dir = new TempDirectory();
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+        var path = dir.Combine("a", "new.json");
+
+        Assert.Equal(MoveStatus.Moved, journal.Create(path, "fresh"u8.ToArray()));
+        Assert.Equal("fresh", File.ReadAllText(path));
+        Assert.Equal(MoveStatus.Collision, journal.Create(path, "again"u8.ToArray()));
+        Assert.Equal("fresh", File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void Replace_then_undo_brings_back_the_exact_old_bytes()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.Write("a/book.json", "old content");
+        var before = Sha(path);
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+
+        journal.Replace(path, "new content"u8.ToArray());
+        journal.Finish();
+
+        Assert.Equal("new content", File.ReadAllText(path));
+        var result = JournalUndo.Undo(dir.Path)!;
+        Assert.Empty(result.Skipped);
+        Assert.Equal(before, Sha(path));
+        Assert.DoesNotContain(
+            Directory.EnumerateFileSystemEntries(dir.Combine(".shelf", "journal")),
+            entry => entry.EndsWith(".backup", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Replace_of_a_missing_file_is_an_error()
+    {
+        using var dir = new TempDirectory();
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+
+        Assert.Throws<JournalException>(() => journal.Replace(dir.Combine("nope.json"), "x"u8.ToArray()));
+    }
+
+    [Fact]
+    public void Replace_moved_with_the_file_survives_undo_in_reverse_order()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.Write("a/book.json", "old");
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+        journal.Replace(path, "new"u8.ToArray());
+        journal.Move(path, dir.Combine("b", "book.json"));
+        journal.Finish();
+
+        JournalUndo.Undo(dir.Path);
+
+        Assert.Equal("old", File.ReadAllText(path));
+        Assert.False(File.Exists(dir.Combine("b", "book.json")));
+    }
+
+    [Fact]
+    public void Undo_keeps_a_created_file_that_changed_since()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.Write("a/book.json", "old");
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+        journal.Replace(path, "new"u8.ToArray());
+        journal.Finish();
+        File.WriteAllText(path, "edited");
+
+        var result = JournalUndo.Undo(dir.Path)!;
+
+        // The edited file stays; so the old bytes cannot go back to its place and remain in the backup.
+        Assert.Equal(["changed since", "target taken"], result.Skipped.Select(s => s.Reason));
+        Assert.Equal("edited", File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void A_pending_create_that_completed_is_kept_and_one_that_did_not_is_dropped()
+    {
+        using var dir = new TempDirectory();
+        var journal = FileJournal.Begin(dir.Path, "organize", undoable: true);
+        var done = dir.Combine("done.json");
+        var missing = dir.Combine("missing.json");
+        var data = JournalFormat.Parse(journal.Path);
+        File.WriteAllText(done, "x");
+        data.Ops.Add(new JournalOp(JournalOpKind.Create, string.Empty, "done.json", LibraryPaths.Hash(done), JournalOpStatus.Pending));
+        data.Ops.Add(new JournalOp(JournalOpKind.Create, string.Empty, "missing.json", "00", JournalOpStatus.Pending));
+        LibraryPaths.WriteAtomic(journal.Path, JournalFormat.Serialize(data));
+
+        var report = JournalRecovery.Recover(dir.Path);
+
+        Assert.Equal(1, report.Completed);
+        Assert.Equal(1, report.Dropped);
+        Assert.Empty(report.Problems);
+        Assert.True(File.Exists(done));
+        Assert.False(File.Exists(missing));
+    }
+
     // Simulates a crash between "pending" and the move by writing the pending step through the real format.
     private static void PendingStep(FileJournal journal, string from, string to)
     {
