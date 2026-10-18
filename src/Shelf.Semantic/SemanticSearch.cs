@@ -20,6 +20,29 @@ public sealed record SemanticHit(SemanticWork Work, double Score, PassagePlace? 
 public sealed record SemanticCoverage(int PendingFiles, int WorksWithoutVector)
 {
     public bool IsComplete => PendingFiles == 0 && WorksWithoutVector == 0;
+
+    /// <summary>
+    /// What to tell the user or the assistant about an incomplete index, or null. <paramref name="noEmbeddings"/> is true when the
+    /// index holds no vectors at all.
+    /// </summary>
+    public string? Note(bool noEmbeddings, string command = "shelf reindex --embeddings")
+    {
+        if (noEmbeddings && PendingFiles + WorksWithoutVector > 0)
+        {
+            return $"no embeddings yet; run: {command}";
+        }
+
+        if (PendingFiles > 0)
+        {
+            return PendingFiles == 1
+                ? $"1 file still waits for its embeddings; run: {command}"
+                : $"{PendingFiles} files still wait for their embeddings; run: {command}";
+        }
+
+        return WorksWithoutVector > 0
+            ? $"{WorksWithoutVector} {(WorksWithoutVector == 1 ? "work has" : "works have")} no embedding yet; run: {command}"
+            : null;
+    }
 }
 
 /// <summary>Search by meaning (F-SEM-1): the query is embedded as a query and the nearest vectors are looked up.</summary>

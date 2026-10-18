@@ -171,7 +171,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | 5 | `m3-semantic-search` (done) | `semantic [--chunks] [--json]`, locations, cross-language, incomplete-index notice | F-SEM-1 to 3, AC 4 |
 | 6 | `m3-hybrid` (done) | RRF of FTS and vectors; model change re-indexes | F-SEM-5, F-SEM-8 |
 | 7 | `m3-mcp-core` (done) | `shelf mcp` (stdio), read tools, resources, clean stdout, error scenarios from ADR 0006 | 7.2, AC 6 |
-| 8 | `m3-mcp-semantic-write` | `semantic_search`, `add_tags` / `remove_tags`, `mcp.readOnly`, stdio protocol e2e | 7.2, AC 4, AC 6 |
+| 8 | `m3-mcp-semantic-write` (done) | `semantic_search`, `add_tags` / `remove_tags`, `mcp.readOnly`, stdio protocol e2e | 7.2, AC 4, AC 6 |
 | 9 | `m3-close` | Native e2e for M3 (incl. `linux-x64` in the `aot` job), measurements on the reference library, ADR 0014, status | exit criteria |
 
 Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in parallel to 4-6. Slice 8 needs 5. Slice 9 is last.

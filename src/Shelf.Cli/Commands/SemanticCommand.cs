@@ -160,19 +160,9 @@ internal static class SemanticCommand
 
     private static void WriteNote(TextWriter stderr, bool noEmbeddings, SemanticCoverage coverage)
     {
-        if (noEmbeddings && coverage.PendingFiles + coverage.WorksWithoutVector > 0)
+        if (coverage.Note(noEmbeddings) is { } note)
         {
-            stderr.WriteLine($"note: no embeddings yet; run: {EmbedHint}");
-        }
-        else if (coverage.PendingFiles > 0)
-        {
-            stderr.WriteLine(coverage.PendingFiles == 1
-                ? $"note: 1 file still waits for its embeddings; run: {EmbedHint}"
-                : $"note: {coverage.PendingFiles.ToString(CultureInfo.InvariantCulture)} files still wait for their embeddings; run: {EmbedHint}");
-        }
-        else if (coverage.WorksWithoutVector > 0)
-        {
-            stderr.WriteLine($"note: {TextFormat.Plural(coverage.WorksWithoutVector, "work has", "works have")} no embedding yet; run: {EmbedHint}");
+            stderr.WriteLine($"note: {note}");
         }
     }
 

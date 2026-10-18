@@ -119,6 +119,14 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
     [Then("the file {string} has the content {string}")]
     public void ThenTheFileHasTheContent(string name, string content) => Assert.Equal(content, File.ReadAllText(PathOf(name)));
 
+    [Given("the global config file contains the line {string}")]
+    public void GivenTheGlobalConfigFileContainsTheLine(string line)
+    {
+        var path = PathOf(Path.Combine(CliSteps.HomeFolder, ".config", "shelf", "config.toml"));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.AppendAllText(path, line + "\n");
+    }
+
     [Then("the file {string} does not exist")]
     public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");
 

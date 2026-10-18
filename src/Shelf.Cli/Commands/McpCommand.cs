@@ -24,7 +24,7 @@ internal static class McpCommand
             try
             {
                 LibraryMcpServer
-                    .RunAsync(context.Root, context.Settings, VersionInfo.Get(), environment.McpInput, environment.McpOutput, factory, environment.Cancellation)
+                    .RunAsync(context.Root, context.Settings, VersionInfo.Get(), environment.ModelCatalog, environment.EmbedderFactory, environment.McpInput, environment.McpOutput, factory, environment.Cancellation)
                     .GetAwaiter()
                     .GetResult();
             }

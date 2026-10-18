@@ -10,6 +10,7 @@ using Shelf.Core.Search;
 using Shelf.Extraction;
 using Shelf.Index;
 using Shelf.Organize;
+using Shelf.Semantic;
 
 namespace Shelf.Mcp;
 
@@ -18,11 +19,14 @@ namespace Shelf.Mcp;
 /// (unknown work, bad query, no text at a location) are <see cref="McpException"/>s: the SDK sends their message as a
 /// tool error and the server goes on. Nothing here changes a file or the index.
 /// </summary>
-internal sealed class LibraryTools(string root, ShelfSettings settings)
+internal sealed class LibraryTools(string root, ShelfSettings settings, SemanticBackend semantic)
 {
     public const int DefaultMaxChars = 4_000;
     public const int MaxLimit = 100;
     public const int MaxMoves = 200;
+
+    // The SDK handles requests at the same time; two changes of one sidecar must not overlap (each reads, changes and replaces it).
+    private readonly Lock _writeGate = new();
 
     // ---- tools ----
 
@@ -146,6 +150,116 @@ internal sealed class LibraryTools(string root, ShelfSettings settings)
             offset + length < text.Length);
     }
 
+    [Description("Search by meaning, in any language the model knows: 'Bücher über Messaging' finds an English book on message brokers. level 'work' finds works, 'chunk' finds passages with a location that read_passage takes. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete.")]
+    public SemanticSearchResult SemanticSearch(
+        [Description("What the books or passages should be about, as a sentence or a few words")] string query,
+        [Description("'work' (default) finds works, 'chunk' finds passages inside works")] string level = "work",
+        [Description("Also use the full-text search and fuse both rankings; then the query may only have words and phrases, no filters (default false)")] bool hybrid = false,
+        [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10)
+    {
+        if (limit is < 1 or > MaxLimit)
+        {
+            throw new McpException($"limit must be between 1 and {MaxLimit}.");
+        }
+
+        if (level is not ("work" or "chunk"))
+        {
+            throw new McpException("level must be 'work' or 'chunk'.");
+        }
+
+        var text = query.Trim();
+        if (text.Length == 0)
+        {
+            throw new McpException("the query has nothing to search for");
+        }
+
+        SearchQuery? words = null;
+        if (hybrid)
+        {
+            try
+            {
+                words = QueryParser.Parse(text);
+            }
+            catch (QueryException e)
+            {
+                throw new McpException(e.Message);
+            }
+
+            if (words.Filters.Count > 0 || words.Exclude.Count > 0)
+            {
+                throw new McpException("hybrid takes words and phrases only; use search_books for filters and exclusions");
+            }
+
+            if (words.Include.Count == 0)
+            {
+                throw new McpException("the query has nothing to search for");
+            }
+        }
+
+        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
+        VectorStore? store;
+        try
+        {
+            store = VectorStore.OpenExisting(connection);
+        }
+        catch (VectorStoreException e)
+        {
+            throw new McpException(e.Message);
+        }
+
+        var vector = store is null ? null : EmbedQuery(store, text);
+        var passages = level == "chunk";
+        List<SemanticHit> hits;
+        if (hybrid)
+        {
+            hits = passages
+                ? HybridSearch.SearchPassages(connection, store, vector, words!, limit)
+                : HybridSearch.SearchWorks(connection, store, vector, words!, limit);
+        }
+        else if (store is null)
+        {
+            hits = [];
+        }
+        else
+        {
+            hits = passages
+                ? Shelf.Semantic.SemanticSearch.SearchPassages(connection, store, vector!, limit)
+                : Shelf.Semantic.SemanticSearch.SearchWorks(connection, store, vector!, limit);
+        }
+
+        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+        var empty = store is null || (store.Count(VectorKind.Work) == 0 && store.Count(VectorKind.Chunk) == 0);
+        return new SemanticSearchResult(
+            text,
+            level,
+            hybrid ? "hybrid" : "semantic",
+            hits.Count,
+            coverage.PendingFiles,
+            coverage.WorksWithoutVector,
+            coverage.Note(empty),
+            [.. hits.Select(h => new SemanticItem(
+                h.Work.Id.ToString(),
+                h.Work.Title,
+                [.. h.Work.Authors],
+                h.Work.Year,
+                h.Work.Language,
+                [.. h.Work.Formats],
+                Math.Round(h.Score, 4),
+                h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
+    }
+
+    [Description("Add tags to a work. A tag is free text; '/' makes a hierarchy such as 'architektur/ddd'. Tags the work has are left as they are. The change can be undone with 'shelf undo'.")]
+    public TagChange AddTags(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The tags to add")] string[] tags) =>
+        ChangeTags(id, tags, LibraryTags.Add);
+
+    [Description("Remove tags from a work. Only the tags named are removed; tags below them stay. The change can be undone with 'shelf undo'.")]
+    public TagChange RemoveTags(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The tags to remove")] string[] tags) =>
+        ChangeTags(id, tags, LibraryTags.Remove);
+
     [Description("The tags of the library as a tree, with the number of works under each.")]
     public TagTree ListTags()
     {
@@ -244,6 +358,68 @@ internal sealed class LibraryTools(string root, ShelfSettings settings)
     }
 
     // ---- helpers ----
+
+    private float[] EmbedQuery(VectorStore store, string text)
+    {
+        var name = settings.Semantic.Model;
+        if (store.Model != name)
+        {
+            throw new McpException(
+                $"the vectors in this index were made with {store.Model} ({store.Dimensions} dimensions), not {name}; run: shelf reindex --embeddings to make them again");
+        }
+
+        var model = semantic.Catalog.Find(name)
+            ?? throw new McpException($"unknown model '{name}'; known models: {string.Join(", ", semantic.Catalog.Models.Select(m => m.Name))}");
+        var folder = ModelInstaller.FolderFor(root, model.Name);
+        if (!ModelInstaller.IsInstalled(model, folder))
+        {
+            throw new McpException($"{name} is not installed; run: shelf model install");
+        }
+
+        return semantic.EmbedQuery(folder, text);
+    }
+
+    private TagChange ChangeTags(string id, string[] tags, Func<string, string, IReadOnlyCollection<Ulid>, TagResult> change)
+    {
+        if (tags.Length == 0)
+        {
+            throw new McpException("give at least one tag");
+        }
+
+        // All names are checked first: a refused tag must not leave the other ones applied.
+        var names = new List<string>();
+        foreach (var tag in tags)
+        {
+            if (!TagNames.TryNormalize(tag, out var name, out var error))
+            {
+                throw new McpException($"tag '{tag}': {error}");
+            }
+
+            if (!names.Contains(name))
+            {
+                names.Add(name);
+            }
+        }
+
+        var work = Find(id);
+        lock (_writeGate)
+        {
+            var changed = 0;
+            try
+            {
+                foreach (var name in names)
+                {
+                    changed += change(root, name, [work.Id]).Changed;
+                }
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new McpException(e.Message);
+            }
+
+            return new TagChange(work.Id.ToString(), work.Title, [.. LibraryEditor.Read(root, work).Tags], changed);
+        }
+    }
 
     private LibraryWork Find(string id)
     {

@@ -37,23 +37,30 @@ Feature: The MCP server
     Then the server is called "shelf"
     And the server instructions mention "search_books"
 
-  Scenario: The read tools are offered, and only tools that change nothing
+  Scenario: The tools are offered, and only two of them change anything
     Then the server offers exactly the tools:
       | tool                 |
+      | add_tags             |
       | find_duplicates      |
       | get_book             |
       | list_tags            |
       | propose_organization |
       | read_passage         |
+      | remove_tags          |
       | search_books         |
-    And every tool is marked read-only
+      | semantic_search      |
+    And every tool except "add_tags" and "remove_tags" is marked read-only
+    And no tool is marked destructive
     And every tool has a description
-    And no tool name contains "delete", "move", "remove" or "trash"
+    And no tool name starts with "delete", "move", "trash" or "apply"
 
   Scenario: The tools say what they need
     Then the tool "search_books" requires the arguments "query"
     And the tool "get_book" requires the arguments "id"
     And the tool "read_passage" requires the arguments "id, location"
+    And the tool "semantic_search" requires the arguments "query"
+    And the tool "add_tags" requires the arguments "id, tags"
+    And the tool "remove_tags" requires the arguments "id, tags"
     And the tool "list_tags" requires no arguments
     And the tool "propose_organization" requires no arguments
 
@@ -63,8 +70,11 @@ Feature: The MCP server
     Examples:
       | tool                 |
       | search_books         |
+      | semantic_search      |
       | get_book             |
       | read_passage         |
+      | add_tags             |
+      | remove_tags          |
       | propose_organization |
 
   Scenario: Two kinds of resources are offered
@@ -84,6 +94,9 @@ Feature: The MCP server
     Examples:
       | tool                 | arguments                                         |
       | search_books         | { "query": "kubernetes" }                         |
+      | semantic_search      | { "query": "kubernetes" }                         |
+      | add_tags             | { "id": "01J9Z3K0000000000000000002", "tags": ["x"] } |
+      | remove_tags          | { "id": "01J9Z3K0000000000000000002", "tags": ["x"] } |
       | get_book             | { "id": "01J9Z3K0000000000000000002" }            |
       | get_book             | { "id": "01J9Z3K0000000000000000001" }            |
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
@@ -120,4 +133,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "find_duplicates, get_book, list_tags, propose_organization, read_passage, search_books"
+    Then the tool names sorted are "add_tags, find_duplicates, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search"

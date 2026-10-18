@@ -55,6 +55,21 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
             .FromVariables(name => environment.Variables.GetValueOrDefault(name), stdoutIsTerminal: false)
             .WithDirectories(workspace.WorkingDirectory, Path.Combine(workspace.WorkingDirectory, CliSteps.HomeFolder))
             .WithMcpStreams(_serverInput, _serverOutput);
+        if (environment.Models is { } models)
+        {
+            cli = cli.WithModels(models.Catalog, models);
+        }
+
+        environment.EmbedderOpens = 0;
+        if (environment.Embedder is not null)
+        {
+            cli = cli.WithEmbedder(folder =>
+            {
+                environment.EmbedderOpens++;
+                return environment.EmbedderFor(Path.GetFileName(folder.Directory));
+            });
+        }
+
         _server = Task.Run(() => ShelfApp.Run(["mcp", "--library", Library(library)], new StringWriter(), new StringWriter(), cli));
 
         _client = McpClient.CreateAsync(new StreamClientTransport(_toServer, _fromServer)).WaitAsync(Timeout).GetAwaiter().GetResult();
@@ -76,6 +91,13 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
         var book = _document ?? throw new InvalidOperationException("No book was fetched before.");
         var location = Navigate(book, path).GetValue<string>();
         Call("read_passage", new JsonObject { ["id"] = book["id"]!.GetValue<string>(), ["location"] = location });
+    }
+
+    [When("I read the passage at the location {string} of the work {string}")]
+    public void WhenIReadThePassageAtOfTheWork(string locationPath, string idPath)
+    {
+        var result = _document ?? throw new InvalidOperationException("No result was fetched before.");
+        Call("read_passage", new JsonObject { ["id"] = Navigate(result, idPath).GetValue<string>(), ["location"] = Navigate(result, locationPath).GetValue<string>() });
     }
 
     [When("I read the resource {string}")]
@@ -111,6 +133,36 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the tool names sorted are {string}")]
     public void ThenTheToolNamesSortedAre(string names) => Assert.Equal(names.Split(", "), Names());
 
+    [Then("every tool except {string} and {string} is marked read-only")]
+    public void ThenEveryToolExceptIsReadOnly(string a, string b) =>
+        Assert.All(_tools.Where(t => t.Name != a && t.Name != b), t => Assert.True(t.ProtocolTool.Annotations?.ReadOnlyHint == true, $"{t.Name} is not marked read-only"));
+
+    [Then("no tool is marked destructive")]
+    public void ThenNoToolIsDestructive() =>
+        Assert.All(_tools, t => Assert.True(t.ProtocolTool.Annotations?.DestructiveHint != true, $"{t.Name} is marked destructive"));
+
+    [Then("the tool {string} is not read-only and not destructive")]
+    public void ThenTheToolIsNotReadOnlyAndNotDestructive(string name)
+    {
+        var annotations = Tool(name).ProtocolTool.Annotations;
+        Assert.True(annotations?.ReadOnlyHint != true, $"{name} is marked read-only");
+        Assert.True(annotations?.DestructiveHint == false, $"{name} is not explicitly marked as not destructive");
+    }
+
+    [Then("the server offers the tools {string} and {string}")]
+    public void ThenTheServerOffersTheTools(string a, string b)
+    {
+        Assert.Contains(a, Names());
+        Assert.Contains(b, Names());
+    }
+
+    [Then(@"no tool name starts with {string}, {string}, {string} or {string}")]
+    public void ThenNoToolNameStartsWith(string a, string b, string c, string d) =>
+        Assert.DoesNotContain(Names(), n => new[] { a, b, c, d }.Any(w => n.StartsWith(w, StringComparison.Ordinal)));
+
+    [Then("the embedder was opened {int} time(s)")]
+    public void ThenTheEmbedderWasOpened(int count) => Assert.Equal(count, environment.EmbedderOpens);
+
     [Then("every tool is marked read-only")]
     public void ThenEveryToolIsReadOnly() =>
         Assert.All(_tools, t => Assert.True(t.ProtocolTool.Annotations?.ReadOnlyHint == true, $"{t.Name} is not marked read-only"));
@@ -118,10 +170,6 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("every tool has a description")]
     public void ThenEveryToolHasADescription() =>
         Assert.All(_tools, t => Assert.False(string.IsNullOrWhiteSpace(t.Description), $"{t.Name} has no description"));
-
-    [Then(@"no tool name contains {string}, {string}, {string} or {string}")]
-    public void ThenNoToolNameContains(string a, string b, string c, string d) =>
-        Assert.DoesNotContain(Names(), n => new[] { a, b, c, d }.Any(w => n.Contains(w, StringComparison.Ordinal)));
 
     [Then("the tool {string} requires the arguments {string}")]
     public void ThenTheToolRequires(string tool, string arguments) =>
@@ -304,6 +352,15 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response {int} of the process is a tool error")]
     public void ThenTheResponseIsAToolError(int id) =>
         Assert.True(Response(id)["result"]?["isError"]?.GetValue<bool>() == true, Response(id).ToJsonString());
+
+    [Then("the response {int} of the process contains {string}")]
+    public void ThenTheResponseContains(int id, string text) => Assert.Contains(text, Response(id).ToJsonString(), StringComparison.Ordinal);
+
+    [Then("the response {int} of the process does not contain {string}")]
+    public void ThenTheResponseDoesNotContain(int id, string text) => Assert.DoesNotContain(text, Response(id).ToJsonString(), StringComparison.Ordinal);
+
+    [Then("its standard error is empty")]
+    public void ThenItsStandardErrorIsEmpty() => Assert.Equal(string.Empty, _processErr.Trim());
 
     [Then("its standard error is not empty")]
     public void ThenItsStandardErrorIsNotEmpty() => Assert.NotEmpty(_processErr.Trim());

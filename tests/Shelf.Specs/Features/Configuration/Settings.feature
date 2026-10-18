@@ -35,6 +35,9 @@ Feature: Settings from the global and the per-library config
       | # nothing                  | # nothing                  | mcp.max_chars        | 20000    |
       | mcp.max_chars = 8000       | # nothing                  | mcp.max_chars        | 8000     |
       | mcp.max_chars = 8000       | mcp.max_chars = 3000       | mcp.max_chars        | 3000     |
+      | # nothing                  | # nothing                  | mcp.read_only        | false    |
+      | mcp.read_only = true       | # nothing                  | mcp.read_only        | true     |
+      | mcp.read_only = true       | mcp.read_only = false      | mcp.read_only        | false    |
       | grouping.auto_merge = 1    | # nothing                  | grouping.auto_merge  | 1        |
 
   Scenario Outline: Invalid threshold values are rejected with the key and the file
@@ -59,6 +62,7 @@ Feature: Settings from the global and the per-library config
       | mcp.max_chars = 0         | library.toml: mcp.max_chars: must be between 1 and 1000000 |
       | mcp.max_chars = 1000001   | library.toml: mcp.max_chars: must be between 1 and 1000000 |
       | mcp.max_chars = 'many'    | library.toml: mcp.max_chars: expected integer, found string |
+      | mcp.read_only = 'yes'     | library.toml: mcp.read_only: expected boolean, found string |
 
   Scenario Outline: Unknown keys produce a warning and are otherwise ignored
     Given the <layer> config contains the line "<line>"

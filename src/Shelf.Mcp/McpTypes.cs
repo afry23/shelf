@@ -53,6 +53,29 @@ public sealed record BookDetails(
 
 public sealed record PassageText(string Id, string File, string Location, string Where, string Text, int Offset, int TotalChars, bool Truncated);
 
+/// <summary>A work, or a passage of a work (<paramref name="Passage"/>), found by meaning. <paramref name="Score"/>: 1 is the same, higher is nearer.</summary>
+public sealed record SemanticItem(
+    string Id,
+    string Title,
+    string[] Authors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Language,
+    string[] Formats,
+    double Score,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] PassageRef? Passage);
+
+public sealed record SemanticSearchResult(
+    string Query,
+    string Level,
+    string Mode,
+    int Total,
+    int PendingFiles,
+    int WorksWithoutEmbedding,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    SemanticItem[] Results);
+
+public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
+
 public sealed record TagNode(string Name, string Path, int Works, int Direct, TagNode[] Children);
 
 public sealed record TagTree(int Tags, TagNode[] Roots);
@@ -73,6 +96,8 @@ public sealed record OrganizationProposal(string Pattern, int Files, int Works, 
 [JsonSerializable(typeof(SearchBooksResult))]
 [JsonSerializable(typeof(BookDetails))]
 [JsonSerializable(typeof(PassageText))]
+[JsonSerializable(typeof(SemanticSearchResult))]
+[JsonSerializable(typeof(TagChange))]
 [JsonSerializable(typeof(TagTree))]
 [JsonSerializable(typeof(DuplicatesResult))]
 [JsonSerializable(typeof(OrganizationProposal))]

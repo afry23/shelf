@@ -18,6 +18,9 @@ public sealed class ScenarioEnvironment
     /// <summary>Fakes of other models, by model name (the folder name); they share the call log of <see cref="Embedder"/>.</summary>
     public Dictionary<string, FakeEmbedder> ModelEmbedders { get; } = new();
 
+    /// <summary>How often a command or the MCP server asked for the embedding model (opening it is the expensive part).</summary>
+    public int EmbedderOpens { get; set; }
+
     public FakeEmbedder EmbedderFor(string modelName) => ModelEmbedders.GetValueOrDefault(modelName) ?? Embedder!;
 
     /// <summary>Cancelled by the fake embedder to simulate Ctrl-C.</summary>
