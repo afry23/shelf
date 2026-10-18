@@ -11,6 +11,9 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
 {
     private Dictionary<string, string>? _snapshot;
 
+    [Given("the file {string} is copied to {string}")]
+    public void GivenTheFileIsCopiedTo(string from, string to) => File.Copy(PathOf(from), PathOf(to));
+
     [Given("a file {string} in the working directory")]
     public void GivenAFileInTheWorkingDirectory(string name) => WriteFile(name, "data");
 

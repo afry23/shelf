@@ -289,7 +289,7 @@ Resources:
 Requirements for the MCP server:
 
 - Transport: stdio (M), Streamable HTTP (S).
-- Write tools can be disabled via configuration (`mcp.readOnly: true`).
+- Write tools can be disabled via configuration (`mcp.read_only = true`; the config keys use snake case). The hard maximum of `read_passage` is `mcp.max_chars`.
 - Destructive operations (delete, move) are **not** offered via MCP.
 
 ### 7.3 Web API

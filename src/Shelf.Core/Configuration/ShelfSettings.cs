@@ -24,6 +24,16 @@ public sealed record SemanticSettings(string Model)
     public static SemanticSettings Default { get; } = new("multilingual-e5-small");
 }
 
+/// <summary>The MCP server (PRD 7.2).</summary>
+/// <param name="MaxChars">Hard maximum for <c>maxChars</c> of the tool <c>read_passage</c>.</param>
+public sealed record McpSettings(int MaxChars)
+{
+    public const int DefaultMaxChars = 20_000;
+    public const int LargestMaxChars = 1_000_000;
+
+    public static McpSettings Default { get; } = new(DefaultMaxChars);
+}
+
 /// <summary>A library named in the global config (F-LIB-1).</summary>
 public sealed record LibraryEntry(string Name, string Path);
 
@@ -39,16 +49,18 @@ public sealed class ShelfSettings
     private const string AutoHammingKey = "grouping.auto_hamming";
     private const string PatternKey = "organize.pattern";
     private const string ModelKey = "semantic.model";
+    private const string McpMaxCharsKey = "mcp.max_chars";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, McpMaxCharsKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, ModelKey, McpMaxCharsKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
         OrganizeSettings organize,
         SemanticSettings semantic,
+        McpSettings mcp,
         IReadOnlyList<LibraryEntry> libraries,
         string? defaultLibrary,
         IReadOnlyList<string> warnings)
@@ -56,6 +68,7 @@ public sealed class ShelfSettings
         Grouping = grouping;
         Organize = organize;
         Semantic = semantic;
+        Mcp = mcp;
         Libraries = libraries;
         DefaultLibrary = defaultLibrary;
         Warnings = warnings;
@@ -67,6 +80,8 @@ public sealed class ShelfSettings
 
     public SemanticSettings Semantic { get; }
 
+    public McpSettings Mcp { get; }
+
     /// <summary>Libraries from <c>[[libraries]]</c> of the global config; the per-library config cannot add any.</summary>
     public IReadOnlyList<LibraryEntry> Libraries { get; }
 
@@ -77,7 +92,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -99,6 +114,7 @@ public sealed class ShelfSettings
         var autoHamming = GroupingSettings.Default.AutoHamming;
         var pattern = PathPattern.Default;
         var model = SemanticSettings.Default.Model;
+        var maxChars = McpSettings.DefaultMaxChars;
         foreach (var layer in new[] { global, library })
         {
             if (layer is null)
@@ -112,6 +128,7 @@ public sealed class ShelfSettings
             autoHamming = ReadHamming(layer, AutoHammingKey) ?? autoHamming;
             pattern = ReadPattern(layer) ?? pattern;
             model = ReadModel(layer) ?? model;
+            maxChars = ReadMaxChars(layer) ?? maxChars;
         }
 
         if (review > autoMerge)
@@ -136,7 +153,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), new OrganizeSettings(pattern), new SemanticSettings(model), libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars), libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -159,6 +176,20 @@ public sealed class ShelfSettings
         }
 
         return value;
+    }
+
+    private static int? ReadMaxChars(ConfigDocument document)
+    {
+        var value = document.GetInteger(McpMaxCharsKey);
+        if (value is < 1 or > McpSettings.LargestMaxChars)
+        {
+            throw new ConfigException(
+                $"{document.SourceName}: {McpMaxCharsKey}: must be between 1 and {McpSettings.LargestMaxChars}",
+                document.SourceName,
+                key: McpMaxCharsKey);
+        }
+
+        return (int?)value;
     }
 
     private static string? ReadModel(ConfigDocument document)

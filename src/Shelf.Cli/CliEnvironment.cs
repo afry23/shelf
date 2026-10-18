@@ -15,6 +15,8 @@ public sealed class CliEnvironment
     private readonly string? _workingDirectory;
     private readonly string? _homeDirectory;
     private readonly TextReader? _standardInput;
+    private readonly Stream? _mcpInput;
+    private readonly Stream? _mcpOutput;
 
     private CliEnvironment(
         bool noColor,
@@ -29,7 +31,9 @@ public sealed class CliEnvironment
         ModelCatalog? modelCatalog = null,
         IModelDownloader? modelDownloader = null,
         Func<ModelFolder, IEmbedder>? embedderFactory = null,
-        CancellationToken cancellation = default)
+        CancellationToken cancellation = default,
+        Stream? mcpInput = null,
+        Stream? mcpOutput = null)
     {
         NoColor = noColor;
         StdoutIsTerminal = stdoutIsTerminal;
@@ -44,6 +48,8 @@ public sealed class CliEnvironment
         ModelDownloader = modelDownloader ?? new HttpModelDownloader();
         EmbedderFactory = embedderFactory ?? (folder => E5Embedder.Open(folder));
         Cancellation = cancellation;
+        _mcpInput = mcpInput;
+        _mcpOutput = mcpOutput;
     }
 
     /// <summary>No <c>NO_COLOR</c> and standard output is not a terminal.</summary>
@@ -68,6 +74,12 @@ public sealed class CliEnvironment
 
     /// <summary>Set when the user interrupts a long run (Ctrl-C); long commands stop at a safe point.</summary>
     public CancellationToken Cancellation { get; }
+
+    /// <summary>Where <c>shelf mcp</c> reads requests from: the process's standard input unless the host set another stream.</summary>
+    public Stream McpInput => _mcpInput ?? Console.OpenStandardInput();
+
+    /// <summary>Where <c>shelf mcp</c> writes responses: the process's standard output unless the host set another stream.</summary>
+    public Stream McpOutput => _mcpOutput ?? Console.OpenStandardOutput();
 
     /// <summary>What <c>shelf open</c> uses to start the application for a file; the system's by default.</summary>
     public IFileOpener FileOpener { get; }
@@ -122,7 +134,7 @@ public sealed class CliEnvironment
     {
         ArgumentException.ThrowIfNullOrEmpty(workingDirectory);
         ArgumentException.ThrowIfNullOrEmpty(homeDirectory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithMinimumLogLevel(LogLevel level)
@@ -133,34 +145,41 @@ public sealed class CliEnvironment
             throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined log level.");
         }
 
-        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithFileOpener(IFileOpener fileOpener)
     {
         ArgumentNullException.ThrowIfNull(fileOpener);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithStandardInput(TextReader standardInput)
     {
         ArgumentNullException.ThrowIfNull(standardInput);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithModels(ModelCatalog catalog, IModelDownloader downloader)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(downloader);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader, EmbedderFactory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithEmbedder(Func<ModelFolder, IEmbedder> factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, factory, Cancellation);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, factory, Cancellation, _mcpInput, _mcpOutput);
     }
 
     public CliEnvironment WithCancellation(CancellationToken cancellation) =>
-        new(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, cancellation);
+        new(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, cancellation, _mcpInput, _mcpOutput);
+
+    public CliEnvironment WithMcpStreams(Stream input, Stream output)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, input, output);
+    }
 }
