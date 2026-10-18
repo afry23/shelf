@@ -21,7 +21,8 @@ public sealed class CliEnvironment
         string? ignoredLogLevel,
         Func<string, string?> getVariable,
         string? workingDirectory,
-        string? homeDirectory)
+        string? homeDirectory,
+        IFileOpener? fileOpener = null)
     {
         NoColor = noColor;
         StdoutIsTerminal = stdoutIsTerminal;
@@ -30,6 +31,7 @@ public sealed class CliEnvironment
         _getVariable = getVariable;
         _workingDirectory = workingDirectory;
         _homeDirectory = homeDirectory;
+        FileOpener = fileOpener ?? SystemFileOpener.Instance;
     }
 
     /// <summary>No <c>NO_COLOR</c> and standard output is not a terminal.</summary>
@@ -39,6 +41,9 @@ public sealed class CliEnvironment
     public bool NoColor { get; }
 
     public bool StdoutIsTerminal { get; }
+
+    /// <summary>What <c>shelf open</c> uses to start the application for a file; the system's by default.</summary>
+    public IFileOpener FileOpener { get; }
 
     /// <summary>
     /// Minimum level of log entries written to standard error. Set with the SHELF_LOG_LEVEL variable
@@ -90,7 +95,7 @@ public sealed class CliEnvironment
     {
         ArgumentException.ThrowIfNullOrEmpty(workingDirectory);
         ArgumentException.ThrowIfNullOrEmpty(homeDirectory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener);
     }
 
     public CliEnvironment WithMinimumLogLevel(LogLevel level)
@@ -101,6 +106,12 @@ public sealed class CliEnvironment
             throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined log level.");
         }
 
-        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener);
+    }
+
+    public CliEnvironment WithFileOpener(IFileOpener fileOpener)
+    {
+        ArgumentNullException.ThrowIfNull(fileOpener);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener);
     }
 }

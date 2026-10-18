@@ -39,6 +39,10 @@ Feature: Searching the library
       """
     And I have run shelf with arguments "reindex --library library"
 
+  Scenario: Every result shows the ID of the work, so that other commands can be given it
+    When I run shelf with arguments "search kubernetes --library library"
+    Then standard output matches the pattern "(?m)^1\. Kubernetes Patterns - Bilgin Ibryam \(2019\) \[epub\]  01J9Z3K0000000000000000001$"
+
   Scenario: A word in the title ranks above a word that only appears in the text
     When I run shelf with arguments "search kubernetes --library library"
     Then the exit code is 0

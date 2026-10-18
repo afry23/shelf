@@ -72,7 +72,7 @@ public sealed class IndexSteps(ConfigSteps workspace)
         var actual = Column(
             "SELECT t.path FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id = $v ORDER BY t.path",
             id);
-        Assert.Equal(tags.Split(", "), actual);
+        Assert.Equal(tags.Length == 0 ? [] : tags.Split(", "), actual);
     }
 
     [Then("the work {string} in the index has the rating {int} and the status {string}")]

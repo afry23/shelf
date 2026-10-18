@@ -26,7 +26,6 @@ public static class ShelfApp
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
         ArgumentNullException.ThrowIfNull(environment);
-        // `environment` carries the log level; M1 adds color output (until then the NO_COLOR scenarios are weak).
 
         if (environment.IgnoredLogLevel is { } ignored)
         {
@@ -61,6 +60,13 @@ public static class ShelfApp
         root.Subcommands.Add(ImportCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ScanCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(SearchCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ShowCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(EditCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(MergeCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(SplitCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ReviewCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(OpenCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(StatsCommand.Create(json, stdout, stderr, environment));
 
         // Without a command there is nothing to run: that is a usage error, not success.
         root.SetAction(_ =>

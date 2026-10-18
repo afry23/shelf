@@ -16,6 +16,9 @@ public sealed class ArgumentSplitterTests
     [InlineData("search \"\\\"event sourcing\\\"\" x", new[] { "search", "\"event sourcing\"", "x" })]
     [InlineData("a\\b C:\\dir", new[] { "a\\b", "C:\\dir" })]
     [InlineData("x\\\"y", new[] { "x\"y" })]
+    [InlineData("edit 'A B' --title ''", new[] { "edit", "A B", "--title", "" })]
+    [InlineData("show 'library/Ålander, Jördis' x", new[] { "show", "library/Ålander, Jördis", "x" })]
+    [InlineData("O'Reilly 'x y'", new[] { "O'Reilly", "x y" })]
     public void Split_separates_on_whitespace_and_groups_quoted_text(string text, string[] expected) =>
         Assert.Equal(expected, ArgumentSplitter.Split(text));
 

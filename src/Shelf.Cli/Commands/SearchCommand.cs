@@ -66,9 +66,10 @@ internal static class SearchCommand
             }
             else
             {
+                var palette = Palette.For(environment, json: false);
                 for (var i = 0; i < hits.Count; i++)
                 {
-                    WriteText(stdout, i + 1, hits[i]);
+                    WriteText(stdout, palette, i + 1, hits[i]);
                 }
             }
 
@@ -77,18 +78,18 @@ internal static class SearchCommand
         return command;
     }
 
-    private static void WriteText(TextWriter stdout, int number, SearchHit hit)
+    private static void WriteText(TextWriter stdout, Palette palette, int number, SearchHit hit)
     {
-        var line = $"{number.ToString(CultureInfo.InvariantCulture)}. {hit.Title} - {string.Join(", ", hit.Authors)}";
+        var line = $"{number.ToString(CultureInfo.InvariantCulture)}. {palette.Bold(hit.Title)} - {string.Join(", ", hit.Authors)}";
         if (hit.Year is { } year)
         {
             line += $" ({year.ToString(CultureInfo.InvariantCulture)})";
         }
 
-        stdout.WriteLine($"{line} [{string.Join(", ", hit.Formats)}]");
+        stdout.WriteLine($"{line} [{string.Join(", ", hit.Formats)}]  {palette.Dim(hit.WorkId.ToString())}");
         foreach (var content in hit.Hits)
         {
-            stdout.WriteLine($"   {content.Where}  {Path.GetFileName(content.File)}: {content.Snippet}");
+            stdout.WriteLine($"   {palette.Dim($"{content.Where}  {Path.GetFileName(content.File)}:")} {content.Snippet}");
         }
     }
 

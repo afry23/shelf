@@ -29,6 +29,40 @@ public sealed class ReviewQueueSteps(ConfigSteps workspace)
                 Ulid.New(),
                 [new ReviewCandidate(Ulid.Parse(work), confidence, [signal])]));
 
+    [Given("the review queue of {string} gets a grouping entry for the work {string} about {string} with the candidate {string} at {double} because {string}")]
+    public void GivenTheQueueGetsAGroupingEntryForTheWork(string library, string work, string file, string candidate, double confidence, string signal) =>
+        ReviewQueue.Append(
+            QueuePath(library),
+            new ReviewEntry(
+                Ulid.New(),
+                ReviewKind.Grouping,
+                DateTimeOffset.UtcNow,
+                "May be the same work",
+                file,
+                Ulid.Parse(work),
+                [new ReviewCandidate(Ulid.Parse(candidate), confidence, [signal])]));
+
+    [Then("entry {int} of {string} has the message {string}")]
+    public void ThenEntryOfHasTheMessage(int number, string library, string message) =>
+        Assert.Equal(message, ReviewQueue.Load(QueuePath(library)).Entries[number - 1].Message);
+
+    [Then("entry {int} of {string} has the candidate {string} at {double} because {string}")]
+    public void ThenEntryOfHasTheCandidate(int number, string library, string work, double confidence, string signal)
+    {
+        var candidate = Assert.Single(ReviewQueue.Load(QueuePath(library)).Entries[number - 1].Candidates!);
+        Assert.Equal(Ulid.Parse(work), candidate.Work);
+        Assert.Equal(confidence, candidate.Confidence, 3);
+        Assert.Equal([signal], candidate.Signals);
+    }
+
+    [Then("the review entry {int} of {string} is about the work {string} and the file {string}")]
+    public void ThenTheReviewEntryIsAbout(int number, string library, string work, string file)
+    {
+        var entry = ReviewQueue.Load(QueuePath(library)).Entries[number - 1];
+        Assert.Equal(Ulid.Parse(work), entry.Work);
+        Assert.Equal(file, entry.File);
+    }
+
     [When("shelf reads the review queue of {string}")]
     public void WhenShelfReadsTheReviewQueue(string library)
     {

@@ -135,6 +135,10 @@ public sealed class SidecarSteps(ConfigSteps workspace)
         Assert.Equal(pairs, Read().NotDuplicates.Files.Count);
     }
 
+    [Then("the sidecar {string} read back marks {int} work(s) as not duplicates")]
+    public void ThenTheSidecarReadBackMarksWorks(string path, int works) =>
+        Assert.Equal(works, SidecarStore.Read(PathOf(path)).NotDuplicates.Works.Count);
+
     [Then("the sidecar read back equals the written one")]
     public void ThenTheSidecarReadBackEqualsTheWrittenOne()
     {
