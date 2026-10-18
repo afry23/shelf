@@ -87,6 +87,8 @@ Feature: Reading a config.toml file
       | line 1             |
       |                    |
       | # nothing set here |
+      | # grouping.auto_merge = 0.5 |
+      |    # indented comment |
 
   # Q4: a missing file is an empty configuration, not an error
   Scenario: A missing config file is an empty configuration
@@ -132,3 +134,18 @@ Feature: Reading a config.toml file
       | grouping.enabled     | integer   | boolean |
       | grouping.max_hamming | string    | integer |
       | grouping             | string    | table   |
+
+  Scenario Outline: Comments do not hide the settings around them
+    Given a config file "config.toml" with content:
+      """
+      # a comment
+      <setting> # and another
+      """
+    When shelf loads the config file "config.toml"
+    Then loading succeeds
+    And the float value at "grouping.auto_merge" is "0.5"
+
+    Examples:
+      | setting                  |
+      | grouping.auto_merge = 0.5 |
+      | grouping = { auto_merge = 0.5 } |

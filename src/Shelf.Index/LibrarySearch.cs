@@ -90,15 +90,27 @@ public static class LibrarySearch
 
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"""
-                SELECT w.id, bm25(chunks_fts), c.id, f.rel_path, f.format, c.locator
-                FROM chunks_fts
-                JOIN chunks c ON c.id = chunks_fts.rowid
-                JOIN files f ON f.id = c.file_id
-                JOIN works w ON w.id = f.work_id
-                WHERE chunks_fts MATCH $match {filter.AndSql}
-                ORDER BY 2 LIMIT {MaxCandidates}
-                """;
+            // Without conditions on the work, FTS5 picks the best passages first and only those are joined: for a
+            // common word the join of every match would cost more than the ranking. With conditions the join is
+            // needed to apply them.
+            command.CommandText = filter.IsEmpty
+                ? $"""
+                    SELECT w.id, r.score, c.id, f.rel_path, f.format, c.locator
+                    FROM (SELECT rowid, bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH $match ORDER BY 2 LIMIT {MaxCandidates}) r
+                    JOIN chunks c ON c.id = r.rowid
+                    JOIN files f ON f.id = c.file_id
+                    JOIN works w ON w.id = f.work_id
+                    ORDER BY r.score
+                    """
+                : $"""
+                    SELECT w.id, bm25(chunks_fts), c.id, f.rel_path, f.format, c.locator
+                    FROM chunks_fts
+                    JOIN chunks c ON c.id = chunks_fts.rowid
+                    JOIN files f ON f.id = c.file_id
+                    JOIN works w ON w.id = f.work_id
+                    WHERE chunks_fts MATCH $match {filter.AndSql}
+                    ORDER BY 2 LIMIT {MaxCandidates}
+                    """;
             command.Parameters.AddWithValue("$match", match);
             filter.Bind(command);
             using var reader = command.ExecuteReader();
@@ -170,6 +182,8 @@ public static class LibrarySearch
     {
         private readonly List<string> _conditions = [];
         private readonly List<(string Name, object Value)> _parameters = [];
+
+        public bool IsEmpty => _conditions.Count == 0;
 
         public string AndSql => _conditions.Count == 0 ? string.Empty : " AND " + string.Join(" AND ", _conditions);
 

@@ -32,6 +32,13 @@ internal static class TomlConfigParser
 
     private static ConfigDocument ParseCore(ReadOnlySpan<byte> utf8, string sourceName)
     {
+        // The config template of `init` is all comments. Starting the TOML library costs about 10 ms, which is a
+        // tenth of the time a search may take, so a file without any content does not need it.
+        if (HasNoContent(utf8))
+        {
+            return new ConfigDocument(sourceName, FrozenDictionary<string, ConfigNode>.Empty);
+        }
+
         TomlDocument document;
         try
         {
@@ -62,6 +69,37 @@ internal static class TomlConfigParser
         }
 
         return new ConfigDocument(sourceName, MapTable((IDictionary)root));
+    }
+
+    /// <summary>
+    /// True if the text is plain ASCII and every line is blank or a comment. Anything else (control characters,
+    /// non-ASCII bytes, a byte order mark) is left to the TOML library, which also judges validity.
+    /// </summary>
+    internal static bool HasNoContent(ReadOnlySpan<byte> utf8)
+    {
+        var inComment = false;
+        foreach (var b in utf8)
+        {
+            if (b >= 0x80 || (b < 0x20 && b is not ((byte)'\t' or (byte)'\n' or (byte)'\r')) || b == 0x7F)
+            {
+                return false;
+            }
+
+            if (b == (byte)'\n')
+            {
+                inComment = false;
+            }
+            else if (!inComment && b == (byte)'#')
+            {
+                inComment = true;
+            }
+            else if (!inComment && b is not ((byte)' ' or (byte)'\t' or (byte)'\r'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static ConfigException SyntaxError(CsTomlParseException e, string sourceName)

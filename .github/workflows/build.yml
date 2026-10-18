@@ -139,6 +139,26 @@ jobs:
             echo "::error::expected exit code 2 without arguments, got $code"
             exit 1
           fi
+      - name: End-to-end check of the native binary
+        run: |
+          BIN="$RUNNER_TEMP/aot/shelf"
+          WORK="$RUNNER_TEMP/e2e"
+          mkdir -p "$WORK/incoming"
+          cp tests/fixtures/derived/epub3-isbn-series.epub "tests/fixtures/derived/Event Streams in Practice.pdf" "$WORK/incoming/"
+          cd "$WORK"
+          "$BIN" init library
+          "$BIN" import incoming --library library | tee import.txt
+          grep -q "Imported 2 files: 1 new work, 1 added to an existing work" import.txt
+          "$BIN" search event --library library --json | tee search.json
+          grep -q '"total":1' search.json
+          ID="$(sed -E 's/.*"id":"([0-9A-Z]{26})".*/\1/' search.json)"
+          "$BIN" show "$ID" --library library | grep -q '^Event Streams in Practice$'
+          "$BIN" edit "$ID" --add-tag e2e --library library
+          "$BIN" stats --library library --json | grep -q '"works":1'
+          rm library/.shelf/index.db
+          "$BIN" reindex --library library
+          "$BIN" search e2e --library library | grep -q 'Event Streams in Practice'
+          "$BIN" scan --library library | grep -q 'unchanged'
 
   ci:
     name: ci

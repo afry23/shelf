@@ -20,6 +20,7 @@ public static class IndexDatabase
     public const string FileName = "index.db";
     public const long JournalSizeLimitBytes = 64L * 1024 * 1024;
     public const int BusyTimeoutMilliseconds = 5000;
+    public const long ReadMapBytes = 1L << 30;
 
     /// <summary>The path of the index of a library.</summary>
     public static string PathFor(string libraryRoot) => Path.Combine(libraryRoot, ".shelf", FileName);
@@ -51,8 +52,11 @@ public static class IndexDatabase
     /// <exception cref="IndexException">The file is missing, or its schema version is not the current one.</exception>
     public static SqliteConnection OpenRead(string path)
     {
-        var connection = OpenExisting(path, SqliteOpenMode.ReadWrite);
+        var connection = OpenExisting(path, SqliteOpenMode.ReadWrite, configureJournal: false);
         Execute(connection, "PRAGMA query_only = ON");
+        // A search touches the index of every passage that has a common word: read it through the page cache of the
+        // operating system instead of copying it into SQLite's small default cache.
+        Execute(connection, $"PRAGMA mmap_size = {ReadMapBytes}");
         return connection;
     }
 
@@ -141,14 +145,14 @@ public static class IndexDatabase
         return command.ExecuteScalar();
     }
 
-    private static SqliteConnection OpenExisting(string path, SqliteOpenMode mode)
+    private static SqliteConnection OpenExisting(string path, SqliteOpenMode mode, bool configureJournal = true)
     {
         if (!File.Exists(path))
         {
             throw new IndexException($"{path}: no index found; run 'shelf reindex'");
         }
 
-        var connection = Open(path, mode);
+        var connection = Open(path, mode, configureJournal);
         try
         {
             var version = GetVersion(connection);
@@ -167,7 +171,7 @@ public static class IndexDatabase
         }
     }
 
-    private static SqliteConnection Open(string path, SqliteOpenMode mode)
+    private static SqliteConnection Open(string path, SqliteOpenMode mode, bool configureJournal = true)
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
@@ -179,9 +183,9 @@ public static class IndexDatabase
         try
         {
             connection.Open();
-            if (mode != SqliteOpenMode.ReadOnly)
+            if (mode != SqliteOpenMode.ReadOnly && configureJournal)
             {
-                // Persists in the file; a read-only connection cannot change it and does not need to.
+                // Persists in the file; a reader (read-only or query_only) does not need to set it again on every start.
                 Execute(connection, "PRAGMA journal_mode = WAL");
                 Execute(connection, "PRAGMA synchronous = NORMAL");
                 Execute(connection, $"PRAGMA journal_size_limit = {JournalSizeLimitBytes}");
