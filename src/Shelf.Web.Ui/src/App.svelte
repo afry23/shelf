@@ -63,6 +63,7 @@
 
 <svelte:document onclick={handleLinkClick} />
 
+<div class="app" class:fill={route.name === 'read'}>
 <header class="top">
   <a class="brand" href="/library">shelf</a>
   <form class="search" role="search" onsubmit={submit}>
@@ -94,8 +95,31 @@
     </div>
   {/if}
 </main>
+</div>
 
 <style>
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  /* The reader takes the window below the header; the page itself does not scroll, the book does. */
+  .app.fill {
+    height: 100dvh;
+  }
+
+  main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main > :global(.page) {
+    width: 100%;
+  }
+
   .top {
     display: flex;
     align-items: center;

@@ -176,6 +176,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response header {string} starts with {string}")]
     public void ThenTheHeaderStartsWith(string name, string prefix) => Assert.StartsWith(prefix, Header(name), StringComparison.Ordinal);
 
+    [Then("the response header {string} does not contain {string}")]
+    public void ThenTheHeaderDoesNotContain(string name, string text) => Assert.DoesNotContain(text, Header(name) ?? string.Empty, StringComparison.Ordinal);
+
     [Then("the response header {string} contains {string}")]
     public void ThenTheHeaderContains(string name, string text) => Assert.Contains(text, Header(name), StringComparison.Ordinal);
 

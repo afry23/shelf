@@ -1,11 +1,18 @@
 // A small router over the History API: the address is the state of the interface (filters, sort, query), so reload, back and a
 // copied link all work. No package: the interface has five routes.
 
-export const router = $state({ path: location.pathname, search: location.search });
+export const router = $state({ path: location.pathname, search: location.search, hash: location.hash });
 
 function sync(): void {
   router.path = location.pathname;
   router.search = location.search;
+  router.hash = location.hash;
+}
+
+/** Rewrites the hash of the address without a new entry of the history: the reader's place, which a copied address should keep. */
+export function replaceHash(hash: string): void {
+  history.replaceState(null, '', location.pathname + location.search + hash);
+  sync();
 }
 
 export function navigate(to: string, options: { replace?: boolean } = {}): void {

@@ -10,7 +10,7 @@ namespace Shelf.Specs.Steps;
 /// The browser is started once per test run; every scenario gets its own context (cookies, storage, viewport, color scheme).
 /// </summary>
 [Binding]
-public sealed class BrowserSteps(WebSteps web) : IDisposable
+public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposable
 {
     private static readonly float Timeout = 10_000;
 
@@ -218,6 +218,168 @@ public sealed class BrowserSteps(WebSteps web) : IDisposable
         var rgb = Page.EvaluateAsync<int[]>("() => getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number)").GetAwaiter().GetResult();
         var luminance = ((0.299 * rgb[0]) + (0.587 * rgb[1]) + (0.114 * rgb[2])) / 255;
         Assert.True(tone == "dark" ? luminance < 0.35 : luminance > 0.65, $"The background {string.Join(',', rgb)} is not {tone}.");
+    }
+
+    // ---- the reader ----
+
+    /// <summary>The text of the page and of every frame in it (the pages of a book are frames; a closed shadow root hides them from selectors).</summary>
+    private string AllText() =>
+        string.Join('\n', Page.Frames.Select(f =>
+        {
+            try
+            {
+                return f.InnerTextAsync("body", new() { Timeout = 1000 }).GetAwaiter().GetResult();
+            }
+            catch (PlaywrightException)
+            {
+                return string.Empty;
+            }
+        }));
+
+    [Then("the reader shows the text {string}")]
+    [Given("the reader shows the text {string}")]
+    public void ThenReaderShows(string text) => Assert.True(Poll(() => AllText().Contains(text, StringComparison.Ordinal)), $"The reader does not show '{text}'. {Dump()} Frames: {AllText().ReplaceLineEndings(" | ")}");
+
+    [Then("the reader is at page {int} of {int}")]
+    [Given("the reader is at page {int} of {int}")]
+    public void ThenReaderAtPage(int page, int pages) => Expect(Page.GetByText($"Page {page} of {pages}", new() { Exact = true }), e => e.ToBeVisibleAsync());
+
+    [Then("the reader highlights {string}")]
+    public void ThenReaderHighlights(string text) => Assert.True(Wait(Page.Locator(".textLayer .highlight", new() { HasText = text }).First), $"Nothing is highlighted. {Dump()}");
+
+    [Then("the browser reported no errors")]
+    public void ThenNoErrors()
+    {
+        Page.WaitForLoadStateAsync(LoadState.NetworkIdle).GetAwaiter().GetResult();
+        Assert.True(_browserErrors.Count == 0, $"The browser reported: {string.Join(" | ", _browserErrors)}");
+    }
+
+    [Then("the browser reported {string}")]
+    public void ThenReported(string text) => Assert.True(Poll(() => _browserErrors.Any(e => e.Contains(text, StringComparison.Ordinal))), $"No report with '{text}'. The browser said: {string.Join(" | ", _browserErrors)}");
+
+    [Then("the panel {string} shows the entry {string}")]
+    public void ThenPanelEntry(string panel, string text) => Assert.True(Wait(Page.Locator($"aside[aria-label='{panel}']").GetByText(text).First), $"The panel '{panel}' has no '{text}'. {Dump()}");
+
+    [When("I click the entry {string} in the panel {string}")]
+    public void WhenClickEntry(string text, string panel) => Page.Locator($"aside[aria-label='{panel}']").GetByText(text).First.ClickAsync().GetAwaiter().GetResult();
+
+    [When("I click the {string} button {int} times")]
+    public void WhenClickTimes(string name, int times)
+    {
+        var button = Page.GetByRole(AriaRole.Button, new() { Name = name }).First;
+        for (var i = 0; i < times; i++)
+        {
+            if (!button.IsEnabledAsync().GetAwaiter().GetResult())
+            {
+                break;
+            }
+
+            button.ClickAsync().GetAwaiter().GetResult();
+        }
+    }
+
+    [Then("the {string} button is disabled")]
+    public void ThenButtonDisabled(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToBeDisabledAsync());
+
+    private double _noted;
+
+    private double PageWidth() =>
+        Page.Locator(".pdfViewer .page").First.EvaluateAsync<double>("e => e.getBoundingClientRect().width").GetAwaiter().GetResult();
+
+    [Given("I note the width of the PDF page")]
+    public void GivenNoteWidth() => _noted = PageWidth();
+
+    [Then("the PDF page is wider than noted")]
+    public void ThenWider() => Assert.True(Poll(() => PageWidth() > _noted + 1), $"The page is {PageWidth()} px wide, it was {_noted}.");
+
+    [Then("the PDF page is narrower than the width of the window")]
+    public void ThenNarrower() => Assert.True(Poll(() => PageWidth() < _viewport.Width), $"The page is {PageWidth()} px wide in a window of {_viewport.Width}.");
+
+    [Then("the page of the book is {word}")]
+    public void ThenBookPage(string tone)
+    {
+        Assert.True(Poll(() =>
+        {
+            foreach (var frame in Page.Frames.Where(f => f != Page.MainFrame))
+            {
+                try
+                {
+                    var rgb = frame.EvaluateAsync<int[]>("() => getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number)").GetAwaiter().GetResult();
+                    var luminance = ((0.299 * rgb[0]) + (0.587 * rgb[1]) + (0.114 * rgb[2])) / 255;
+                    return tone == "dark" ? luminance < 0.35 : luminance > 0.65;
+                }
+                catch (PlaywrightException)
+                {
+                    // A frame that is not a page of the book.
+                }
+            }
+
+            return false;
+        }), $"The page of the book is not {tone}. {Dump()}");
+    }
+
+    [Then("the text in the book is {int} percent")]
+    [Given("the text in the book is {int} percent")]
+    public void ThenTextSize(int percent) =>
+        Assert.True(Poll(() => Page.Frames.Where(f => f != Page.MainFrame).Any(f =>
+        {
+            try
+            {
+                return Math.Abs(f.EvaluateAsync<double>("() => parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 * 100").GetAwaiter().GetResult() - percent) < 1;
+            }
+            catch (PlaywrightException)
+            {
+                return false;
+            }
+        })), $"The text in the book is not {percent} percent. {Dump()}");
+
+    [Then("the script of the book did not run")]
+    public void ThenScriptDidNotRun() =>
+        Assert.True(Page.Frames.All(f =>
+        {
+            try
+            {
+                return f.EvaluateAsync<bool>("() => !document.documentElement.hasAttribute('data-script-ran')").GetAwaiter().GetResult();
+            }
+            catch (PlaywrightException)
+            {
+                return true;
+            }
+        }), "The script of the book ran: a frame carries data-script-ran.");
+
+    [When("I go back in the browser")]
+    public void WhenBack() => Page.GoBackAsync().GetAwaiter().GetResult();
+
+    [When("I open the current address in a new browser")]
+    [Given("I open the current address in a new browser")]
+    public void WhenOpenInNew()
+    {
+        var address = Page.Url;
+        _context?.CloseAsync().GetAwaiter().GetResult();
+        Page = NewPage();
+        Page.GotoAsync(address).GetAwaiter().GetResult();
+    }
+
+    [Given("an EPUB {string} whose chapter runs a script that marks the page")]
+    public void GivenAnEvilEpub(string path)
+    {
+        var target = Path.Combine(workspace.WorkingDirectory, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Copy(CoverSteps.FixturePath(Path.Combine("derived", "epub3-isbn-series.epub")), target);
+        using var archive = System.IO.Compression.ZipFile.Open(target, System.IO.Compression.ZipArchiveMode.Update);
+        var chapter = archive.Entries.First(e => e.FullName.EndsWith("chapter-01.xhtml", StringComparison.Ordinal));
+        string text;
+        using (var reader = new StreamReader(chapter.Open()))
+        {
+            text = reader.ReadToEnd();
+        }
+
+        var marked = text.Replace("<body>", "<body><p>The chapter is shown</p><script>document.documentElement.setAttribute('data-script-ran', 'yes')</script><img src=\"https://example.invalid/pixel.png\" alt=\"\"/>", StringComparison.Ordinal);
+        Assert.NotEqual(text, marked);
+        var name = chapter.FullName;
+        chapter.Delete();
+        using var writer = new StreamWriter(archive.CreateEntry(name).Open());
+        writer.Write(marked);
     }
 
     // ---- duplicates ----

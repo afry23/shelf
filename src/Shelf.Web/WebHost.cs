@@ -16,6 +16,17 @@ public static class WebHost
 {
     private const string ApiPrefix = "/api/v1";
 
+    /// <summary>
+    /// The reader opens books that other people made, and foliate-js renders them from blob: URLs of this origin, where a frame
+    /// cannot be sandboxed: only a policy that allows no script but the program's own keeps a book from running code (its README
+    /// calls the policy imperative). blob: is no script source, so a script inside a blob frame is blocked. 'unsafe-inline' is for
+    /// styles only (the libraries write style elements); remote sources are not allowed at all (PRD 9.4: no network access).
+    /// </summary>
+    internal const string ContentSecurityPolicy =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        + "font-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; "
+        + "frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'";
+
     /// <summary>Runs until <paramref name="cancellation"/> is cancelled.</summary>
     /// <exception cref="WebHostException">The port is in use, or the server could not start.</exception>
     public static async Task RunAsync(
@@ -80,14 +91,14 @@ public static class WebHost
 
     private static void Configure(WebApplication app, WebOptions options, TextWriter stderr)
     {
-        // On every answer, whatever it is. No Content-Security-Policy yet: the reader's libraries need workers and blob frames,
-        // and the policy is written together with them.
+        // On every answer, whatever it is.
         app.Use((context, next) =>
         {
             var headers = context.Response.Headers;
             headers.XContentTypeOptions = "nosniff";
             headers.XFrameOptions = "SAMEORIGIN";
             headers["Referrer-Policy"] = "same-origin";
+            headers.ContentSecurityPolicy = ContentSecurityPolicy;
             return next(context);
         });
 
@@ -123,6 +134,10 @@ public static class WebHost
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = ui,
+
+                // The assets of PDF.js have extensions that no table knows (.bcmap, .pfb); they come from our own embedded folder.
+                ServeUnknownFileTypes = true,
+                DefaultContentType = "application/octet-stream",
                 OnPrepareResponse = prepared =>
                 {
                     // Vite puts a hash of the content into the names under /assets/: such a file never changes.

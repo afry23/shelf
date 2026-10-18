@@ -137,3 +137,42 @@ Feature: The web interface is part of the binary
     When I request "GET /?token=s3cret"
     Then the response status is 303
     And the response header "Location" is "/"
+
+  Scenario Outline: Every answer carries a content security policy that blocks scripts but the program's own
+    When I request "GET <path>"
+    Then the response header "Content-Security-Policy" contains "script-src 'self'"
+    And the response header "Content-Security-Policy" contains "object-src 'none'"
+    And the response header "Content-Security-Policy" contains "frame-ancestors 'self'"
+    And the response header "Content-Security-Policy" contains "base-uri 'none'"
+
+    Examples:
+      | path             |
+      | /                |
+      | /library         |
+      | /api/v1/status   |
+      | /api/v1/unknown  |
+      | /missing.js      |
+
+  Scenario: The policy lets the reader open books in frames and run its worker
+    When I request "GET /"
+    Then the response header "Content-Security-Policy" contains "frame-src 'self' blob:"
+    And the response header "Content-Security-Policy" contains "worker-src 'self' blob:"
+    And the response header "Content-Security-Policy" contains "img-src 'self' data: blob:"
+
+  Scenario: The policy does not allow inline scripts or remote sources
+    When I request "GET /"
+    Then the response header "Content-Security-Policy" does not contain "unsafe-eval"
+    And the response header "Content-Security-Policy" does not contain "script-src 'self' 'unsafe-inline'"
+    And the response header "Content-Security-Policy" does not contain "http:"
+    And the response header "Content-Security-Policy" does not contain "https:"
+
+  Scenario Outline: The files that the PDF reader loads are served with a usable type
+    When I request "GET <path>"
+    Then the response status is 200
+    And the response header "Content-Type" starts with "<type>"
+
+    Examples:
+      | path                                         | type                     |
+      | /pdfjs/wasm/openjpeg.wasm                    | application/wasm         |
+      | /pdfjs/standard_fonts/FoxitSerif.pfb          | application/octet-stream |
+      | /pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap         | application/octet-stream |

@@ -55,7 +55,7 @@
 
 **Result (`osx-arm64`):** 0 warnings. The plain SDK project needed two more settings than ADR 0008 names, both in `Shelf.Web.csproj`: `EnableRequestDelegateGenerator` and the `InterceptorsNamespaces` entry for `Microsoft.AspNetCore.Http.Generated`; without them `MapGet` binds to the reflection-based overload (IL2026, IL3050). The runtime switch of ADR 0008 finding 2 is in `Shelf.Cli.csproj`. The binary grew from 29 to 34 MiB. A native run answers the status, the problem documents (404, 405 with `Allow`, 421), the OpenAPI document, the token and cookie flow, a refused bind (exit 2) and `SIGTERM` (exit 0, nothing on standard output).
 
-Gate: `dotnet publish -r osx-arm64 -p:PublishAot=true` of `shelf` with 0 warnings, then `shelf serve --port 0` from the native binary answers `GET /api/v1/status` and the OpenAPI document. If the library split trips the warnings of ADR 0008 finding 2, the fix goes into `Shelf.Cli.csproj` and is recorded in ADR 0016. `linux-x64` is checked by the `aot` job (slice 9).
+Gate: `dotnet publish -r osx-arm64 -p:PublishAot=true` of `shelf` with 0 warnings, then `shelf serve --port 0` from the native binary answers `GET /api/v1/status` and the OpenAPI document. If the library split trips the warnings of ADR 0008 finding 2, the fix goes into `Shelf.Cli.csproj` and is recorded in ADR 0017. `linux-x64` is checked by the `aot` job (slice 9).
 
 ## 5. Unit Tests
 
