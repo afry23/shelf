@@ -66,10 +66,19 @@ jobs:
           dotnet-version: 10.0.x
       - name: Fetch sqlite-vec (pinned checksum)
         run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/e5
+          key: e5-small-614241f6
+      - name: Fetch the embedding model (pinned checksum)
+        run: tools/fetch-e5-model.sh "$RUNNER_TEMP/e5"
       - run: dotnet --info
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
+        env:
+          SHELF_E5_DIR: ${{ runner.temp }}/e5
 
   aot:
     name: aot (${{ matrix.rid }})
@@ -106,6 +115,13 @@ jobs:
           dotnet-version: 10.0.x
       - name: Fetch sqlite-vec (pinned checksum)
         run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/e5
+          key: e5-small-614241f6
+      - name: Fetch the embedding model (pinned checksum)
+        run: tools/fetch-e5-model.sh "$RUNNER_TEMP/e5"
       - name: Publish (Native AOT)
         run: >
           dotnet publish src/Shelf.Cli/Shelf.Cli.csproj
@@ -144,6 +160,8 @@ jobs:
             exit 1
           fi
       - name: End-to-end check of the native binary
+        env:
+          SHELF_E5_DIR: ${{ runner.temp }}/e5
         run: bash tests/e2e/native.sh "$RUNNER_TEMP/aot/shelf" "$RUNNER_TEMP/e2e"
 
   ci:

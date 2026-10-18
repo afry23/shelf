@@ -14,7 +14,7 @@ M0 did not spike ONNX Runtime. The owner ruled out a separate spike for M3; the 
 1. **`Microsoft.ML.OnnxRuntime` 1.31.0 and `Microsoft.ML.Tokenizers` 2.0.0 are adopted** for `Shelf.Semantic` (ADR 0001 rows 11 and 12 move from `pending` to `adopt`).
 2. **The tokenizer is `SentencePieceTokenizer` on `sentencepiece.bpe.model`, with the ID layout of the reference implementation applied by shelf.** The library returns raw SentencePiece IDs (`<unk>`=0). The model expects `<s>`=0, `<pad>`=1, `</s>`=2, `<unk>`=3 and every other piece shifted by one. `E5Tokenizer` adds one to every ID (0 becomes 3) and wraps the sequence in `<s>` / `</s>`; the text is cut to 512 tokens including both markers.
 3. **Pooling is the masked mean of `last_hidden_state`, scaled to unit length**, and the prefixes are `query: ` and `passage: ` (model card). The model file is `onnx/model.onnx` of `multilingual-e5-small` at revision `614241f6`, stored as `model.onnx` next to `sentencepiece.bpe.model`.
-4. **The model files are not in the repository** (the budget for fixtures is 5 MiB). Scenarios that need them read the folder from `SHELF_E5_DIR` and are skipped when it is not set. Slice `m3-close` makes CI provide the files.
+4. **The model files are not in the repository** (the budget for fixtures is 5 MiB). Scenarios that need them read the folder from `SHELF_E5_DIR` and are skipped when it is not set. CI provides the files since `m3-close` (`tools/fetch-e5-model.sh`, cached).
 
 ## Evidence (`osx-arm64`, macOS, .NET 10)
 
@@ -32,6 +32,6 @@ Speed and quantization were not measured; that is `m3-close`.
 ## Consequences
 
 - The native `libonnxruntime` is a side file, as `vec0` is (ADR 0004); the publish and the release must carry it per RID.
-- `linux-x64` is not verified; the `aot` job checks it in `m3-close` (`libonnxruntime.so` and `libonnxruntime_providers_shared.so` ship in the package).
+- `linux-x64` is not verified yet. Since `m3-close` the `aot` job runs `tests/e2e/native.sh` with the real model (`SHELF_E5_DIR`, fetched with a pinned checksum by `tools/fetch-e5-model.sh`) on `linux-x64` and `osx-arm64`; the result is in the first CI run (`libonnxruntime.so` ships in the package).
 - ReadyToRun as the fallback was not needed.
 - `E5Embedder.EmbedRaw` exists so that tests can prove the prefixes.
