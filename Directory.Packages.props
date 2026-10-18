@@ -14,6 +14,7 @@
     <PackageVersion Include="Reqnroll.xunit.v3" Version="3.3.4" />
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <PackageVersion Include="System.CommandLine" Version="2.0.12" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="10.0.12" />
     <PackageVersion Include="VersOne.Epub" Version="3.3.6" />
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
   </ItemGroup>

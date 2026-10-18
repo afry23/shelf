@@ -7,6 +7,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />
     <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <PackageReference Include="System.Numerics.Tensors" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
   </ItemGroup>
 
   <ItemGroup>

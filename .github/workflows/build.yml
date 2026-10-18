@@ -64,6 +64,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - name: Fetch sqlite-vec (pinned checksum)
+        run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
       - run: dotnet --info
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
@@ -102,6 +104,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - name: Fetch sqlite-vec (pinned checksum)
+        run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
       - name: Publish (Native AOT)
         run: >
           dotnet publish src/Shelf.Cli/Shelf.Cli.csproj
