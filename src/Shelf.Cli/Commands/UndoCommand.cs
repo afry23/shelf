@@ -3,13 +3,13 @@ using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
 
-/// <summary><c>shelf undo</c> (F-ORG-6): reverts the last organize run; a file that changed since is kept and reported.</summary>
+/// <summary><c>shelf undo</c> (F-ORG-6): reverts the last organize or tag run; a file that changed since is kept and reported.</summary>
 internal static class UndoCommand
 {
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
         var library = LibraryContext.CreateOption();
-        var command = new Command("undo", "Revert the last organize run");
+        var command = new Command("undo", "Revert the last organize or tag run");
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
