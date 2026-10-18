@@ -34,8 +34,22 @@ public sealed class E5Embedder : IEmbedder, IDisposable
     {
         ArgumentNullException.ThrowIfNull(folder);
         folder.EnsureInstalled();
+        QuietRuntime();
         var tokenizer = E5Tokenizer.Load(folder.TokenizerPath);
         return new E5Embedder(tokenizer, new InferenceSession(folder.OnnxPath));
+    }
+
+    /// <summary>
+    /// ONNX Runtime writes its own warnings to standard error (on Linux, a device-discovery warning at start-up). The
+    /// environment is created before the first session, with the level set at creation; stderr stays for shelf.
+    /// </summary>
+    private static void QuietRuntime()
+    {
+        if (!OrtEnv.IsCreated)
+        {
+            var options = new EnvironmentCreationOptions { logLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR };
+            OrtEnv.CreateInstanceWithOptions(ref options);
+        }
     }
 
     public static string QueryText(string text) => "query: " + text;
