@@ -115,7 +115,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 ### M2 – Order
 
-**Status: implemented 2026-10-18; the pre-release tag `v0.2.0` is set after the merge.** Slice plans: `docs/slices/m2-*.md`; decisions: [ADR 0012](adr/0012-m2-journal-trash-and-pattern.md).
+**Status: closed 2026-10-18, pre-release `v0.2.0`.** Slice plans: `docs/slices/m2-*.md`; decisions: [ADR 0012](adr/0012-m2-journal-trash-and-pattern.md).
 
 **Goal:** The library is sorted by pattern, tagged, and free of exact duplicates.
 
