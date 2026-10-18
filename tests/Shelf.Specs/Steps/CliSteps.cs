@@ -35,6 +35,9 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Given("I am in the folder {string}")]
     public void GivenIAmInTheFolder(string folder) => _folder = folder;
 
+    /// <summary>The level of "the log level is", or null when no scenario step set one.</summary>
+    public LogLevel? MinimumLogLevel => _logLevel;
+
     [Given("I have run shelf with arguments {string}")]
     public void GivenIHaveRunShelfWithArguments(string arguments)
     {

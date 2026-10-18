@@ -1,0 +1,80 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- The Web SDK switches these on for AOT; a plain SDK project must do it by hand, or MapGet binds to the reflection-based
+         overload (IL2026, IL3050). The generator emits interceptors in this namespace. -->
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
+
+    <!-- The UI is built from src/Shelf.Web.Ui and embedded under the logical folder "ui" (F-WEB-3, ADR 0007 W3). -->
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <UiDirectory>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'Shelf.Web.Ui'))</UiDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+    <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
+    <ProjectReference Include="..\Shelf.Library\Shelf.Library.csproj" />
+  </ItemGroup>
+
+  <!-- A plain SDK project with a FrameworkReference lacks the implicit usings of Microsoft.NET.Sdk.Web; without them the
+       Minimal API request delegate generator emits invalid code (ADR 0008, finding 1). -->
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Web.Tests" />
+  </ItemGroup>
+
+  <!-- The UI build: npm ci when the packages changed, vite build when the sources changed, then dist/ goes into the assembly.
+       The property SkipUiBuild=true builds the server without the UI (it then answers the pages with a problem document). -->
+  <ItemGroup>
+    <UiInput Include="$(UiDirectory)package.json;$(UiDirectory)package-lock.json;$(UiDirectory)index.html;$(UiDirectory)vite.config.ts;$(UiDirectory)tsconfig.json;$(UiDirectory).npmrc" />
+    <UiInput Include="$(UiDirectory)src\**\*" />
+  </ItemGroup>
+
+  <Target Name="CheckNode" Condition="'$(SkipUiBuild)' != 'true'">
+    <Exec Command="node --version" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="NodeExitCode" />
+    </Exec>
+    <Error Condition="'$(NodeExitCode)' != '0'"
+           Text="Node.js 26 is needed to build the UI (see .node-version). Install it, or build without the UI with -p:SkipUiBuild=true." />
+  </Target>
+
+  <Target Name="InstallUi" DependsOnTargets="CheckNode" Condition="'$(SkipUiBuild)' != 'true'"
+          Inputs="$(UiDirectory)package-lock.json;$(UiDirectory)package.json" Outputs="$(UiDirectory)node_modules\.package-lock.json">
+    <Exec Command="npm ci" WorkingDirectory="$(UiDirectory)" />
+  </Target>
+
+  <Target Name="BuildUi" DependsOnTargets="InstallUi" Condition="'$(SkipUiBuild)' != 'true'"
+          Inputs="@(UiInput)" Outputs="$(UiDirectory)dist\index.html">
+    <Exec Command="npm run build" WorkingDirectory="$(UiDirectory)" />
+  </Target>
+
+  <!-- The files of dist/ do not exist when the project is evaluated, so the items are added here, before the resources are collected. -->
+  <Target Name="EmbedUi" DependsOnTargets="BuildUi" BeforeTargets="_CalculateEmbeddedFilesManifestInputs;AssignTargetPaths">
+    <ItemGroup>
+      <_UiFile Include="$(UiDirectory)dist\**\*" />
+      <EmbeddedResource Include="@(_UiFile)" Link="ui/%(_UiFile.RecursiveDir)%(_UiFile.Filename)%(_UiFile.Extension)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

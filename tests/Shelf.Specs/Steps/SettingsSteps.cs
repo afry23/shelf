@@ -86,6 +86,9 @@ public sealed class SettingsSteps
             "semantic.model" => Settings().Semantic.Model,
             "mcp.read_only" => Settings().Mcp.ReadOnly ? "true" : "false",
             "mcp.max_chars" => Settings().Mcp.MaxChars.ToString(CultureInfo.InvariantCulture),
+            "web.port" => Settings().Web.Port.ToString(CultureInfo.InvariantCulture),
+            "web.bind" => Settings().Web.Bind,
+            "web.token" => Settings().Web.Token ?? string.Empty,
             _ => throw new ArgumentException($"Unknown setting '{key}'.", nameof(key)),
         };
         Assert.Equal(expected, actual);

@@ -74,6 +74,23 @@ public static class LibraryEditor
             files.Add(new SidecarFile(name, file.Progress));
         }
 
+        // The cover of the work that goes away: the target keeps its own; a target without one takes it over. Left in the
+        // folder, it would keep the folder from being removed.
+        string? cover = null;
+        if (s.Cover is { } sourceCover && File.Exists(Path.Combine(sourceDirectory, sourceCover)))
+        {
+            var from = Path.Combine(sourceDirectory, sourceCover);
+            if (t.Cover is { } targetCover && File.Exists(Path.Combine(targetDirectory, targetCover)))
+            {
+                journal.Trash(from);
+            }
+            else
+            {
+                cover = FolderNames.UniqueFileName(targetDirectory, sourceCover);
+                Move(journal, from, Path.Combine(targetDirectory, cover));
+            }
+        }
+
         journal.Finish();
 
         string Renamed(string name) => renames.GetValueOrDefault(name, name);
@@ -102,6 +119,7 @@ public static class LibraryEditor
             Tags = [.. t.Tags.Concat(s.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             ReadStatus = (ReadStatus)Math.Max((int)t.ReadStatus, (int)s.ReadStatus),
             Added = added == default ? null : added,
+            Cover = cover ?? t.Cover,
             Files = files,
             NotDuplicates = new NotDuplicates(works, pairs),
             Related = [.. t.Related.Concat(s.Related).Where(id => id != target.Id && id != source.Id).Distinct()],

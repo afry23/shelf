@@ -1,9 +1,7 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
-using ModelContextProtocol;
+using Shelf.Core.Model;
 
-namespace Shelf.Mcp;
+namespace Shelf.Library;
 
 // Every member is always written, null included, so the output schema that the SDK derives (all members required, nullable
 // ones typed with "null") is true for what is sent (ADR 0006, pitfall 2).
@@ -45,7 +43,9 @@ public sealed record BookDetails(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Publisher,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Series,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? SeriesIndex,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Edition,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Description,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,
     string ReadStatus,
     BookFile[] Files,
@@ -74,6 +74,12 @@ public sealed record SemanticSearchResult(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SemanticItem[] Results);
 
+/// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
+public sealed record TagSetResult(string Id, string[] Tags, int Added, int Removed);
+
+/// <summary>What a duplicate action did: files moved to the trash, and works that were left without a file and went along.</summary>
+public sealed record DuplicateOutcome(int Trashed, string[] WorksRemoved);
+
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
 
 public sealed record TagNode(string Name, string Path, int Works, int Direct, TagNode[] Children);
@@ -92,32 +98,6 @@ public sealed record SkippedMove(string Id, string From, string To, string Reaso
 
 public sealed record OrganizationProposal(string Pattern, int Files, int Works, int Unchanged, bool Truncated, PlannedMove[] Moves, SkippedMove[] Collisions);
 
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-[JsonSerializable(typeof(SearchBooksResult))]
-[JsonSerializable(typeof(BookDetails))]
-[JsonSerializable(typeof(PassageText))]
-[JsonSerializable(typeof(SemanticSearchResult))]
-[JsonSerializable(typeof(TagChange))]
-[JsonSerializable(typeof(TagTree))]
-[JsonSerializable(typeof(DuplicatesResult))]
-[JsonSerializable(typeof(OrganizationProposal))]
-[JsonSerializable(typeof(TocItem[]))]
-[JsonSerializable(typeof(string[]))]
-internal partial class McpJsonContext : JsonSerializerContext
-{
-    /// <summary>MCP default options plus the source-generated context; no reflection-based resolver is needed.</summary>
-    /// <remarks>Built on first use: the generated <c>Default</c> is still null while this class initializes (ADR 0006, pitfall 3).</remarks>
-    public static JsonSerializerOptions SharedOptions => s_shared ??= Create();
-
-    private static JsonSerializerOptions? s_shared;
-
-    private static JsonSerializerOptions Create()
-    {
-        var options = new JsonSerializerOptions(McpJsonUtilities.DefaultOptions)
-        {
-            TypeInfoResolver = JsonTypeInfoResolver.Combine(Default, McpJsonUtilities.DefaultOptions.TypeInfoResolver!),
-        };
-        options.MakeReadOnly();
-        return options;
-    }
-}
+/// <summary>A file of the library, found by its ID: where it is and what a server needs to send it.</summary>
+/// <param name="Path">The full path.</param>
+public sealed record FileLocation(Ulid Work, string Title, string Name, string Format, string Path, long Size, DateTime LastWriteUtc);

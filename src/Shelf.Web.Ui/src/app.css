@@ -1,0 +1,216 @@
+/*
+ * Tokens. Cool paper and bookcloth green; no cream, no terracotta. The serif is a stack of book faces that every desktop has, the
+ * interface is system-ui: the server needs no network at all (PRD 9.4), so no web font is loaded.
+ */
+:root {
+  color-scheme: light dark;
+
+  --paper: #eff1ee;
+  --surface: #f8f9f7;
+  --ink: #1a2220;
+  --muted: #5b6965;
+  --line: #cbd2ce;
+  --accent: #2f5d50;
+  --accent-ink: #f8f9f7;
+  --danger: #8a2e2e;
+  --mark: #e9dca0;
+  --shelf: #b7a98f;
+  --shelf-edge: #8d7f67;
+
+  /* Cloth colors of the spine of a book without a cover. */
+  --cloth-0: #4d6b5e;
+  --cloth-1: #5a5f7a;
+  --cloth-2: #7a5252;
+  --cloth-3: #6c6a4b;
+  --cloth-4: #4a6577;
+  --cloth-5: #6b5570;
+  --cloth-ink: #f1f2ee;
+
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius: 0.375rem;
+  --gutter: clamp(1rem, 3vw, 2rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #131819;
+    --surface: #1b2223;
+    --ink: #e3e8e4;
+    --muted: #9aa7a2;
+    --line: #2c3638;
+    --accent: #8dc2af;
+    --accent-ink: #11201b;
+    --danger: #e39a9a;
+    --mark: #5d5424;
+    --shelf: #4d4638;
+    --shelf-edge: #2e2a21;
+
+    --cloth-0: #3e564b;
+    --cloth-1: #474b63;
+    --cloth-2: #634242;
+    --cloth-3: #57563c;
+    --cloth-4: #3b5160;
+    --cloth-5: #55445a;
+    --cloth-ink: #e3e8e4;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 1rem/1.5 var(--sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  padding: 0.05em 0.35em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 0;
+}
+
+/* Buttons: one plain kind, one for the main action of a page. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.85rem;
+  text-decoration: none;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.button:hover {
+  border-color: var(--accent);
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+[role='alert'] {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+}
+
+mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 0.15rem;
+  padding: 0 0.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

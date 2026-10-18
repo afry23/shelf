@@ -4,7 +4,11 @@ using Shelf.Core.Model;
 namespace Shelf.Index;
 
 /// <summary>A command could not do what was asked of the library; the message says why.</summary>
-public sealed class LibraryEditException(string message) : Exception(message);
+public sealed class LibraryEditException(string message, bool notFound = false) : Exception(message)
+{
+    /// <summary>True when the thing asked for does not exist (a missing work); false for a request that cannot be met as it is.</summary>
+    public bool NotFound { get; } = notFound;
+}
 
 /// <summary>A work of the index, located by its folder (library-relative, with <c>/</c>).</summary>
 public sealed record LibraryWork(Ulid Id, string Directory, string Title);
@@ -63,7 +67,7 @@ public static class WorkLookup
             }
         }
 
-        throw new LibraryEditException($"no work matches '{reference}'");
+        throw new LibraryEditException($"no work matches '{reference}'", notFound: true);
     }
 
     /// <summary>"Title" or "Title (Year)" of works, for output. Works the index does not know, or no index at all, give no entry.</summary>
@@ -93,7 +97,8 @@ public static class WorkLookup
         return labels;
     }
 
-    private static bool LooksLikeId(string text) =>
+    /// <summary>True for text that can be the ID of a work or the start of one (the alphabet of IDs, at most one ID long).</summary>
+    public static bool LooksLikeId(string text) =>
         text.Length is >= 1 and <= Ulid.TextLength && text.All(c => char.IsAsciiDigit(c) || (char.IsAsciiLetter(c) && "ILOUilou".IndexOf(c, StringComparison.Ordinal) < 0));
 
     private static List<LibraryWork> Query(SqliteConnection connection, string sql, params (string Name, object Value)[] parameters)

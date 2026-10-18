@@ -1,79 +1,26 @@
 using System.ComponentModel;
-using System.Globalization;
-using System.Text;
-using Microsoft.Data.Sqlite;
 using ModelContextProtocol;
-using Shelf.Core.Configuration;
-using Shelf.Core.Model;
-using Shelf.Core.Organization;
-using Shelf.Core.Search;
-using Shelf.Extraction;
 using Shelf.Index;
-using Shelf.Organize;
-using Shelf.Semantic;
+using Shelf.Library;
 
 namespace Shelf.Mcp;
 
 /// <summary>
-/// The read-only tools and resources of the MCP server (PRD 7.2) over one library. Errors the assistant can act on
-/// (unknown work, bad query, no text at a location) are <see cref="McpException"/>s: the SDK sends their message as a
-/// tool error and the server goes on. Nothing here changes a file or the index.
+/// The tools and resources of the MCP server (PRD 7.2): descriptions for the assistant and the translation of a
+/// <see cref="LibraryException"/> into a tool error (the SDK sends the message and the server goes on). The rules are in
+/// <see cref="LibraryService"/>.
 /// </summary>
-internal sealed class LibraryTools(string root, ShelfSettings settings, SemanticBackend semantic)
+internal sealed class LibraryTools(LibraryService service)
 {
-    public const int DefaultMaxChars = 4_000;
-    public const int MaxLimit = 100;
-    public const int MaxMoves = 200;
-
-    // The SDK handles requests at the same time; two changes of one sidecar must not overlap (each reads, changes and replaces it).
-    private readonly Lock _writeGate = new();
-
-    // ---- tools ----
-
     [Description("Search titles, authors, tags and the text of the books with the shelf query language: words, \"phrases\", prefix*, -excluded, and author: title: tag: lang: year: format: status: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
     public SearchBooksResult SearchBooks(
         [Description("The query, e.g. 'event sourcing tag:architektur year:>=2015'")] string query,
-        [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit)
-    {
-        if (limit is < 1 or > MaxLimit)
-        {
-            throw new McpException($"limit must be between 1 and {MaxLimit}.");
-        }
-
-        SearchQuery parsed;
-        try
-        {
-            parsed = QueryParser.Parse(query);
-        }
-        catch (QueryException e)
-        {
-            throw new McpException(e.Message);
-        }
-
-        if (parsed.IsEmpty)
-        {
-            throw new McpException("the query has nothing to search for");
-        }
-
-        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        var hits = LibrarySearch.Search(connection, parsed, limit);
-        return new SearchBooksResult(
-            query,
-            hits.Count,
-            [.. hits.Select(h => new BookSummary(
-                h.WorkId.ToString(),
-                h.Title,
-                [.. h.Authors],
-                h.Year,
-                h.Language,
-                [.. h.Formats],
-                Math.Round(h.Score, 2),
-                [.. h.Hits.Select(c => new PassageRef(c.File, c.Format, c.Locator, c.Where, c.Snippet))]))]);
-    }
+        [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit) =>
+        Run(() => service.SearchBooks(query, limit));
 
     [Description("Metadata, files, tags and table of contents of a work. Locations in the table of contents can be given to read_passage.")]
     public BookDetails GetBook([Description("The ID of a work, or the start of it (at least one character that names exactly one work)")] string id) =>
-        Details(Find(id), withToc: true);
+        Run(() => service.GetBook(id));
 
     [Description("Plain text of one place in a work, as found by search_books or listed in the table of contents. Long places are read in parts with offset.")]
     public PassageText ReadPassage(
@@ -81,428 +28,73 @@ internal sealed class LibraryTools(string root, ShelfSettings settings, Semantic
         [Description("The location: 'page=12', an EPUB location from search_books or get_book, or just a page number")] string location,
         [Description("Largest number of characters to return (default 4000; the hard maximum is set with mcp.max_chars, 20000 by default)")] int? maxChars = null,
         [Description("Characters to skip at the start of the place, to read on after a part that was cut (default 0)")] int offset = 0,
-        [Description("The file name, if the work has several files with the same location (default: the first with text there)")] string? file = null)
-    {
-        var hardMax = settings.Mcp.MaxChars;
-        var wanted = maxChars ?? Math.Min(DefaultMaxChars, hardMax);
-        if (wanted < 1 || wanted > hardMax)
-        {
-            throw new McpException($"maxChars must be between 1 and {hardMax.ToString(CultureInfo.InvariantCulture)}.");
-        }
-
-        if (offset < 0)
-        {
-            throw new McpException("offset must not be negative.");
-        }
-
-        var work = Find(id);
-        var place = long.TryParse(location, NumberStyles.None, CultureInfo.InvariantCulture, out var page) && page >= 1
-            ? Locators.PdfPage((int)page)
-            : location.Trim();
-
-        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        using var command = connection.CreateCommand();
-        command.CommandText =
-            """
-            SELECT f.id, f.rel_path, c.text
-            FROM chunks c JOIN files f ON f.id = c.file_id
-            WHERE f.work_id = $work AND c.locator = $locator
-            ORDER BY f.id, c.ordinal
-            """;
-        command.Parameters.AddWithValue("$work", work.Id.ToString());
-        command.Parameters.AddWithValue("$locator", place);
-        var parts = new List<(long File, string Path, string Text)>();
-        using (var reader = command.ExecuteReader())
-        {
-            while (reader.Read())
-            {
-                parts.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2)));
-            }
-        }
-
-        if (file is not null)
-        {
-            parts = [.. parts.Where(p => string.Equals(System.IO.Path.GetFileName(p.Path), file, StringComparison.Ordinal))];
-        }
-
-        if (parts.Count == 0)
-        {
-            throw new McpException($"no text at '{location}' in '{work.Title}'; use a location from search_books or get_book");
-        }
-
-        var first = parts[0].File;
-        var path = parts[0].Path;
-        var text = string.Join(' ', parts.Where(p => p.File == first).Select(p => p.Text));
-        if (offset > 0 && offset >= text.Length)
-        {
-            throw new McpException($"offset {offset.ToString(CultureInfo.InvariantCulture)} is beyond the end of the text ({text.Length.ToString(CultureInfo.InvariantCulture)} characters).");
-        }
-
-        var length = Math.Min(wanted, text.Length - offset);
-        return new PassageText(
-            work.Id.ToString(),
-            path,
-            place,
-            Locators.Describe(place),
-            text.Substring(offset, length),
-            offset,
-            text.Length,
-            offset + length < text.Length);
-    }
+        [Description("The file name, if the work has several files with the same location (default: the first with text there)")] string? file = null) =>
+        Run(() => service.ReadPassage(id, location, maxChars, offset, file));
 
     [Description("Search by meaning, in any language the model knows: 'Bücher über Messaging' finds an English book on message brokers. level 'work' finds works, 'chunk' finds passages with a location that read_passage takes. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete.")]
     public SemanticSearchResult SemanticSearch(
         [Description("What the books or passages should be about, as a sentence or a few words")] string query,
         [Description("'work' (default) finds works, 'chunk' finds passages inside works")] string level = "work",
         [Description("Also use the full-text search and fuse both rankings; then the query may only have words and phrases, no filters (default false)")] bool hybrid = false,
-        [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10)
-    {
-        if (limit is < 1 or > MaxLimit)
-        {
-            throw new McpException($"limit must be between 1 and {MaxLimit}.");
-        }
-
-        if (level is not ("work" or "chunk"))
-        {
-            throw new McpException("level must be 'work' or 'chunk'.");
-        }
-
-        var text = query.Trim();
-        if (text.Length == 0)
-        {
-            throw new McpException("the query has nothing to search for");
-        }
-
-        SearchQuery? words = null;
-        if (hybrid)
-        {
-            try
-            {
-                words = QueryParser.Parse(text);
-            }
-            catch (QueryException e)
-            {
-                throw new McpException(e.Message);
-            }
-
-            if (words.Filters.Count > 0 || words.Exclude.Count > 0)
-            {
-                throw new McpException("hybrid takes words and phrases only; use search_books for filters and exclusions");
-            }
-
-            if (words.Include.Count == 0)
-            {
-                throw new McpException("the query has nothing to search for");
-            }
-        }
-
-        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        VectorStore? store;
-        try
-        {
-            store = VectorStore.OpenExisting(connection);
-        }
-        catch (VectorStoreException e)
-        {
-            throw new McpException(e.Message);
-        }
-
-        var vector = store is null ? null : EmbedQuery(store, text);
-        var passages = level == "chunk";
-        List<SemanticHit> hits;
-        if (hybrid)
-        {
-            hits = passages
-                ? HybridSearch.SearchPassages(connection, store, vector, words!, limit)
-                : HybridSearch.SearchWorks(connection, store, vector, words!, limit);
-        }
-        else if (store is null)
-        {
-            hits = [];
-        }
-        else
-        {
-            hits = passages
-                ? Shelf.Semantic.SemanticSearch.SearchPassages(connection, store, vector!, limit)
-                : Shelf.Semantic.SemanticSearch.SearchWorks(connection, store, vector!, limit);
-        }
-
-        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
-        var empty = store is null || (store.Count(VectorKind.Work) == 0 && store.Count(VectorKind.Chunk) == 0);
-        return new SemanticSearchResult(
-            text,
-            level,
-            hybrid ? "hybrid" : "semantic",
-            hits.Count,
-            coverage.PendingFiles,
-            coverage.WorksWithoutVector,
-            coverage.Note(empty),
-            [.. hits.Select(h => new SemanticItem(
-                h.Work.Id.ToString(),
-                h.Work.Title,
-                [.. h.Work.Authors],
-                h.Work.Year,
-                h.Work.Language,
-                [.. h.Work.Formats],
-                Math.Round(h.Score, 4),
-                h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
-    }
+        [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10) =>
+        Run(() => service.SemanticSearch(query, level, hybrid, limit));
 
     [Description("Add tags to a work. A tag is free text; '/' makes a hierarchy such as 'architektur/ddd'. Tags the work has are left as they are. The change can be undone with 'shelf undo'.")]
     public TagChange AddTags(
         [Description("The ID of a work, or the start of it")] string id,
         [Description("The tags to add")] string[] tags) =>
-        ChangeTags(id, tags, LibraryTags.Add);
+        Run(() => service.AddTags(id, tags));
 
     [Description("Remove tags from a work. Only the tags named are removed; tags below them stay. The change can be undone with 'shelf undo'.")]
     public TagChange RemoveTags(
         [Description("The ID of a work, or the start of it")] string id,
         [Description("The tags to remove")] string[] tags) =>
-        ChangeTags(id, tags, LibraryTags.Remove);
+        Run(() => service.RemoveTags(id, tags));
 
     [Description("The tags of the library as a tree, with the number of works under each.")]
-    public TagTree ListTags()
-    {
-        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT t.path, wt.work_id FROM tags t JOIN work_tags wt ON wt.tag_id = t.id ORDER BY t.path";
-        var direct = new SortedDictionary<string, HashSet<string>>(StringComparer.Ordinal);
-        using (var reader = command.ExecuteReader())
-        {
-            while (reader.Read())
-            {
-                if (!direct.TryGetValue(reader.GetString(0), out var set))
-                {
-                    direct[reader.GetString(0)] = set = new HashSet<string>(StringComparer.Ordinal);
-                }
-
-                set.Add(reader.GetString(1));
-            }
-        }
-
-        return new TagTree(direct.Count, [.. Build(direct, string.Empty)]);
-    }
+    public TagTree ListTags() =>
+        Run(() => service.ListTags());
 
     [Description("Duplicate files in the library: identical files (same content) and different files of one work in the same format. Read-only; nothing is deleted.")]
-    public DuplicatesResult FindDuplicates()
-    {
-        var groups = LibraryDuplicates.Find(root);
-        return new DuplicatesResult(
-            groups.Count,
-            [.. groups.Select(g => new DuplicateSet(
-                g.Kind == DuplicateKind.Identical ? "identical" : "same-format",
-                g.Format,
-                [.. g.Files.Select(f => new DuplicateEntry(f.Work.ToString(), f.Title, f.Path, f.Size, f.Pages))],
-                g.Keep))]);
-    }
+    public DuplicatesResult FindDuplicates() =>
+        Run(() => service.FindDuplicates());
 
     [Description("A dry run of 'shelf organize': which files would move to which folders and names. Nothing is moved.")]
     public OrganizationProposal ProposeOrganization(
-        [Description("A path pattern such as '{author_sort}/{title} ({year})/{title}.{ext}' (default: the pattern of the library)")] string? pattern = null)
-    {
-        PathPattern chosen;
-        try
-        {
-            chosen = pattern is null ? settings.Organize.Pattern : PathPattern.Parse(pattern);
-        }
-        catch (PatternException e)
-        {
-            throw new McpException($"pattern: {e.Message}");
-        }
-
-        OrganizeResult result;
-        try
-        {
-            result = LibraryOrganizer.Organize(root, chosen, apply: false);
-        }
-        catch (Exception e) when (e is IndexException or LibraryEditException)
-        {
-            throw new McpException(e.Message);
-        }
-
-        return new OrganizationProposal(
-            chosen.Text,
-            result.Files,
-            result.Works,
-            result.Unchanged,
-            result.Changes.Count > MaxMoves,
-            [.. result.Changes.Take(MaxMoves).Select(c => new PlannedMove(c.Work.ToString(), c.From, c.To))],
-            [.. result.Collisions.Take(MaxMoves).Select(c => new SkippedMove(c.Work.ToString(), c.From, c.To, c.Reason))]);
-    }
+        [Description("A path pattern such as '{author_sort}/{title} ({year})/{title}.{ext}' (default: the pattern of the library)")] string? pattern = null) =>
+        Run(() => service.ProposeOrganization(pattern));
 
     // ---- resources ----
 
     /// <summary>Metadata of a work (without the table of contents: see <see cref="TocJson"/>).</summary>
-    public string BookJson(string id)
+    public string BookJson(string id) =>
+        Resource(() => System.Text.Json.JsonSerializer.Serialize(service.GetBookMetadata(id), McpJsonContext.Default.BookDetails));
+
+    public string TocJson(string id) =>
+        Resource(() => System.Text.Json.JsonSerializer.Serialize(service.GetToc(id), McpJsonContext.Default.TocItemArray));
+
+    private static T Run<T>(Func<T> call)
     {
         try
         {
-            return System.Text.Json.JsonSerializer.Serialize(Details(Find(id), withToc: false), McpJsonContext.Default.BookDetails);
+            return call();
         }
-        catch (McpException e)
-        {
-            throw new McpProtocolException(e.Message, McpErrorCode.InvalidParams);
-        }
-    }
-
-    public string TocJson(string id)
-    {
-        try
-        {
-            return System.Text.Json.JsonSerializer.Serialize(Details(Find(id), withToc: true).Toc, McpJsonContext.Default.TocItemArray);
-        }
-        catch (McpException e)
-        {
-            throw new McpProtocolException(e.Message, McpErrorCode.InvalidParams);
-        }
-    }
-
-    // ---- helpers ----
-
-    private float[] EmbedQuery(VectorStore store, string text)
-    {
-        var name = settings.Semantic.Model;
-        if (store.Model != name)
-        {
-            throw new McpException(
-                $"the vectors in this index were made with {store.Model} ({store.Dimensions} dimensions), not {name}; run: shelf reindex --embeddings to make them again");
-        }
-
-        var model = semantic.Catalog.Find(name)
-            ?? throw new McpException($"unknown model '{name}'; known models: {string.Join(", ", semantic.Catalog.Models.Select(m => m.Name))}");
-        var folder = ModelInstaller.FolderFor(root, model.Name);
-        if (!ModelInstaller.IsInstalled(model, folder))
-        {
-            throw new McpException($"{name} is not installed; run: shelf model install");
-        }
-
-        return semantic.EmbedQuery(folder, text);
-    }
-
-    private TagChange ChangeTags(string id, string[] tags, Func<string, string, IReadOnlyCollection<Ulid>, TagResult> change)
-    {
-        if (tags.Length == 0)
-        {
-            throw new McpException("give at least one tag");
-        }
-
-        // All names are checked first: a refused tag must not leave the other ones applied.
-        var names = new List<string>();
-        foreach (var tag in tags)
-        {
-            if (!TagNames.TryNormalize(tag, out var name, out var error))
-            {
-                throw new McpException($"tag '{tag}': {error}");
-            }
-
-            if (!names.Contains(name))
-            {
-                names.Add(name);
-            }
-        }
-
-        var work = Find(id);
-        lock (_writeGate)
-        {
-            var changed = 0;
-            try
-            {
-                foreach (var name in names)
-                {
-                    changed += change(root, name, [work.Id]).Changed;
-                }
-            }
-            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
-            {
-                throw new McpException(e.Message);
-            }
-
-            return new TagChange(work.Id.ToString(), work.Title, [.. LibraryEditor.Read(root, work).Tags], changed);
-        }
-    }
-
-    private LibraryWork Find(string id)
-    {
-        try
-        {
-            return WorkLookup.Resolve(root, id, root);
-        }
-        catch (Exception e) when (e is LibraryEditException or IndexException)
+        catch (LibraryException e)
         {
             throw new McpException(e.Message);
         }
     }
 
-    private BookDetails Details(LibraryWork work, bool withToc)
+    // Resources use McpProtocolException with InvalidParams, because only that carries an error code.
+    private static string Resource(Func<string> call)
     {
-        var sidecar = LibraryEditor.Read(root, work);
-        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        var pages = new Dictionary<string, int?>(StringComparer.Ordinal);
-        using (var command = connection.CreateCommand())
+        try
         {
-            command.CommandText = "SELECT rel_path, page_count FROM files WHERE work_id = $id";
-            command.Parameters.AddWithValue("$id", work.Id.ToString());
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                pages[System.IO.Path.GetFileName(reader.GetString(0))] = reader.IsDBNull(1) ? null : reader.GetInt32(1);
-            }
+            return call();
         }
-
-        var files = new List<BookFile>();
-        var toc = new List<TocItem>();
-        foreach (var entry in sidecar.Files)
+        catch (LibraryException e)
         {
-            var full = LibraryEditor.FilePath(root, work, entry.Name);
-            var info = new FileInfo(full);
-            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name)));
-            if (withToc && toc.Count == 0 && info.Exists)
-            {
-                toc.AddRange(TocExtractor.Read(full).Select(t => new TocItem(t.Title, t.Level, t.Locator)));
-            }
+            throw new McpProtocolException(e.Message, McpErrorCode.InvalidParams);
         }
-
-        return new BookDetails(
-            sidecar.Id.ToString(),
-            sidecar.Title,
-            sidecar.Subtitle,
-            [.. sidecar.Authors],
-            sidecar.Language,
-            sidecar.Year,
-            sidecar.Isbn13,
-            sidecar.Publisher,
-            sidecar.Series,
-            sidecar.SeriesIndex,
-            sidecar.Description,
-            [.. sidecar.Tags],
-            sidecar.ReadStatus.ToString().ToLowerInvariant(),
-            [.. files],
-            [.. toc]);
-    }
-
-    private static List<TagNode> Build(SortedDictionary<string, HashSet<string>> direct, string prefix)
-    {
-        var names = direct.Keys
-            .Where(k => prefix.Length == 0 || k.StartsWith(prefix + "/", StringComparison.Ordinal))
-            .Select(k => (prefix.Length == 0 ? k : k[(prefix.Length + 1)..]).Split('/')[0])
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal);
-        var nodes = new List<TagNode>();
-        foreach (var name in names)
-        {
-            var path = prefix.Length == 0 ? name : prefix + "/" + name;
-            var below = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var (tag, works) in direct)
-            {
-                if (tag == path || tag.StartsWith(path + "/", StringComparison.Ordinal))
-                {
-                    below.UnionWith(works);
-                }
-            }
-
-            nodes.Add(new TagNode(name, path, below.Count, direct.TryGetValue(path, out var own) ? own.Count : 0, [.. Build(direct, path)]));
-        }
-
-        return nodes;
     }
 }

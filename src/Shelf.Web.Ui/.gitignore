@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# The repository root ignores package.json and package-lock.json; the UI needs both for `npm ci` (ADR 0009).
+!package.json
+!package-lock.json

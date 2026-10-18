@@ -19,6 +19,13 @@
     <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
     <ProjectReference Include="..\Shelf.Mcp\Shelf.Mcp.csproj" />
     <ProjectReference Include="..\Shelf.Semantic\Shelf.Semantic.csproj" />
+    <ProjectReference Include="..\Shelf.Web\Shelf.Web.csproj" />
+  </ItemGroup>
+
+  <!-- The runtime feature switch that the Web SDK sets: without it the trimmer keeps MVC's model metadata and the AOT publish
+       warns (IL2026, IL3050). It belongs to the executable, not to Shelf.Web (ADR 0008, finding 2). -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Microsoft.AspNetCore.Mvc.ApiExplorer.IsEnhancedModelMetadataSupported" Value="false" Trim="true" />
   </ItemGroup>
 
   <ItemGroup>

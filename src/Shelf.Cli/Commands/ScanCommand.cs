@@ -17,6 +17,9 @@ internal static class ScanCommand
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var result = LibraryScanner.Scan(context.Root);
 
+            // A cover is made for the works that have a file which was read just now; a scan that read nothing opens no file.
+            CoverReport.Warn(LibraryCovers.FillFor(context.Root, result.ReadFiles), stderr);
+
             foreach (var problem in result.Problems)
             {
                 stderr.WriteLine($"warning: {problem.Message}");

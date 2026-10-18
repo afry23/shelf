@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+    <ProjectReference Include="..\Shelf.Extraction\Shelf.Extraction.csproj" />
+    <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
+    <ProjectReference Include="..\Shelf.Organize\Shelf.Organize.csproj" />
+    <ProjectReference Include="..\Shelf.Semantic\Shelf.Semantic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Library.Tests" />
+  </ItemGroup>
+
+</Project>

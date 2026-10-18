@@ -178,7 +178,7 @@ public static class LibrarySearch
     // ---- filters ----
 
     /// <summary>Conditions on the work (alias <c>w</c>) with their parameters.</summary>
-    private sealed class Filter
+    internal sealed class Filter
     {
         private readonly List<string> _conditions = [];
         private readonly List<(string Name, object Value)> _parameters = [];
@@ -208,7 +208,7 @@ public static class LibrarySearch
         }
     }
 
-    private static Filter BuildFilter(SearchQuery query)
+    internal static Filter BuildFilter(SearchQuery query)
     {
         var filter = new Filter();
         foreach (var f in query.Filters)
