@@ -169,7 +169,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | 3 | `m3-vector-store` (done) | `vec_works` / `vec_chunks` (cosine), `vec0` loading with brute-force fallback, pinned fetch, model and dimension metadata | F-SEM-4 |
 | 4 | `m3-embedding-index` (done) | Work level first, then chunks; `embed_status`, batching, interrupt and resume, progress, `reindex --embeddings`, hook in `import` / `scan` | F-SEM-2, F-SEM-3, F-SEM-7 |
 | 5 | `m3-semantic-search` (done) | `semantic [--chunks] [--json]`, locations, cross-language, incomplete-index notice | F-SEM-1 to 3, AC 4 |
-| 6 | `m3-hybrid` (Should) | RRF of FTS and vectors; model change re-indexes | F-SEM-5, F-SEM-8 |
+| 6 | `m3-hybrid` (done) | RRF of FTS and vectors; model change re-indexes | F-SEM-5, F-SEM-8 |
 | 7 | `m3-mcp-core` | `shelf mcp` (stdio), read tools, resources, clean stdout, error scenarios from ADR 0006 | 7.2, AC 6 |
 | 8 | `m3-mcp-semantic-write` | `semantic_search`, `add_tags` / `remove_tags`, `mcp.readOnly`, stdio protocol e2e | 7.2, AC 4, AC 6 |
 | 9 | `m3-close` | Native e2e for M3 (incl. `linux-x64` in the `aot` job), measurements on the reference library, ADR 0014, status | exit criteria |

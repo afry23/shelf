@@ -10,20 +10,25 @@ namespace Shelf.Semantic;
 /// </summary>
 public sealed class E5Embedder : IEmbedder, IDisposable
 {
+    /// <summary>The size of multilingual-e5-small; other models of the family (base, large) report their own.</summary>
     public const int EmbeddingDimensions = 384;
 
     private readonly E5Tokenizer _tokenizer;
     private readonly InferenceSession _session;
     private readonly bool _needsTokenTypes;
+    private readonly int _dimensions;
 
     private E5Embedder(E5Tokenizer tokenizer, InferenceSession session)
     {
         _tokenizer = tokenizer;
         _session = session;
         _needsTokenTypes = session.InputMetadata.ContainsKey("token_type_ids");
+        _dimensions = session.OutputMetadata.TryGetValue("last_hidden_state", out var output) && output.Dimensions is [_, _, > 0 and var size]
+            ? size
+            : EmbeddingDimensions;
     }
 
-    public int Dimensions => EmbeddingDimensions;
+    public int Dimensions => _dimensions;
 
     public static E5Embedder Open(ModelFolder folder)
     {
@@ -76,6 +81,6 @@ public sealed class E5Embedder : IEmbedder, IDisposable
 
         using var results = _session.Run(inputs);
         var hidden = results.First().AsTensor<float>().ToArray();
-        return Pooling.MeanNormalize(hidden, maskValues, EmbeddingDimensions);
+        return Pooling.MeanNormalize(hidden, maskValues, _dimensions);
     }
 }

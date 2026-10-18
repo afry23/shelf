@@ -16,6 +16,10 @@ public sealed partial class SemanticSearchSteps(CliSteps cli, ScenarioEnvironmen
     public void ThenTheFirstSearchResultIs(string title) =>
         Assert.Equal(title, ResultLine().Match(cli.StandardOutput).Groups[1].Value);
 
+    [Then("the first search result is not {string}")]
+    public void ThenTheFirstSearchResultIsNot(string title) =>
+        Assert.NotEqual(title, ResultLine().Match(cli.StandardOutput).Groups[1].Value);
+
     [Then("the JSON score {string} is greater than the JSON score {string}")]
     public void ThenTheScoreIsGreaterThan(string higher, string lower) =>
         Assert.True(Score(higher) > Score(lower), $"{higher} = {Score(higher)} should be greater than {lower} = {Score(lower)}");

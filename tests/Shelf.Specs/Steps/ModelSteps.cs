@@ -13,6 +13,17 @@ public sealed class ModelSteps(ScenarioEnvironment environment, ConfigSteps work
     public void GivenTheModelCatalogHasTheFiles(string name, DataTable files) =>
         environment.Models = new FakeModels(name, files.Rows.ToDictionary(r => r["file"], r => r["content"]));
 
+    [Given("the model catalog also has the model {string}")]
+    public void GivenTheModelCatalogAlsoHasTheModel(string name) => Models.AddModel(name);
+
+    [Given("the library {string} uses the model {string}")]
+    public void GivenTheLibraryUsesTheModel(string library, string model)
+    {
+        var path = Path.Combine(workspace.WorkingDirectory, library, ".shelf", "config.toml");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, $"semantic.model = '{model}'\n");
+    }
+
     [Given("the folder {string} holds the model files")]
     public void GivenTheFolderHoldsTheModelFiles(string folder) => Write(folder, except: null);
 

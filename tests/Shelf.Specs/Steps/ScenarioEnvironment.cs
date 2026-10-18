@@ -15,6 +15,11 @@ public sealed class ScenarioEnvironment
     /// <summary>The embedder commands get instead of ONNX Runtime; null runs use the real one.</summary>
     public FakeEmbedder? Embedder { get; set; }
 
+    /// <summary>Fakes of other models, by model name (the folder name); they share the call log of <see cref="Embedder"/>.</summary>
+    public Dictionary<string, FakeEmbedder> ModelEmbedders { get; } = new();
+
+    public FakeEmbedder EmbedderFor(string modelName) => ModelEmbedders.GetValueOrDefault(modelName) ?? Embedder!;
+
     /// <summary>Cancelled by the fake embedder to simulate Ctrl-C.</summary>
     public CancellationTokenSource Interrupt { get; set; } = new();
 }
@@ -22,22 +27,31 @@ public sealed class ScenarioEnvironment
 /// <summary>A catalog of tiny files with the right checksums, and a downloader that serves them (or breaks) without a network.</summary>
 public sealed class FakeModels : IModelDownloader
 {
+    private readonly List<string> _names = [];
+
     public FakeModels(string name, IReadOnlyDictionary<string, string> contents)
     {
         Contents = contents;
-        Catalog = new ModelCatalog(
-        [
-            new ModelDefinition(
-                name,
-                [.. contents.Select(c => new ModelFile(
-                    c.Key,
-                    $"https://models.example/{name}/{c.Key}",
-                    System.Text.Encoding.UTF8.GetByteCount(c.Value),
-                    Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(c.Value)))))]),
-        ]);
+        AddModel(name);
     }
 
-    public ModelCatalog Catalog { get; }
+    public ModelCatalog Catalog { get; private set; } = new([]);
+
+    /// <summary>Adds a model with the same files under another name.</summary>
+    public void AddModel(string name)
+    {
+        _names.Add(name);
+        Catalog = new ModelCatalog(
+        [
+            .. _names.Select(n => new ModelDefinition(
+                n,
+                [.. Contents.Select(c => new ModelFile(
+                    c.Key,
+                    $"https://models.example/{n}/{c.Key}",
+                    System.Text.Encoding.UTF8.GetByteCount(c.Value),
+                    Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(c.Value)))))])),
+        ]);
+    }
 
     public IReadOnlyDictionary<string, string> Contents { get; }
 
@@ -65,11 +79,11 @@ public sealed class FakeModels : IModelDownloader
 /// An embedder without a model: every word becomes a direction, so texts that share words are near each other. It
 /// records what it was asked to embed and can interrupt the run (as Ctrl-C would) after a number of calls.
 /// </summary>
-public sealed class FakeEmbedder(int dimensions, ScenarioEnvironment environment) : IEmbedder
+public sealed class FakeEmbedder(int dimensions, ScenarioEnvironment environment, List<(string Kind, string Text)>? sharedCalls = null) : IEmbedder
 {
     public int Dimensions => dimensions;
 
-    public List<(string Kind, string Text)> Calls { get; } = [];
+    public List<(string Kind, string Text)> Calls { get; } = sharedCalls ?? [];
 
     /// <summary>Interrupts after this many calls since the last reset; null never interrupts.</summary>
     public int? StopAfter { get; set; }
@@ -105,7 +119,7 @@ public sealed class FakeEmbedder(int dimensions, ScenarioEnvironment environment
             vector[i] /= norm;
         }
 
-        if (StopAfter is { } limit && Calls.Count >= limit)
+        if (environment.Embedder?.StopAfter is { } limit && Calls.Count >= limit)
         {
             environment.Interrupt.Cancel();
         }

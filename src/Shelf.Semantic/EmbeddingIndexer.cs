@@ -19,6 +19,13 @@ public sealed record EmbeddingResult(int Works, int Passages, int Files, int Rem
 /// </summary>
 public static class EmbeddingIndexer
 {
+    /// <summary>
+    /// Queues every file again, for a new model. Call it before <see cref="VectorStore.Reset"/>: if the process stops in
+    /// between, the next run sees the old model and does both again.
+    /// </summary>
+    public static void RequeueAll(SqliteConnection connection) =>
+        Execute(connection, "UPDATE files SET embed_status = 'pending' WHERE embed_status <> 'pending'");
+
     /// <exception cref="VectorStoreException">The index holds vectors of another model.</exception>
     public static EmbeddingResult Run(
         SqliteConnection connection,

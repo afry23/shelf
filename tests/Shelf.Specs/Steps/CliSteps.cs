@@ -88,7 +88,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
         if (environment.Embedder is { } embedder)
         {
-            cliEnvironment = cliEnvironment.WithEmbedder(_ => embedder);
+            cliEnvironment = cliEnvironment.WithEmbedder(folder => environment.EmbedderFor(Path.GetFileName(folder.Directory)));
         }
 
         cliEnvironment = cliEnvironment.WithCancellation(environment.Interrupt.Token);

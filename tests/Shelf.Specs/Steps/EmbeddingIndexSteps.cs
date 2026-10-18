@@ -16,6 +16,10 @@ public sealed class EmbeddingIndexSteps(ScenarioEnvironment environment, ConfigS
     [Given("the embedder is a word-hashing fake of {int} dimensions")]
     public void GivenTheEmbedderIsAFake(int dimensions) => environment.Embedder = new FakeEmbedder(dimensions, environment);
 
+    [Given("the model {string} embeds with {int} dimensions")]
+    public void GivenTheModelEmbedsWith(string model, int dimensions) =>
+        environment.ModelEmbedders[model] = new FakeEmbedder(dimensions, environment, Embedder.Calls);
+
     [Given("the embedder stops the run after {int} embeddings")]
     public void GivenTheEmbedderStopsTheRunAfter(int count) => Embedder.StopAfter = count;
 
@@ -60,12 +64,22 @@ public sealed class EmbeddingIndexSteps(ScenarioEnvironment environment, ConfigS
     public void ThenTheEmbedderWasCalledFewerThan(int count) => Assert.InRange(Embedder.Calls.Count, 1, count - 1);
 
     [Then("the index holds {int} work vector(s) and {int} passage vector(s)")]
-    public void ThenTheIndexHoldsVectors(int works, int passages)
+    public void ThenTheIndexHoldsVectors(int works, int passages) => CheckVectors(works, passages, null);
+
+    [Then("the index holds {int} work vector(s) and {int} passage vector(s) of {int} dimensions")]
+    public void ThenTheIndexHoldsVectorsOfDimensions(int works, int passages, int dimensions) => CheckVectors(works, passages, dimensions);
+
+    private void CheckVectors(int works, int passages, int? dimensions)
     {
-        using var connection = IndexDatabase.OpenWrite(IndexDatabase.PathFor(Path.Combine(workspace.WorkingDirectory, "library")));
-        var store = VectorStore.Open(connection, Embedder.Dimensions, "multilingual-e5-small");
-        Assert.Equal(works, store.Count(VectorKind.Work));
-        Assert.Equal(passages, store.Count(VectorKind.Chunk));
+        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(Path.Combine(workspace.WorkingDirectory, "library")));
+        var store = VectorStore.OpenExisting(connection);
+        Assert.Equal(works, store?.Count(VectorKind.Work) ?? 0);
+        Assert.Equal(passages, store?.Count(VectorKind.Chunk) ?? 0);
+        if (dimensions is { } expected)
+        {
+            Assert.Equal(expected, store!.Dimensions);
+        }
+
         SqliteConnection.ClearAllPools();
     }
 }

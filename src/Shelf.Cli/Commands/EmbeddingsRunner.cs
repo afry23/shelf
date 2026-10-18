@@ -28,6 +28,16 @@ internal static class EmbeddingsRunner
         {
             using var connection = IndexDatabase.OpenWrite(IndexDatabase.PathFor(context.Root));
             var store = VectorStore.Open(connection, embedder.Dimensions, model.Name);
+            if (!store.IsCurrentModel)
+            {
+                // F-SEM-8: vectors of two models cannot be compared. Queue every file first, then start the store over, so that
+                // a run that stops in between is found out and done again.
+                stderr.WriteLine(
+                    $"warning: the embeddings were made with {store.StoredModel} ({store.StoredDimensions} dimensions); switching to {model.Name} makes them all again");
+                EmbeddingIndexer.RequeueAll(connection);
+                store = store.Reset();
+            }
+
             var clock = Stopwatch.StartNew();
             var lastPrinted = TimeSpan.Zero;
             var result = EmbeddingIndexer.Run(

@@ -243,7 +243,7 @@ shelf import <path> [--move] [--dry-run]  Import files
 shelf scan                                Incremental scan
 shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
 shelf search <query> [--limit] [--json]   Metadata/full-text search
-shelf semantic <text> [--chunks] [--json] Semantic search
+shelf semantic <text> [--chunks] [--hybrid] [--json]  Semantic search (--hybrid: combined with full text)
 shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)

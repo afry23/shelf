@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 using System.Text.Json;
+using Shelf.Core.Search;
 using Shelf.Index;
 using Shelf.Semantic;
 
@@ -19,6 +20,10 @@ internal static class SemanticCommand
             Arity = ArgumentArity.OneOrMore,
         };
         var chunks = new Option<bool>("--chunks") { Description = "Find passages with their location instead of works" };
+        var hybrid = new Option<bool>("--hybrid")
+        {
+            Description = "Combine with the full-text results (words and phrases only, no filters): an exact word and a similar meaning both count",
+        };
         var limit = new Option<int>("--limit")
         {
             Description = "Largest number of hits to show",
@@ -35,6 +40,7 @@ internal static class SemanticCommand
         var command = new Command("semantic", "Search by meaning: works, or with --chunks the passages inside them");
         command.Arguments.Add(words);
         command.Options.Add(chunks);
+        command.Options.Add(hybrid);
         command.Options.Add(limit);
         command.Options.Add(library);
         command.SetAction(parseResult =>
@@ -46,21 +52,63 @@ internal static class SemanticCommand
                 return ExitCodes.Usage;
             }
 
+            var useHybrid = parseResult.GetValue(hybrid);
+            SearchQuery? parsed = null;
+            if (useHybrid)
+            {
+                try
+                {
+                    parsed = QueryParser.Parse(text);
+                }
+                catch (QueryException e)
+                {
+                    stderr.WriteLine($"error: {e.Message}");
+                    return ExitCodes.Usage;
+                }
+
+                if (parsed.Filters.Count > 0 || parsed.Exclude.Count > 0)
+                {
+                    stderr.WriteLine("error: --hybrid takes words and phrases only; use 'shelf search' for filters and exclusions");
+                    return ExitCodes.Usage;
+                }
+
+                if (parsed.Include.Count == 0)
+                {
+                    stderr.WriteLine("error: the query has nothing to search for");
+                    return ExitCodes.Usage;
+                }
+            }
+
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var passages = parseResult.GetValue(chunks);
+            var count = parseResult.GetValue(limit);
             using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(context.Root));
             var store = VectorStore.OpenExisting(connection);
 
-            List<SemanticHit> hits = [];
-            if (store is not null)
+            // Without vectors there is nothing to embed the query for: the model is not needed (and not loaded).
+            var vector = store is null ? null : EmbedQuery(context, environment, store, text);
+            List<SemanticHit> hits;
+            if (useHybrid)
             {
-                hits = Search(context, environment, connection, store, text, passages, parseResult.GetValue(limit));
+                hits = passages
+                    ? HybridSearch.SearchPassages(connection, store, vector, parsed!, count)
+                    : HybridSearch.SearchWorks(connection, store, vector, parsed!, count);
+            }
+            else if (store is null)
+            {
+                hits = [];
+            }
+            else
+            {
+                hits = passages
+                    ? SemanticSearch.SearchPassages(connection, store, vector!, count)
+                    : SemanticSearch.SearchWorks(connection, store, vector!, count);
             }
 
             var coverage = SemanticSearch.Coverage(connection, store);
             if (parseResult.GetValue(json))
             {
-                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, text, passages, hits, coverage)));
+                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, text, passages, useHybrid, hits, coverage)));
             }
             else if (hits.Count == 0)
             {
@@ -82,12 +130,13 @@ internal static class SemanticCommand
         return command;
     }
 
-    private static List<SemanticHit> Search(LibraryContext context, CliEnvironment environment, Microsoft.Data.Sqlite.SqliteConnection connection, VectorStore store, string text, bool passages, int limit)
+    private static float[] EmbedQuery(LibraryContext context, CliEnvironment environment, VectorStore store, string text)
     {
         var name = context.Settings.Semantic.Model;
         if (store.Model != name)
         {
-            throw new VectorStoreException($"the vectors in this index were made with {store.Model} ({store.Dimensions} dimensions), not {name}; make them again with: shelf reindex, then {EmbedHint}");
+            throw new VectorStoreException(
+                $"the vectors in this index were made with {store.Model} ({store.Dimensions} dimensions), not {name}; run: {EmbedHint} to make them again");
         }
 
         var model = environment.ModelCatalog.Find(name)
@@ -101,10 +150,7 @@ internal static class SemanticCommand
         var embedder = environment.EmbedderFactory(folder);
         try
         {
-            var query = embedder.EmbedQuery(text);
-            return passages
-                ? SemanticSearch.SearchPassages(connection, store, query, limit)
-                : SemanticSearch.SearchWorks(connection, store, query, limit);
+            return embedder.EmbedQuery(text);
         }
         finally
         {
@@ -146,11 +192,12 @@ internal static class SemanticCommand
         }
     }
 
-    private static void WriteJson(Utf8JsonWriter writer, string query, bool passages, List<SemanticHit> hits, SemanticCoverage coverage)
+    private static void WriteJson(Utf8JsonWriter writer, string query, bool passages, bool hybrid, List<SemanticHit> hits, SemanticCoverage coverage)
     {
         writer.WriteStartObject();
         JsonOutput.Property(writer, "query", query);
         JsonOutput.Property(writer, "level", passages ? "chunk" : "work");
+        JsonOutput.Property(writer, "mode", hybrid ? "hybrid" : "semantic");
         JsonOutput.Property(writer, "total", hits.Count);
         JsonOutput.Property(writer, "pendingFiles", coverage.PendingFiles);
         JsonOutput.Property(writer, "worksWithoutEmbedding", coverage.WorksWithoutVector);
