@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Text;
 using Microsoft.Data.Sqlite;
 using Shelf.Core.Configuration;
@@ -122,7 +123,7 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
 
         if (parts.Count == 0)
         {
-            throw new LibraryException($"no text at '{location}' in '{work.Title}'; use a location from search_books or get_book");
+            throw new LibraryException($"no text at '{location}' in '{work.Title}'; use a location from search_books or get_book", LibraryErrorKind.NotFound);
         }
 
         var first = parts[0].File;
@@ -319,6 +320,131 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
             [.. result.Collisions.Take(MaxMoves).Select(c => new SkippedMove(c.Work.ToString(), c.From, c.To, c.Reason))]);
     }
 
+    // ---- the library as a list, metadata, tag sets (the web API) ----
+
+    public const string SortNames = "title, author, year, added, updated";
+
+    /// <summary>The works that pass the filters in <paramref name="query"/>, one page, with the counts per facet.</summary>
+    /// <param name="query">Filters of the query language only (<c>tag:cloud -lang:de</c>); words are refused.</param>
+    public BrowsePage Browse(string? query, string sort = "title", string order = "asc", int offset = 0, int limit = BrowseOptions.DefaultLimit)
+    {
+        if (limit is < 1 or > BrowseOptions.MaxLimit)
+        {
+            throw new LibraryException($"limit must be between 1 and {BrowseOptions.MaxLimit}.");
+        }
+
+        if (offset < 0)
+        {
+            throw new LibraryException("offset must not be negative.");
+        }
+
+        if (!Enum.TryParse<WorkSort>(sort, ignoreCase: true, out var chosen) || !Enum.IsDefined(chosen))
+        {
+            throw new LibraryException($"sort must be one of {SortNames}.");
+        }
+
+        if (order is not ("asc" or "desc"))
+        {
+            throw new LibraryException("order must be asc or desc.");
+        }
+
+        SearchQuery parsed;
+        try
+        {
+            parsed = QueryParser.Parse(query ?? string.Empty);
+        }
+        catch (QueryException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        if (parsed.Include.Count > 0)
+        {
+            throw new LibraryException("the list takes filters only (tag: author: title: lang: year: format: status:); use search for words");
+        }
+
+        try
+        {
+            using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
+            return LibraryBrowse.Browse(connection, parsed, new BrowseOptions(chosen, order == "desc", offset, limit));
+        }
+        catch (IndexException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
+    /// <summary>
+    /// Changes metadata as a JSON merge patch: a field that is absent stays, a field set to <c>null</c> is removed. The
+    /// rules are those of <c>shelf edit</c>. Nothing is changed unless every field is valid.
+    /// </summary>
+    public BookDetails EditMetadata(string id, JsonObject patch)
+    {
+        ArgumentNullException.ThrowIfNull(patch);
+        if (patch.Count == 0)
+        {
+            throw new LibraryException("nothing to change; give at least one field such as title");
+        }
+
+        var work = Find(id);
+        var edits = new List<Func<WorkSidecar, WorkSidecar>>();
+        foreach (var (name, value) in patch)
+        {
+            edits.Add(MetadataPatch.Edit(name, value));
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                LibraryEditor.Update(root, work, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)));
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+
+        return Details(work, withToc: false);
+    }
+
+    /// <summary>Gives a work exactly these tags, in one undoable step. Every name is checked first; one that is refused changes nothing.</summary>
+    public TagSetResult SetTags(string id, string[] tags)
+    {
+        ArgumentNullException.ThrowIfNull(tags);
+        var names = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var tag in tags)
+        {
+            if (!TagNames.TryNormalize(tag, out var name, out var error))
+            {
+                throw new LibraryException($"tag '{tag}': {error}");
+            }
+
+            names.Add(name);
+        }
+
+        var work = Find(id);
+        lock (_writeGate)
+        {
+            try
+            {
+                var before = LibraryEditor.Read(root, work).Tags;
+                var added = names.Count(n => !before.Contains(n));
+                var removed = before.Count(t => !names.Contains(t));
+                if (added + removed > 0)
+                {
+                    LibraryTags.SetTags(root, work.Id, [.. names]);
+                }
+
+                return new TagSetResult(work.Id.ToString(), [.. names], added, removed);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     // ---- resources ----
 
     /// <summary>Metadata of a work, without the table of contents (see <see cref="GetToc"/>).</summary>
@@ -396,7 +522,11 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         {
             return WorkLookup.Resolve(root, id, root);
         }
-        catch (Exception e) when (e is LibraryEditException or IndexException)
+        catch (LibraryEditException e)
+        {
+            throw new LibraryException(e.Message, e.NotFound ? LibraryErrorKind.NotFound : LibraryErrorKind.Invalid);
+        }
+        catch (IndexException e)
         {
             throw new LibraryException(e.Message);
         }
@@ -442,7 +572,9 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
             sidecar.Publisher,
             sidecar.Series,
             sidecar.SeriesIndex,
+            sidecar.Edition,
             sidecar.Description,
+            sidecar.Rating,
             [.. sidecar.Tags],
             sidecar.ReadStatus.ToString().ToLowerInvariant(),
             [.. files],

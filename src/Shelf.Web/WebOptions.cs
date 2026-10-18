@@ -1,5 +1,6 @@
 using System.Net;
 using Shelf.Core.Configuration;
+using Shelf.Semantic;
 
 namespace Shelf.Web;
 
@@ -10,7 +11,17 @@ namespace Shelf.Web;
 /// <param name="Address">The address to listen on; see <see cref="BindRules"/>.</param>
 /// <param name="Port">The port; 0 lets the system choose one.</param>
 /// <param name="Token">The access token, or null for none.</param>
-public sealed record WebOptions(string Root, ShelfSettings Settings, string Version, IPAddress Address, int Port, string? Token);
+/// <param name="Models">The embedding models that are known, for semantic search.</param>
+/// <param name="EmbedderFactory">Opens the embedding model of a folder, on the first semantic request.</param>
+public sealed record WebOptions(
+    string Root,
+    ShelfSettings Settings,
+    string Version,
+    IPAddress Address,
+    int Port,
+    string? Token,
+    ModelCatalog Models,
+    Func<ModelFolder, IEmbedder> EmbedderFactory);
 
 /// <summary>The server could not start or stop as asked (for example the port is in use). The message is meant to be shown.</summary>
 public sealed class WebHostException(string message) : Exception(message);

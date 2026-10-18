@@ -4,7 +4,7 @@ using System.Text;
 namespace Shelf.Core.Grouping;
 
 /// <summary>Case, accents and ligatures folded away so that texts can be compared (titles, names, running text).</summary>
-internal static class TextFolding
+public static class TextFolding
 {
     /// <summary>Lower case, accents removed (NFKD, combining marks dropped), letters without a decomposition spelled out.</summary>
     public static string Fold(string text)

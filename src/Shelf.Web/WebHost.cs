@@ -52,6 +52,9 @@ public static class WebHost
         builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.TypeInfoResolverChain.Insert(0, WebJsonContext.Default));
         builder.Services.AddOpenApi();
 
+        using var library = new LibraryHandle(options);
+        builder.Services.AddSingleton(library);
+
         var app = builder.Build();
         Configure(app, options);
 
@@ -106,6 +109,8 @@ public static class WebHost
             })
             .WithName("GetStatus")
             .Produces<StatusResponse>(StatusCodes.Status200OK);
+
+        Api.Map(api);
 
         app.MapOpenApi(ApiPrefix + "/openapi.json");
     }

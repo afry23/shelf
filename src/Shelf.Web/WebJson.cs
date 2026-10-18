@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using Shelf.Library;
 
 namespace Shelf.Web;
 
@@ -12,4 +14,11 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(ApiProblem))]
 [JsonSerializable(typeof(StatusResponse))]
+[JsonSerializable(typeof(WorkList))]
+[JsonSerializable(typeof(SearchResponse))]
+[JsonSerializable(typeof(BookDetails))]
+[JsonSerializable(typeof(TagTree))]
+[JsonSerializable(typeof(TagSetResult))]
+[JsonSerializable(typeof(TagsRequest))]
+[JsonSerializable(typeof(JsonObject))]
 internal partial class WebJsonContext : JsonSerializerContext;

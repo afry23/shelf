@@ -50,6 +50,14 @@ public static class LibraryTags
     public static TagResult Remove(string root, string tag, IReadOnlyCollection<Ulid> works) =>
         Change(root, "tag rm", works, tags => tags.Contains(tag) ? [.. tags.Where(t => t != tag)] : null);
 
+    /// <summary>Gives the work exactly these tags, in one undoable step (one journal).</summary>
+    /// <exception cref="LibraryEditException">No such work.</exception>
+    public static TagResult SetTags(string root, Ulid work, IReadOnlyList<string> tags)
+    {
+        ArgumentNullException.ThrowIfNull(tags);
+        return Change(root, "tag set", [work], current => current.SequenceEqual(tags, StringComparer.Ordinal) ? null : tags);
+    }
+
     /// <summary>Renames the tag and the tags below it on every work. The new name must not be in use.</summary>
     /// <exception cref="LibraryEditException">No work has the tag, or the new name is in use.</exception>
     public static TagResult Rename(string root, string from, string to)

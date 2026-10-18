@@ -78,6 +78,10 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [When("I request {string} with the header {string}")]
     public void WhenIRequestWithTheHeader(string request, string header) => Send(request, header, withCookie: false);
 
+    [Given("I send {string} with the JSON:")]
+    [When("I send {string} with the JSON:")]
+    public void WhenISendWithTheJson(string request, string body) => Send(request, header: null, withCookie: false, body);
+
     [When("I request {string} with the cookie")]
     public void WhenIRequestWithTheCookie(string request) => Send(request, header: null, withCookie: true);
 
@@ -116,17 +120,26 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response is a JSON document")]
     public void ThenTheResponseIsJson() => Assert.NotNull(Json());
 
-    [Then("the JSON field {string} of the response is {int}")]
-    public void ThenTheFieldIsInt(string field, int expected) => Assert.Equal(expected, Json()[field]!.GetValue<int>());
+    [Then("the JSON field {string} of the response is {float}")]
+    public void ThenTheFieldIsNumber(string path, double expected) => Assert.Equal(expected, Field(path)!.GetValue<double>());
 
     [Then("the JSON field {string} of the response is {string}")]
-    public void ThenTheFieldIsString(string field, string expected) => Assert.Equal(expected, Json()[field]!.GetValue<string>());
+    public void ThenTheFieldIsString(string path, string expected) => Assert.Equal(expected, Field(path)!.GetValue<string>());
+
+    [Then("the JSON field {string} of the response is null")]
+    public void ThenTheFieldIsNull(string path) => Assert.Null(Field(path));
 
     [Then("the JSON field {string} of the response is not empty")]
-    public void ThenTheFieldIsNotEmpty(string field) => Assert.False(string.IsNullOrEmpty(Json()[field]!.GetValue<string>()));
+    public void ThenTheFieldIsNotEmpty(string path) => Assert.False(string.IsNullOrEmpty(Field(path)!.GetValue<string>()));
 
     [Then("the JSON field {string} of the response starts with {string}")]
-    public void ThenTheFieldStartsWith(string field, string prefix) => Assert.StartsWith(prefix, Json()[field]!.GetValue<string>(), StringComparison.Ordinal);
+    public void ThenTheFieldStartsWith(string path, string prefix) => Assert.StartsWith(prefix, Field(path)!.GetValue<string>(), StringComparison.Ordinal);
+
+    [Then("the JSON field {string} of the response contains {string}")]
+    public void ThenTheFieldContains(string path, string text) => Assert.Contains(text, Field(path)!.GetValue<string>(), StringComparison.Ordinal);
+
+    [Then("the JSON array {string} of the response has {int} entries")]
+    public void ThenTheArrayHasEntries(string path, int count) => Assert.Equal(count, Field(path)!.AsArray().Count);
 
     [Then("the JSON document has the path {string} with the method {string}")]
     public void ThenTheDocumentHasThePath(string path, string method) => Assert.NotNull(Json()["paths"]![path]![method]);
@@ -162,6 +175,16 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
             shelf = shelf.WithMinimumLogLevel(level);
         }
 
+        if (environment.Models is { } models)
+        {
+            shelf = shelf.WithModels(models.Catalog, models);
+        }
+
+        if (environment.Embedder is not null)
+        {
+            shelf = shelf.WithEmbedder(folder => environment.EmbedderFor(Path.GetFileName(folder.Directory)));
+        }
+
         _server = Task.Run(() => ShelfApp.Run([.. args], _stdout, _stderr, shelf));
 
         var deadline = DateTime.UtcNow + Timeout;
@@ -193,7 +216,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _server = null;
     }
 
-    private void Send(string request, string? header, bool withCookie)
+    private void Send(string request, string? header, bool withCookie, string? body = null)
     {
         var space = request.IndexOf(' ', StringComparison.Ordinal);
         var message = new HttpRequestMessage(new HttpMethod(request[..space]), $"http://127.0.0.1:{_port}{request[(space + 1)..]}");
@@ -210,6 +233,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
             {
                 message.Headers.TryAddWithoutValidation(name, value);
             }
+        }
+
+        if (body is not null)
+        {
+            var type = message.Method == HttpMethod.Patch ? "application/merge-patch+json" : "application/json";
+            message.Content = new StringContent(body, Encoding.UTF8, type);
         }
 
         if (withCookie)
@@ -240,6 +269,38 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     private List<string> SetCookies() =>
         _response!.Headers.TryGetValues("Set-Cookie", out var values) ? [.. values] : [];
+
+    /// <summary>
+    /// The value at a path such as <c>items[0].title</c>. A property that is missing fails the step (a value that is not there
+    /// must be written as null); a property that is null gives null.
+    /// </summary>
+    private JsonNode? Field(string path)
+    {
+        JsonNode? node = Json();
+        foreach (var part in path.Split('.'))
+        {
+            var bracket = part.IndexOf('[', StringComparison.Ordinal);
+            var name = bracket < 0 ? part : part[..bracket];
+            if (name.Length > 0)
+            {
+                var obj = node as JsonObject ?? throw new InvalidOperationException($"'{path}': no object before '{name}' in {_body}");
+                Assert.True(obj.ContainsKey(name), $"'{path}': the property '{name}' is missing in {_body}");
+                node = obj[name];
+            }
+
+            while (bracket >= 0)
+            {
+                var close = part.IndexOf(']', bracket);
+                var index = int.Parse(part[(bracket + 1)..close], CultureInfo.InvariantCulture);
+                var array = node as JsonArray ?? throw new InvalidOperationException($"'{path}': no array before [{index}] in {_body}");
+                Assert.True(index < array.Count, $"'{path}': index {index} is beyond the {array.Count} entries in {_body}");
+                node = array[index];
+                bracket = part.IndexOf('[', close);
+            }
+        }
+
+        return node;
+    }
 
     private JsonNode Json() => _json ??= JsonNode.Parse(_body) ?? throw new InvalidOperationException($"The body is no JSON: {_body}");
 

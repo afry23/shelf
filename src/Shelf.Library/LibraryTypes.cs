@@ -42,7 +42,9 @@ public sealed record BookDetails(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Publisher,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Series,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? SeriesIndex,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Edition,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Description,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,
     string ReadStatus,
     BookFile[] Files,
@@ -70,6 +72,9 @@ public sealed record SemanticSearchResult(
     int WorksWithoutEmbedding,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SemanticItem[] Results);
+
+/// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
+public sealed record TagSetResult(string Id, string[] Tags, int Added, int Removed);
 
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
 
