@@ -1,3 +1,5 @@
+using Shelf.Core.Organization;
+
 namespace Shelf.Core.Configuration;
 
 /// <summary>Thresholds of the grouping cascade (PRD 6.3, F-GRP-6).</summary>
@@ -8,6 +10,12 @@ namespace Shelf.Core.Configuration;
 public sealed record GroupingSettings(double AutoMerge, double Review, int MaxHamming, int AutoHamming)
 {
     public static GroupingSettings Default { get; } = new(0.9, 0.5, 5, 3);
+}
+
+/// <summary>How <c>shelf organize</c> names folders and files (F-ORG-1, F-ORG-2).</summary>
+public sealed record OrganizeSettings(PathPattern Pattern)
+{
+    public static OrganizeSettings Default { get; } = new(PathPattern.Default);
 }
 
 /// <summary>A library named in the global config (F-LIB-1).</summary>
@@ -23,25 +31,30 @@ public sealed class ShelfSettings
     private const string ReviewKey = "grouping.review";
     private const string MaxHammingKey = "grouping.max_hamming";
     private const string AutoHammingKey = "grouping.auto_hamming";
+    private const string PatternKey = "organize.pattern";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, PatternKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
+        OrganizeSettings organize,
         IReadOnlyList<LibraryEntry> libraries,
         string? defaultLibrary,
         IReadOnlyList<string> warnings)
     {
         Grouping = grouping;
+        Organize = organize;
         Libraries = libraries;
         DefaultLibrary = defaultLibrary;
         Warnings = warnings;
     }
 
     public GroupingSettings Grouping { get; }
+
+    public OrganizeSettings Organize { get; }
 
     /// <summary>Libraries from <c>[[libraries]]</c> of the global config; the per-library config cannot add any.</summary>
     public IReadOnlyList<LibraryEntry> Libraries { get; }
@@ -53,7 +66,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -73,6 +86,7 @@ public sealed class ShelfSettings
         var review = GroupingSettings.Default.Review;
         var maxHamming = GroupingSettings.Default.MaxHamming;
         var autoHamming = GroupingSettings.Default.AutoHamming;
+        var pattern = PathPattern.Default;
         foreach (var layer in new[] { global, library })
         {
             if (layer is null)
@@ -84,6 +98,7 @@ public sealed class ShelfSettings
             review = ReadThreshold(layer, ReviewKey) ?? review;
             maxHamming = ReadHamming(layer, MaxHammingKey) ?? maxHamming;
             autoHamming = ReadHamming(layer, AutoHammingKey) ?? autoHamming;
+            pattern = ReadPattern(layer) ?? pattern;
         }
 
         if (review > autoMerge)
@@ -108,7 +123,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming), new OrganizeSettings(pattern), libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -131,6 +146,24 @@ public sealed class ShelfSettings
         }
 
         return value;
+    }
+
+    private static PathPattern? ReadPattern(ConfigDocument document)
+    {
+        var text = document.GetString(PatternKey);
+        if (text is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return PathPattern.Parse(text);
+        }
+        catch (PatternException e)
+        {
+            throw new ConfigException($"{document.SourceName}: {PatternKey}: {e.Message}", document.SourceName, key: PatternKey);
+        }
     }
 
     private static int? ReadHamming(ConfigDocument document, string key)
