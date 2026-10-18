@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Shelf.Core.Model;
 
 namespace Shelf.Library;
 
@@ -76,6 +77,9 @@ public sealed record SemanticSearchResult(
 /// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
 public sealed record TagSetResult(string Id, string[] Tags, int Added, int Removed);
 
+/// <summary>What a duplicate action did: files moved to the trash, and works that were left without a file and went along.</summary>
+public sealed record DuplicateOutcome(int Trashed, string[] WorksRemoved);
+
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
 
 public sealed record TagNode(string Name, string Path, int Works, int Direct, TagNode[] Children);
@@ -93,3 +97,7 @@ public sealed record PlannedMove(string Id, string From, string To);
 public sealed record SkippedMove(string Id, string From, string To, string Reason);
 
 public sealed record OrganizationProposal(string Pattern, int Files, int Works, int Unchanged, bool Truncated, PlannedMove[] Moves, SkippedMove[] Collisions);
+
+/// <summary>A file of the library, found by its ID: where it is and what a server needs to send it.</summary>
+/// <param name="Path">The full path.</param>
+public sealed record FileLocation(Ulid Work, string Title, string Name, string Format, string Path, long Size, DateTime LastWriteUtc);

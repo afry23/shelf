@@ -27,6 +27,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private int _port;
     private HttpResponseMessage? _response;
     private string _body = string.Empty;
+    private byte[] _bytes = [];
     private string? _cookie;
     private JsonNode? _json;
 
@@ -87,6 +88,32 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     // ---- answers ----
 
+    [When("I request {string} again with the ETag")]
+    public void WhenIRequestAgainWithTheETag(string request) =>
+        Send(request, "If-None-Match: " + (Header("ETag") ?? throw new InvalidOperationException("The last response had no ETag.")), withCookie: false);
+
+    [Then("the response body is empty")]
+    public void ThenTheBodyIsEmpty() => Assert.Empty(_bytes);
+
+    [Then("the response body is the file {string}")]
+    public void ThenTheBodyIsTheFile(string path) => Assert.True(File(path).AsSpan().SequenceEqual(_bytes), $"The body ({_bytes.Length} bytes) is not the file {path}.");
+
+    [Then("the response body is the file {string} from byte {int}")]
+    public void ThenTheBodyIsTheFileFrom(string path, int first) =>
+        Assert.True(File(path).AsSpan(first).SequenceEqual(_bytes), $"The body ({_bytes.Length} bytes) is not the file {path} from byte {first}.");
+
+    [Then("the response body is bytes {int} to {int} of the file {string}")]
+    public void ThenTheBodyIsBytesOfTheFile(int first, int last, string path) =>
+        Assert.True(File(path).AsSpan(first, last - first + 1).SequenceEqual(_bytes), $"The body ({_bytes.Length} bytes) is not bytes {first} to {last} of the file {path}.");
+
+    [Then("the response body is the last {int} bytes of the file {string}")]
+    public void ThenTheBodyIsTheEndOfTheFile(int count, string path) =>
+        Assert.True(File(path).AsSpan(^count..).SequenceEqual(_bytes), $"The body ({_bytes.Length} bytes) is not the last {count} bytes of the file {path}.");
+
+    [Then("the response header {string} is the size of the file {string}")]
+    public void ThenTheHeaderIsTheSizeOfTheFile(string name, string path) =>
+        Assert.Equal(File(path).Length.ToString(CultureInfo.InvariantCulture), Header(name));
+
     [Then("the response status is {int}")]
     public void ThenTheStatusIs(int status) =>
         Assert.True(status == (int)_response!.StatusCode, $"Expected status {status} but it was {(int)_response.StatusCode}. Body: {_body}");
@@ -125,6 +152,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     [Then("the JSON field {string} of the response is {string}")]
     public void ThenTheFieldIsString(string path, string expected) => Assert.Equal(expected, Field(path)!.GetValue<string>());
+
+    [Then("the JSON field {string} of the response is not zero")]
+    public void ThenTheFieldIsNotZero(string path) => Assert.NotEqual(0, Field(path)!.GetValue<double>());
 
     [Then("the JSON field {string} of the response is null")]
     public void ThenTheFieldIsNull(string path) => Assert.Null(Field(path));
@@ -248,13 +278,16 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
         _response?.Dispose();
         _response = _http.SendAsync(message).WaitAsync(Timeout).GetAwaiter().GetResult();
-        _body = _response.Content.ReadAsStringAsync().WaitAsync(Timeout).GetAwaiter().GetResult();
+        _bytes = _response.Content.ReadAsByteArrayAsync().WaitAsync(Timeout).GetAwaiter().GetResult();
+        _body = Encoding.UTF8.GetString(_bytes);
         _json = null;
         if (SetCookies().FirstOrDefault() is { } set)
         {
             _cookie = set.Split(';')[0];
         }
     }
+
+    private byte[] File(string path) => System.IO.File.ReadAllBytes(Path.Combine(workspace.WorkingDirectory, path));
 
     private string? Header(string name)
     {

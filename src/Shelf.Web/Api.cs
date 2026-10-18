@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Shelf.Index;
 using Shelf.Library;
 
@@ -32,20 +33,46 @@ internal static class Api
             .Produces<WorkList>(StatusCodes.Status200OK);
 
         api.MapGet("/works/{id}", ([FromServices] LibraryHandle library, string id) =>
-                Run(WebJsonContext.Default.BookDetails, () => library.Service.GetBook(RequireId(id))))
+                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service.GetBook(RequireId(id)))))
             .WithName("GetWork")
-            .Produces<BookDetails>(StatusCodes.Status200OK);
+            .Produces<WorkDetail>(StatusCodes.Status200OK);
 
         api.MapMethods("/works/{id}", ["PATCH"], ([FromServices] LibraryHandle library, string id, [FromBody] JsonObject patch) =>
-                Run(WebJsonContext.Default.BookDetails, () => library.Service.EditMetadata(RequireId(id), patch)))
+                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service.EditMetadata(RequireId(id), patch))))
             .WithName("EditWork")
             .Accepts<JsonObject>("application/merge-patch+json", "application/json")
-            .Produces<BookDetails>(StatusCodes.Status200OK);
+            .Produces<WorkDetail>(StatusCodes.Status200OK);
 
         api.MapPut("/works/{id}/tags", ([FromServices] LibraryHandle library, string id, [FromBody] TagsRequest body) =>
                 Run(WebJsonContext.Default.TagSetResult, () => library.Service.SetTags(RequireId(id), TagList(body))))
             .WithName("SetWorkTags")
             .Produces<TagSetResult>(StatusCodes.Status200OK);
+
+        api.MapMethods("/files/{id}", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id, bool? download) =>
+                SendFile(library.Service, id, download ?? false))
+            .WithName("GetFile")
+            .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
+            .Produces(StatusCodes.Status206PartialContent, contentType: "application/octet-stream");
+
+        api.MapGet("/duplicates", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.DuplicateList, () => DuplicateGroups(library.Service)))
+            .WithName("ListDuplicates")
+            .Produces<DuplicateList>(StatusCodes.Status200OK);
+
+        api.MapPost("/duplicates/keep", ([FromServices] LibraryHandle library, [FromBody] FileRequest body) =>
+                Run(WebJsonContext.Default.DuplicateOutcome, () => library.Service.KeepDuplicate(RequireFileId(body))))
+            .WithName("KeepDuplicate")
+            .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/duplicates/trash", ([FromServices] LibraryHandle library, [FromBody] FileRequest body) =>
+                Run(WebJsonContext.Default.DuplicateOutcome, () => library.Service.TrashDuplicate(RequireFileId(body))))
+            .WithName("TrashDuplicate")
+            .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/duplicates/ignore", ([FromServices] LibraryHandle library, [FromBody] FileRequest body) =>
+                Run(WebJsonContext.Default.DuplicateOutcome, () => library.Service.IgnoreDuplicates(RequireFileId(body))))
+            .WithName("IgnoreDuplicates")
+            .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
 
         api.MapGet("/tags", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.TagTree, () => library.Service.ListTags()))
@@ -57,6 +84,80 @@ internal static class Api
             .WithName("Search")
             .Produces<SearchResponse>(StatusCodes.Status200OK);
     }
+
+    /// <summary>
+    /// The file with range processing (a part of it for a <c>Range</c> header, <c>416</c> beyond the end), <c>ETag</c> and
+    /// <c>Last-Modified</c>. Inline for the reader; a download names the file.
+    /// </summary>
+    private static IResult SendFile(LibraryService service, string id, bool download)
+    {
+        FileLocation file;
+        try
+        {
+            file = service.ResolveFile(id);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+
+        var type = file.Format switch
+        {
+            "epub" => "application/epub+zip",
+            "pdf" => "application/pdf",
+            _ => "application/octet-stream",
+        };
+        var modified = new DateTimeOffset(file.LastWriteUtc, TimeSpan.Zero);
+
+        // Size and modification time: a file that was replaced has another ETag even if the clock did not move far.
+        var tag = new EntityTagHeaderValue($"\"{file.Size.ToString("x", CultureInfo.InvariantCulture)}-{modified.UtcTicks.ToString("x", CultureInfo.InvariantCulture)}\"");
+        return new RangeProblemResult(Results.File(file.Path, type, download ? file.Name : null, modified, tag, enableRangeProcessing: true));
+    }
+
+    private static DuplicateList DuplicateGroups(LibraryService service)
+    {
+        var groups = service.Duplicates();
+        return new DuplicateList(
+            groups.Count,
+            [.. groups.Select(g => new DuplicateGroupItem(
+                g.Kind == DuplicateKind.Identical ? "identical" : "same-format",
+                g.Format,
+                g.Keep,
+                [.. g.Files.Select(f => new DuplicateFileItem(
+                    FileIds.Make(f.Work.ToString(), f.Name),
+                    f.Work.ToString(),
+                    f.Title,
+                    f.Name,
+                    f.Path,
+                    f.Size,
+                    f.Pages,
+                    f.Completeness))]))]);
+    }
+
+    private static string RequireFileId(FileRequest body) =>
+        body.FileId is { } node && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
+            ? id
+            : throw new LibraryException("fileId is required: the ID of a file, as in the files of a work");
+
+    private static WorkDetail Detail(BookDetails b) =>
+        new(
+            b.Id,
+            b.Title,
+            b.Subtitle,
+            b.Authors,
+            b.Language,
+            b.Year,
+            b.Isbn13,
+            b.Publisher,
+            b.Series,
+            b.SeriesIndex,
+            b.Edition,
+            b.Description,
+            b.Rating,
+            b.Tags,
+            b.ReadStatus,
+            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages))],
+            b.Toc);
 
     private static SearchResponse Search(LibraryService service, string? q, string mode, string level, string? limit)
     {
@@ -130,13 +231,23 @@ internal static class Api
         }
         catch (LibraryException e)
         {
-            return new ProblemResult(e.Kind == LibraryErrorKind.NotFound ? StatusCodes.Status404NotFound : StatusCodes.Status400BadRequest, e.Message);
+            return Problem(e);
         }
         catch (IndexException e)
         {
             return new ProblemResult(StatusCodes.Status500InternalServerError, e.Message);
         }
     }
+
+    private static ProblemResult Problem(LibraryException e) =>
+        new(
+            e.Kind switch
+            {
+                LibraryErrorKind.NotFound => StatusCodes.Status404NotFound,
+                LibraryErrorKind.Conflict => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest,
+            },
+            e.Message);
 
     private static WorkItem Item(WorkListEntry w) =>
         new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus);

@@ -445,6 +445,126 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         }
     }
 
+    // ---- files and duplicates (the web API) ----
+
+    /// <summary>
+    /// The file with this ID (see <see cref="FileIds"/>). The name must be an entry of the sidecar of the work, so a name
+    /// such as <c>../x</c> finds nothing; the file must lie inside the library and exist.
+    /// </summary>
+    /// <exception cref="LibraryException">With the kind <see cref="LibraryErrorKind.NotFound"/>: no such work, file or folder entry.</exception>
+    public FileLocation ResolveFile(string fileId)
+    {
+        if (!FileIds.TryParse(fileId, out var workId, out var name))
+        {
+            throw new LibraryException($"'{fileId}' is not the ID of a file (the ID of a work, a tilde and the file name)", LibraryErrorKind.NotFound);
+        }
+
+        if (!WorkLookup.LooksLikeId(workId))
+        {
+            throw new LibraryException($"no work matches '{workId}'", LibraryErrorKind.NotFound);
+        }
+
+        var work = Find(workId);
+        WorkSidecar sidecar;
+        try
+        {
+            sidecar = LibraryEditor.Read(root, work);
+        }
+        catch (SidecarException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        if (!sidecar.Files.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)))
+        {
+            throw new LibraryException($"no file '{name}' in '{work.Title}'", LibraryErrorKind.NotFound);
+        }
+
+        var full = Path.GetFullPath(LibraryEditor.FilePath(root, work, name));
+        var inside = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar;
+        var info = new FileInfo(full);
+        if (!full.StartsWith(inside, StringComparison.Ordinal) || !info.Exists)
+        {
+            throw new LibraryException($"the file '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
+        }
+
+        return new FileLocation(work.Id, work.Title, name, Path.GetExtension(name).TrimStart('.').ToLowerInvariant(), full, info.Length, info.LastWriteTimeUtc);
+    }
+
+    /// <summary>The groups of duplicate files (F-DUP-1, F-DUP-2), as the index finds them; pairs marked as not duplicates are left out.</summary>
+    public IReadOnlyList<DuplicateGroup> Duplicates()
+    {
+        try
+        {
+            return LibraryDuplicates.Find(root);
+        }
+        catch (IndexException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
+    /// <summary>Moves every other file of the group of this file to the trash.</summary>
+    public DuplicateOutcome KeepDuplicate(string fileId) =>
+        ActOnDuplicate(fileId, (session, group, index) => session.Resolve(group, index));
+
+    /// <summary>Moves this file to the trash. The group has at least one more file, which stays.</summary>
+    public DuplicateOutcome TrashDuplicate(string fileId) =>
+        ActOnDuplicate(
+            fileId,
+            (session, group, index) =>
+            {
+                // Resolve keeps one file and trashes the rest: a group of this file and one other trashes this file only.
+                var other = group.Files[index == 0 ? 1 : 0];
+                return session.Resolve(new DuplicateGroup(group.Kind, group.Format, [group.Files[index], other], Keep: 1), keep: 1);
+            });
+
+    /// <summary>Marks every pair of the group of this file as not duplicates (F-DUP-6). Nothing moves.</summary>
+    public DuplicateOutcome IgnoreDuplicates(string fileId) =>
+        ActOnDuplicate(
+            fileId,
+            (session, group, _) =>
+            {
+                session.MarkNotDuplicates(group);
+                return 0;
+            });
+
+    private DuplicateOutcome ActOnDuplicate(string fileId, Func<DuplicateSession, DuplicateGroup, int, int> act)
+    {
+        // A malformed ID is a bad request; an ID that names nothing is a 404.
+        if (!FileIds.TryParse(fileId, out _, out _))
+        {
+            throw new LibraryException($"'{fileId}' is not the ID of a file (the ID of a work, a tilde and the file name)");
+        }
+
+        var file = ResolveFile(fileId);
+        lock (_writeGate)
+        {
+            try
+            {
+                // The group is looked up again now: the files may have changed since the list was shown.
+                var group = LibraryDuplicates.Find(root)
+                    .FirstOrDefault(g => g.Files.Any(f => f.Work == file.Work && f.Name == file.Name))
+                    ?? throw new LibraryException($"'{file.Name}' is not part of a group of duplicates (any more)", LibraryErrorKind.Conflict);
+                var index = group.Files.ToList().FindIndex(f => f.Work == file.Work && f.Name == file.Name);
+                var session = LibraryDuplicates.Begin(root);
+                try
+                {
+                    var trashed = act(session, group, index);
+                    return new DuplicateOutcome(trashed, [.. session.WorksRemoved.Select(w => w.ToString())]);
+                }
+                finally
+                {
+                    session.Finish();
+                }
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     // ---- resources ----
 
     /// <summary>Metadata of a work, without the table of contents (see <see cref="GetToc"/>).</summary>

@@ -57,3 +57,51 @@ public sealed record SearchResponse(
 
 /// <summary>The body of <c>PUT /works/{id}/tags</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record TagsRequest(JsonNode? Tags);
+
+/// <summary>A file of a work. <paramref name="Id"/> is what <c>/files/{id}</c> takes (see <see cref="FileIds"/>).</summary>
+public sealed record WorkFile(
+    string Id,
+    string Name,
+    string Format,
+    long SizeBytes,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages);
+
+/// <summary>A work as the work view shows it: the metadata, the tags, the files with their IDs and the table of contents.</summary>
+public sealed record WorkDetail(
+    string Id,
+    string Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Subtitle,
+    string[] Authors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Language,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Isbn13,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Publisher,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Series,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? SeriesIndex,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Edition,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Description,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
+    string[] Tags,
+    string ReadStatus,
+    WorkFile[] Files,
+    TocItem[] Toc);
+
+/// <param name="Completeness">How many of the 8 metadata fields the file has; only for different files of one work (null for identical files).</param>
+public sealed record DuplicateFileItem(
+    string Id,
+    string WorkId,
+    string Title,
+    string Name,
+    string Path,
+    long SizeBytes,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Completeness);
+
+/// <param name="Kind"><c>identical</c> (same content) or <c>same-format</c> (different files of one work in one format).</param>
+/// <param name="Keep">Index in <paramref name="Files"/> of the file that is suggested to stay.</param>
+public sealed record DuplicateGroupItem(string Kind, string Format, int Keep, DuplicateFileItem[] Files);
+
+public sealed record DuplicateList(int Total, DuplicateGroupItem[] Groups);
+
+/// <summary>The body of a duplicate action. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record FileRequest(JsonNode? FileId);
