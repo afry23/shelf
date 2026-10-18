@@ -1,13 +1,13 @@
 using Shelf.Semantic;
 
-namespace Shelf.Mcp;
+namespace Shelf.Library;
 
 /// <summary>
 /// The embedding model for the queries of <c>semantic_search</c>. A server lives for a whole session, so the model is
 /// opened on the first query and kept (opening it costs about half a second; a query costs milliseconds). Nothing here
 /// downloads: a missing model is reported, never fetched (PRD 9.4).
 /// </summary>
-internal sealed class SemanticBackend(ModelCatalog catalog, Func<ModelFolder, IEmbedder> factory) : IDisposable
+public sealed class SemanticBackend(ModelCatalog catalog, Func<ModelFolder, IEmbedder> factory) : IDisposable
 {
     private readonly Lock _gate = new();
     private IEmbedder? _embedder;

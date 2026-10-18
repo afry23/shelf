@@ -4,6 +4,7 @@
     <Project Path="src/Shelf.Core/Shelf.Core.csproj" />
     <Project Path="src/Shelf.Extraction/Shelf.Extraction.csproj" />
     <Project Path="src/Shelf.Index/Shelf.Index.csproj" />
+    <Project Path="src/Shelf.Library/Shelf.Library.csproj" />
     <Project Path="src/Shelf.Mcp/Shelf.Mcp.csproj" />
     <Project Path="src/Shelf.Organize/Shelf.Organize.csproj" />
     <Project Path="src/Shelf.Semantic/Shelf.Semantic.csproj" />
@@ -13,6 +14,7 @@
     <Project Path="tests/Shelf.Core.Tests/Shelf.Core.Tests.csproj" />
     <Project Path="tests/Shelf.Extraction.Tests/Shelf.Extraction.Tests.csproj" />
     <Project Path="tests/Shelf.Index.Tests/Shelf.Index.Tests.csproj" />
+    <Project Path="tests/Shelf.Library.Tests/Shelf.Library.Tests.csproj" />
     <Project Path="tests/Shelf.Organize.Tests/Shelf.Organize.Tests.csproj" />
     <Project Path="tests/Shelf.Semantic.Tests/Shelf.Semantic.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />

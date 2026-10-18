@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Shelf.Core.Configuration;
+using Shelf.Library;
 using Shelf.Semantic;
 
 namespace Shelf.Mcp;
@@ -47,7 +48,7 @@ public static class LibraryMcpServer
         ArgumentNullException.ThrowIfNull(embedderFactory);
 
         using var semantic = new SemanticBackend(models, embedderFactory);
-        var tools = new LibraryTools(root, settings, semantic);
+        var tools = new LibraryTools(new LibraryService(root, settings, semantic));
         var options = new McpServerOptions
         {
             ServerInfo = new Implementation { Name = "shelf", Version = version },
