@@ -86,6 +86,13 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
             cliEnvironment = cliEnvironment.WithModels(models.Catalog, models);
         }
 
+        if (environment.Embedder is { } embedder)
+        {
+            cliEnvironment = cliEnvironment.WithEmbedder(_ => embedder);
+        }
+
+        cliEnvironment = cliEnvironment.WithCancellation(environment.Interrupt.Token);
+
         // Scenarios never start a real application.
         cliEnvironment = cliEnvironment.WithFileOpener(_opener);
 
@@ -183,6 +190,13 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("standard error contains no ANSI escape sequences")]
     public void ThenStandardErrorContainsNoAnsiEscapeSequences() =>
         Assert.DoesNotContain('\u001b', _stderr.ToString());
+
+    [Then("the JSON integer property {string} of standard output is {int}")]
+    public void ThenTheJsonIntegerPropertyOfStandardOutputIs(string property, int expected)
+    {
+        using var document = JsonDocument.Parse(_stdout.ToString());
+        Assert.Equal(expected, document.RootElement.GetProperty(property).GetInt32());
+    }
 
     [Then("the JSON string property {string} of standard output matches {string}")]
     public void ThenTheJsonStringPropertyOfStandardOutputMatches(string property, string pattern)

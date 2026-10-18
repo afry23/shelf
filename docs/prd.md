@@ -241,7 +241,7 @@ Goal: cold start to first output < 150 ms (Native AOT, see chapter 9).
 shelf init <root>                         Create library
 shelf import <path> [--move] [--dry-run]  Import files
 shelf scan                                Incremental scan
-shelf reindex [--embeddings]              Rebuild index
+shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
 shelf search <query> [--limit] [--json]   Metadata/full-text search
 shelf semantic <text> [--chunks] [--json] Semantic search
 shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)

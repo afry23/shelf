@@ -61,6 +61,9 @@ public static class VectorTables
     public const string Chunks = "vec_chunks";
     public const string Meta = "semantic_meta";
 
+    /// <summary>Hash of the text each work vector was made from, so that unchanged works are not embedded again.</summary>
+    public const string WorkHashes = "semantic_work_hash";
+
     /// <summary>True when a virtual table of sqlite-vec exists: the file cannot be used without the library.</summary>
     public static bool NeedsExtension(SqliteConnection connection)
     {
@@ -72,7 +75,7 @@ public static class VectorTables
     /// <summary>Drops the vector tables and the bookkeeping. With sqlite-vec tables, the extension must be loaded.</summary>
     public static void Drop(SqliteConnection connection)
     {
-        foreach (var table in new[] { Works, Chunks, Meta })
+        foreach (var table in new[] { Works, Chunks, Meta, WorkHashes })
         {
             IndexDatabase.Execute(connection, $"DROP TABLE IF EXISTS {table}");
         }

@@ -27,7 +27,9 @@ public sealed class CliEnvironment
         IFileOpener? fileOpener = null,
         TextReader? standardInput = null,
         ModelCatalog? modelCatalog = null,
-        IModelDownloader? modelDownloader = null)
+        IModelDownloader? modelDownloader = null,
+        Func<ModelFolder, IEmbedder>? embedderFactory = null,
+        CancellationToken cancellation = default)
     {
         NoColor = noColor;
         StdoutIsTerminal = stdoutIsTerminal;
@@ -40,6 +42,8 @@ public sealed class CliEnvironment
         _standardInput = standardInput;
         ModelCatalog = modelCatalog ?? ModelCatalog.Default;
         ModelDownloader = modelDownloader ?? new HttpModelDownloader();
+        EmbedderFactory = embedderFactory ?? (folder => E5Embedder.Open(folder));
+        Cancellation = cancellation;
     }
 
     /// <summary>No <c>NO_COLOR</c> and standard output is not a terminal.</summary>
@@ -58,6 +62,12 @@ public sealed class CliEnvironment
 
     /// <summary>How <c>shelf model install</c> fetches files; HTTPS unless the host set another.</summary>
     public IModelDownloader ModelDownloader { get; }
+
+    /// <summary>Opens the embedding model of a folder; ONNX Runtime unless the host set another.</summary>
+    public Func<ModelFolder, IEmbedder> EmbedderFactory { get; }
+
+    /// <summary>Set when the user interrupts a long run (Ctrl-C); long commands stop at a safe point.</summary>
+    public CancellationToken Cancellation { get; }
 
     /// <summary>What <c>shelf open</c> uses to start the application for a file; the system's by default.</summary>
     public IFileOpener FileOpener { get; }
@@ -112,7 +122,7 @@ public sealed class CliEnvironment
     {
         ArgumentException.ThrowIfNullOrEmpty(workingDirectory);
         ArgumentException.ThrowIfNullOrEmpty(homeDirectory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
     }
 
     public CliEnvironment WithMinimumLogLevel(LogLevel level)
@@ -123,25 +133,34 @@ public sealed class CliEnvironment
             throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined log level.");
         }
 
-        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
     }
 
     public CliEnvironment WithFileOpener(IFileOpener fileOpener)
     {
         ArgumentNullException.ThrowIfNull(fileOpener);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
     }
 
     public CliEnvironment WithStandardInput(TextReader standardInput)
     {
         ArgumentNullException.ThrowIfNull(standardInput);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation);
     }
 
     public CliEnvironment WithModels(ModelCatalog catalog, IModelDownloader downloader)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(downloader);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader, EmbedderFactory, Cancellation);
     }
+
+    public CliEnvironment WithEmbedder(Func<ModelFolder, IEmbedder> factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, factory, Cancellation);
+    }
+
+    public CliEnvironment WithCancellation(CancellationToken cancellation) =>
+        new(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, cancellation);
 }

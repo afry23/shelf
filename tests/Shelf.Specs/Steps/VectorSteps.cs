@@ -158,7 +158,7 @@ public sealed class VectorSteps : IDisposable
     {
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(_root));
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name LIKE 'vec\\_%' ESCAPE '\\' OR name = 'semantic_meta'";
+        command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name LIKE 'vec\\_%' ESCAPE '\\' OR name LIKE 'semantic\\_%' ESCAPE '\\'";
         Assert.Equal(0L, command.ExecuteScalar());
     }
 

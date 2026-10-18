@@ -144,6 +144,21 @@ public sealed class VectorStore
         command.ExecuteNonQuery();
     }
 
+    /// <summary>Every id that has a vector.</summary>
+    public IReadOnlyList<long> Ids(VectorKind kind)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT {IdColumn(kind)} FROM {TableOf(kind)}";
+        using var reader = command.ExecuteReader();
+        var ids = new List<long>();
+        while (reader.Read())
+        {
+            ids.Add(reader.GetInt64(0));
+        }
+
+        return ids;
+    }
+
     public long Count(VectorKind kind)
     {
         using var command = _connection.CreateCommand();

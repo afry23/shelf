@@ -167,7 +167,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | 1 | `m3-semantic-core` (done) | `Shelf.Semantic`: tokenizer, ONNX session, mean pooling, L2 norm, E5 prefixes, `IEmbedder` with a fake for BDD; AOT gate; ADR 0013, ADR 0001 row 11 | F-SEM-1 |
 | 2 | `m3-model` (done) | `model install <path>`, download on first need (pinned URL + SHA-256), `[semantic]` config | F-SEM-1, 9.2 |
 | 3 | `m3-vector-store` (done) | `vec_works` / `vec_chunks` (cosine), `vec0` loading with brute-force fallback, pinned fetch, model and dimension metadata | F-SEM-4 |
-| 4 | `m3-embedding-index` | Work level first, then chunks; `embed_status`, batching, interrupt and resume, progress, `reindex --embeddings`, hook in `import` / `scan` | F-SEM-2, F-SEM-3, F-SEM-7 |
+| 4 | `m3-embedding-index` (done) | Work level first, then chunks; `embed_status`, batching, interrupt and resume, progress, `reindex --embeddings`, hook in `import` / `scan` | F-SEM-2, F-SEM-3, F-SEM-7 |
 | 5 | `m3-semantic-search` | `semantic [--chunks] [--json]`, locations, cross-language, incomplete-index notice | F-SEM-1 to 3, AC 4 |
 | 6 | `m3-hybrid` (Should) | RRF of FTS and vectors; model change re-indexes | F-SEM-5, F-SEM-8 |
 | 7 | `m3-mcp-core` | `shelf mcp` (stdio), read tools, resources, clean stdout, error scenarios from ADR 0006 | 7.2, AC 6 |
