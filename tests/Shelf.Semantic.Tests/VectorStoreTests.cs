@@ -74,6 +74,31 @@ public sealed class VectorStoreTests : IDisposable
     }
 
     [Fact]
+    public void An_index_without_vectors_has_nothing_to_open_for_reading()
+    {
+        using var db = IndexDatabase.OpenRead(IndexDatabase.PathFor(_root));
+
+        Assert.Null(VectorStore.OpenExisting(db));
+    }
+
+    [Fact]
+    public void An_existing_store_is_read_with_its_own_model_on_a_query_only_connection()
+    {
+        using (var write = IndexDatabase.OpenWrite(IndexDatabase.PathFor(_root)))
+        {
+            VectorStore.Open(write, 3, "stored-model", NoVectorExtension.Instance).Put(VectorKind.Work, 5, [0f, 1f, 0f]);
+        }
+
+        using var read = IndexDatabase.OpenRead(IndexDatabase.PathFor(_root));
+        var store = Assert.IsType<VectorStore>(VectorStore.OpenExisting(read, NoVectorExtension.Instance));
+
+        Assert.Equal("stored-model", store.Model);
+        Assert.Equal(3, store.Dimensions);
+        Assert.True(store.IsCurrentModel);
+        Assert.Equal(5, Assert.Single(store.Nearest(VectorKind.Work, [0f, 1f, 0f], 1)).Id);
+    }
+
+    [Fact]
     public void The_codec_round_trips_little_endian_floats()
     {
         float[] values = [1.5f, -2f, 0f, float.Epsilon];

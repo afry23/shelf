@@ -78,29 +78,58 @@ public sealed class VectorStore
 
         Execute(connection, $"CREATE TABLE IF NOT EXISTS {VectorTables.Meta}(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
         var meta = ReadMeta(connection);
-        if (meta.TryGetValue(BackendKey, out var stored))
+        if (meta.ContainsKey(BackendKey))
         {
-            var backend = stored == "sqlite-vec" ? VectorBackend.SqliteVec : VectorBackend.Plain;
-            if (backend == VectorBackend.SqliteVec && !extension.TryLoad(connection))
-            {
-                throw new VectorStoreException(
-                    "this index keeps its vectors with sqlite-vec, but the library cannot be loaded; "
-                    + "restore vec0 next to the executable or run: shelf reindex");
-            }
-
-            return new VectorStore(
-                connection,
-                dimensions,
-                model,
-                backend,
-                meta.GetValueOrDefault(ModelKey),
-                meta.TryGetValue(DimensionsKey, out var d) ? int.Parse(d, CultureInfo.InvariantCulture) : null);
+            return FromMeta(connection, meta, dimensions, model, extension);
         }
 
         var chosen = extension.TryLoad(connection) ? VectorBackend.SqliteVec : VectorBackend.Plain;
         CreateTables(connection, chosen, dimensions);
         WriteMeta(connection, chosen, model, dimensions);
         return new VectorStore(connection, dimensions, model, chosen, model, dimensions);
+    }
+
+    /// <summary>
+    /// Opens the vector tables for reading, as they are: the model and dimension are those stored in the index. Null when
+    /// the index holds no vectors yet. Works on a <c>query_only</c> connection; nothing is created.
+    /// </summary>
+    /// <exception cref="VectorStoreException">The index uses sqlite-vec and its library cannot be loaded.</exception>
+    public static VectorStore? OpenExisting(SqliteConnection connection, IVectorExtension? extension = null)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        using var exists = connection.CreateCommand();
+        exists.CommandText = $"SELECT count(*) FROM sqlite_master WHERE name = '{VectorTables.Meta}'";
+        if ((long)exists.ExecuteScalar()! == 0)
+        {
+            return null;
+        }
+
+        var meta = ReadMeta(connection);
+        if (!meta.TryGetValue(BackendKey, out _) || !meta.TryGetValue(ModelKey, out var model) || !meta.TryGetValue(DimensionsKey, out var dimensions))
+        {
+            return null;
+        }
+
+        return FromMeta(connection, meta, int.Parse(dimensions, CultureInfo.InvariantCulture), model, extension ?? SqliteVecExtension.Default);
+    }
+
+    private static VectorStore FromMeta(SqliteConnection connection, Dictionary<string, string> meta, int dimensions, string model, IVectorExtension extension)
+    {
+        var backend = meta[BackendKey] == "sqlite-vec" ? VectorBackend.SqliteVec : VectorBackend.Plain;
+        if (backend == VectorBackend.SqliteVec && !extension.TryLoad(connection))
+        {
+            throw new VectorStoreException(
+                "this index keeps its vectors with sqlite-vec, but the library cannot be loaded; "
+                + "restore vec0 next to the executable or run: shelf reindex");
+        }
+
+        return new VectorStore(
+            connection,
+            dimensions,
+            model,
+            backend,
+            meta.GetValueOrDefault(ModelKey),
+            meta.TryGetValue(DimensionsKey, out var d) ? int.Parse(d, CultureInfo.InvariantCulture) : null);
     }
 
     /// <summary>Removes every vector and starts over for the current model, with the best backend that is available.</summary>

@@ -9,7 +9,7 @@ namespace Shelf.Specs.Steps;
 /// folder named by <c>SHELF_E5_DIR</c> and are skipped when it is not set.
 /// </summary>
 [Binding]
-public sealed class SemanticSteps : IDisposable
+public sealed class SemanticSteps(ConfigSteps workspace) : IDisposable
 {
     private const string ModelDirVariable = "SHELF_E5_DIR";
 
@@ -37,6 +37,17 @@ public sealed class SemanticSteps : IDisposable
     {
         _embedder = SharedEmbedder.Value;
         Assert.SkipWhen(_embedder is null, $"set {ModelDirVariable} to a folder with the files of {name}");
+    }
+
+    /// <summary>Links the folder of <c>SHELF_E5_DIR</c> into the library, so that the real model is "installed" without a copy of 470 MB.</summary>
+    [Given("the real embedding model is installed in the library {string}")]
+    public void GivenTheRealModelIsInstalledInTheLibrary(string library)
+    {
+        var source = FindModel();
+        Assert.SkipWhen(source is null, $"set {ModelDirVariable} to a folder with the files of multilingual-e5-small");
+        var models = Path.Combine(workspace.WorkingDirectory, library, ".shelf", "models");
+        Directory.CreateDirectory(models);
+        Directory.CreateSymbolicLink(Path.Combine(models, "multilingual-e5-small"), source!.Directory);
     }
 
     [Given("the model folder is empty")]
