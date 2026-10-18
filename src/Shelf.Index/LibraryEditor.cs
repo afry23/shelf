@@ -2,6 +2,7 @@ using Shelf.Core.Grouping;
 using Shelf.Core.Model;
 using Shelf.Core.Review;
 using Shelf.Extraction;
+using Shelf.Organize;
 
 namespace Shelf.Index;
 
@@ -57,6 +58,7 @@ public static class LibraryEditor
         var files = new List<SidecarFile>(t.Files);
         var renames = new Dictionary<string, string>(StringComparer.Ordinal);
         var movedPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+        var journal = FileJournal.Begin(root, "merge", undoable: false);
         foreach (var file in s.Files)
         {
             var from = Path.Combine(sourceDirectory, file.Name);
@@ -66,11 +68,13 @@ public static class LibraryEditor
             }
 
             var name = FolderNames.UniqueFileName(targetDirectory, file.Name);
-            File.Move(from, Path.Combine(targetDirectory, name));
+            Move(journal, from, Path.Combine(targetDirectory, name));
             renames[file.Name] = name;
             movedPaths[IndexWriter.JoinRelative(source.Directory, file.Name)] = IndexWriter.JoinRelative(target.Directory, name);
             files.Add(new SidecarFile(name, file.Progress));
         }
+
+        journal.Finish();
 
         string Renamed(string name) => renames.GetValueOrDefault(name, name);
         var pairs = t.NotDuplicates.Files
@@ -100,6 +104,7 @@ public static class LibraryEditor
             Added = added == default ? null : added,
             Files = files,
             NotDuplicates = new NotDuplicates(works, pairs),
+            Related = [.. t.Related.Concat(s.Related).Where(id => id != target.Id && id != source.Id).Distinct()],
         };
         SidecarStore.Write(targetPath, merged);
 
@@ -148,9 +153,10 @@ public static class LibraryEditor
         var id = Ulid.New();
         var folder = FolderNames.FreeFolder(FolderNames.WorkFolder(root, AuthorNames.Parse(authors[0]).SortKey, title, metadata.Year));
         var relativeFolder = LibraryReindexer.RelativePath(root, folder);
-        Directory.CreateDirectory(folder);
         var name = FolderNames.UniqueFileName(folder, entry.Name);
-        File.Move(from, Path.Combine(folder, name));
+        var journal = FileJournal.Begin(root, "split", undoable: false);
+        Move(journal, from, Path.Combine(folder, name));
+        journal.Finish();
 
         var created = new WorkSidecar
         {
@@ -205,6 +211,36 @@ public static class LibraryEditor
         Reconcile(root);
     }
 
+    /// <summary>Records in both sidecars that the two works are editions of one book (F-GRP-5).</summary>
+    /// <exception cref="LibraryEditException">The works are the same.</exception>
+    public static void MarkRelated(string root, LibraryWork a, LibraryWork b) => ChangeRelated(root, a, b, related: true);
+
+    /// <summary>Takes the mark away from both sidecars; nothing happens if the works were not related.</summary>
+    /// <exception cref="LibraryEditException">The works are the same.</exception>
+    public static void UnmarkRelated(string root, LibraryWork a, LibraryWork b) => ChangeRelated(root, a, b, related: false);
+
+    private static void ChangeRelated(string root, LibraryWork a, LibraryWork b, bool related)
+    {
+        if (a.Id == b.Id)
+        {
+            throw new LibraryEditException("a work cannot be related to itself");
+        }
+
+        foreach (var (work, other) in new[] { (a, b), (b, a) })
+        {
+            var path = SidecarPath(root, work);
+            var sidecar = SidecarStore.Read(path);
+            if (sidecar.Related.Contains(other.Id) == related)
+            {
+                continue;
+            }
+
+            SidecarStore.Write(path, sidecar with { Related = related ? [.. sidecar.Related, other.Id] : [.. sidecar.Related.Where(id => id != other.Id)] });
+        }
+
+        Reconcile(root);
+    }
+
     /// <summary>Removes entries from the review queue file and its copy in the index.</summary>
     public static void RemoveReviewEntry(string root, Ulid id)
     {
@@ -215,6 +251,18 @@ public static class LibraryEditor
     }
 
     // ---- helpers ----
+
+    /// <summary>Moves a file through the journal; a target that is taken is an error, never overwritten (F-ORG-7).</summary>
+    internal static void Move(FileJournal journal, string from, string to)
+    {
+        switch (journal.Move(from, to))
+        {
+            case MoveStatus.Collision:
+                throw new LibraryEditException($"{Path.GetFileName(to)} already exists");
+            case MoveStatus.Missing:
+                throw new LibraryEditException($"{Path.GetFileName(from)} does not exist");
+        }
+    }
 
     private static string SidecarPath(string root, LibraryWork work) => Path.Combine(root, work.Directory, SidecarStore.FileName);
 
@@ -239,7 +287,7 @@ public static class LibraryEditor
     }
 
     /// <summary>Deletes the folder, and empty parents up to the root, if nothing is left in it.</summary>
-    private static bool RemoveFolderIfEmpty(string root, string directory)
+    internal static bool RemoveFolderIfEmpty(string root, string directory)
     {
         if (!Directory.Exists(directory) || Directory.EnumerateFileSystemEntries(directory).Any())
         {
@@ -284,7 +332,7 @@ public static class LibraryEditor
     private static void SaveQueue(string root, ReviewQueue queue) => queue.Save(ReviewQueue.PathFor(root));
 
     /// <summary>Brings the index in line with the folders and the review queue file.</summary>
-    private static void Reconcile(string root)
+    internal static void Reconcile(string root)
     {
         LibraryScanner.Scan(root);
         RefreshMirror(root, LoadQueue(root));

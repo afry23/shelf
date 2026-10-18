@@ -5,7 +5,8 @@
 
 Every number is the wall time of a whole process, including its start. Targets (multiplied by --tolerance):
 cold start < 150 ms, scan without changes < 3 s, search p95 < 100 ms (250 ms for very common words), initial index (reindex from the sidecars) < 15 min.
-Prints a table and exits 1 if a target is missed.
+Prints a table and exits 1 if a target is missed. The M2 commands (organize as a dry run, tag list, dupes, trash empty
+as a dry run) have no target in the PRD; their times are only printed, so that a regression stands out.
 """
 import argparse
 import os
@@ -85,6 +86,19 @@ def main():
     rows.append(("search median, typical queries", statistics.median(typical), None, "ms", True))
     common = latencies(COMMON, max(40, args.search_runs // 5))
     check(f"search p95 ({len(common)} runs, {len(COMMON)} very common words)", p95(common), 250, "ms")
+
+    # M2 commands: no target, the time is informative (dry runs and listings only; nothing is changed)
+    for label, command in (
+        ("organize, dry run (whole library)", ["organize"]),
+        ("tag list", ["tag", "list"]),
+        ("dupes (list)", ["dupes"]),
+        ("trash empty, dry run", ["trash", "empty"]),
+    ):
+        elapsed, result = run(args.shelf, [*command, *lib])
+        if result.returncode != 0:
+            print(result.stderr, file=sys.stderr)
+            return 1
+        rows.append((label, elapsed, None, "s", True))
 
     # initial index from the sidecars
     if not args.skip_reindex:

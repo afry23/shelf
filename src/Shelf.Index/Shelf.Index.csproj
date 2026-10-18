@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
     <ProjectReference Include="..\Shelf.Extraction\Shelf.Extraction.csproj" />
+    <ProjectReference Include="..\Shelf.Organize\Shelf.Organize.csproj" />
   </ItemGroup>
 
   <ItemGroup>

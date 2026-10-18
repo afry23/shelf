@@ -23,14 +23,15 @@ internal static class ShowCommand
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
             var sidecar = LibraryEditor.Read(context.Root, work);
+            var related = WorkLookup.Labels(context.Root, sidecar.Related);
             var files = sidecar.Files.Select(f => (File: f, Info: new FileInfo(LibraryEditor.FilePath(context.Root, work, f.Name)))).ToList();
             if (parseResult.GetValue(json))
             {
-                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, sidecar, work, files)));
+                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, sidecar, work, files, related)));
             }
             else
             {
-                WriteText(stdout, Palette.For(environment, json: false), sidecar, work, files);
+                WriteText(stdout, Palette.For(environment, json: false), sidecar, work, files, related);
             }
 
             return ExitCodes.Success;
@@ -38,7 +39,7 @@ internal static class ShowCommand
         return command;
     }
 
-    private static void WriteText(TextWriter stdout, Palette palette, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files)
+    private static void WriteText(TextWriter stdout, Palette palette, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related)
     {
         void Line(string label, string? value)
         {
@@ -64,6 +65,13 @@ internal static class ShowCommand
         Line("Status", s.ReadStatus.ToString().ToLowerInvariant());
         Line("Added", s.Added?.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Line("Folder", work.Directory);
+        var first = true;
+        foreach (var id in s.Related.Where(related.ContainsKey))
+        {
+            Line(first ? "Related" : string.Empty, $"{related[id]}  {id}");
+            first = false;
+        }
+
         if (!string.IsNullOrWhiteSpace(s.Description))
         {
             stdout.WriteLine();
@@ -85,7 +93,7 @@ internal static class ShowCommand
         }
     }
 
-    private static void WriteJson(Utf8JsonWriter writer, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files)
+    private static void WriteJson(Utf8JsonWriter writer, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related)
     {
         writer.WriteStartObject();
         JsonOutput.Property(writer, "id", s.Id.ToString());
@@ -106,6 +114,16 @@ internal static class ShowCommand
         JsonOutput.Property(writer, "readStatus", s.ReadStatus.ToString().ToLowerInvariant());
         JsonOutput.Property(writer, "added", s.Added is { } added ? WorkSupport.Time(added) : null);
         JsonOutput.Property(writer, "folder", work.Directory);
+        writer.WriteStartArray("related");
+        foreach (var id in s.Related.Where(related.ContainsKey))
+        {
+            writer.WriteStartObject();
+            JsonOutput.Property(writer, "id", id.ToString());
+            JsonOutput.Property(writer, "title", related[id]);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
         writer.WriteStartArray("files");
         foreach (var (file, info) in files)
         {

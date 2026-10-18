@@ -14,5 +14,10 @@ public static class ConfigTemplate
         # review = 0.5
         # max_hamming = 5
         # auto_hamming = 3
+
+        # How shelf organize names folders and files. Placeholders: {author_sort}, {author}, {title},
+        # {year}, {series}, {series_index}, {language}, {first_tag}, {ext}. The last part must end with ".{ext}".
+        # [organize]
+        # pattern = "{author_sort}/{title} ({year})/{title}.{ext}"
         """ + "\n";
 }

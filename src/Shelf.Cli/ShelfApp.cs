@@ -67,6 +67,11 @@ public static class ShelfApp
         root.Subcommands.Add(ReviewCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(OpenCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(StatsCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(OrganizeCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(UndoCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(TagCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(DupesCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(TrashCommand.Create(json, stdout, stderr, environment));
 
         // Without a command there is nothing to run: that is a usage error, not success.
         root.SetAction(_ =>

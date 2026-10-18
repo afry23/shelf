@@ -82,6 +82,12 @@ public sealed record WorkSidecar
 
     public NotDuplicates NotDuplicates { get; init; } = NotDuplicates.None;
 
+    /// <summary>
+    /// Other works that are another edition of the same book (F-GRP-5). The mark is written on both sides; an ID of a
+    /// work that no longer exists is ignored when shown.
+    /// </summary>
+    public IReadOnlyList<Ulid> Related { get; init; } = [];
+
     public IReadOnlyDictionary<string, JsonElement> UnknownFields { get; init; } = EmptyUnknownFields;
 
     private static readonly IReadOnlyDictionary<string, JsonElement> EmptyUnknownFields = new Dictionary<string, JsonElement>();

@@ -14,6 +14,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private readonly StringWriter _stdout = new();
     private readonly StringWriter _stderr = new();
     private bool _stdoutIsTerminal;
+    private string _standardInput = string.Empty;
     private int _exitCode = -1;
     private LogLevel? _logLevel;
     private string? _folder;
@@ -78,11 +79,18 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
             cliEnvironment = cliEnvironment.WithMinimumLogLevel(level);
         }
 
+        cliEnvironment = cliEnvironment.WithStandardInput(new StringReader(_standardInput));
+
         // Scenarios never start a real application.
         cliEnvironment = cliEnvironment.WithFileOpener(_opener);
 
         _exitCode = ShelfApp.Run(args, _stdout, _stderr, cliEnvironment);
     }
+
+    /// <summary>The lines that the next runs read from standard input; "&lt;enter&gt;" is an empty line.</summary>
+    [Given("the answers are {string}")]
+    public void GivenTheAnswersAre(string answers) =>
+        _standardInput = string.Join('\n', answers.Split(", ").Select(a => a == "<enter>" ? string.Empty : a)) + "\n";
 
     [Given("the system fails to open files with the message {string}")]
     public void GivenTheSystemFailsToOpenFiles(string message) => _opener.FailWith = message;

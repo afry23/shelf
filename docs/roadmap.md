@@ -75,7 +75,7 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 | Gap | Lands in | Note |
 |---|---|---|
 | ONNX Runtime and the XLM-R tokenizer under Native AOT (managed and native part, token-ID parity) | first slice of M3 | no spike was done; [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md) row 11 stays `pending` |
-| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | **CLI parts done in M1:** the `aot` job publishes the real `shelf` on `linux-x64` and runs an end-to-end check; MCP, web and covers remain |
+| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | **CLI parts done in M1 and M2:** the `aot` job publishes the real `shelf` on `linux-x64` and runs `tests/e2e/native.sh` (M1 and M2 commands); MCP, web and covers remain |
 | Cold start of the real commands against < 150 ms | M1 exit criteria (performance) | **Done in M1:** 30 ms for `--version` on `osx-arm64` ([ADR 0011](adr/0011-m1-performance.md)) |
 | Project setup for the executable: Web SDK or `MvcEnhancedModelMetadataSupport=false` with the runtime feature switch and the `<Using>` items; `CA1416` handling (assembly-level `SupportedOSPlatform`) with warnings as errors | M4 (web): the CLI of M1 has no web reference, so the setup does not apply yet | [ADR 0008](adr/0008-combined-aot-binary.md) findings 1 and 2, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) finding 2 |
 | UI build in CI: `actions/setup-node` with Node.js 26, `npm ci`, a type-check step, `allowScripts` decision for fsevents; negation in the root `.gitignore` for `package.json` and `package-lock.json` | M4 | [ADR 0009](adr/0009-frontend-toolchain-licenses-and-maintenance.md) |
@@ -115,6 +115,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 ### M2 – Order
 
+**Status: implemented 2026-10-18; the pre-release tag `v0.2.0` is set after the merge.** Slice plans: `docs/slices/m2-*.md`; decisions: [ADR 0012](adr/0012-m2-journal-trash-and-pattern.md).
+
 **Goal:** The library is sorted by pattern, tagged, and free of exact duplicates.
 
 | Area | Must | Should |
@@ -135,6 +137,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 - Feature files exist for all M2 requirements, and all BDD scenarios are green.
 - Acceptance criterion 2 is met (organize + undo verified by hash comparison).
 - No collision ever overwrites a file (F-ORG-7), covered by tests.
+
+**Result:** all exit criteria met. Must items F-ORG-1 to F-ORG-7, F-TAG-1 to F-TAG-5, F-DUP-1, F-DUP-2, F-DUP-4 and F-DUP-5 (CLI), and the Should items F-ORG-8, F-DUP-6 and F-GRP-5 are implemented. BDD and unit tests green (1500+ tests). Acceptance 2: `organize --apply` and `undo` give back the same files and folders by SHA-256 (`Undo.feature`, and `tests/e2e/native.sh` with the native binary). Collisions: `Organize.feature`, `JournalTests`. Performance of the new commands on the reference library: `organize` dry run 0.47 s, `dupes` 0.29 s (ADR 0012). Not yet run: the `linux-x64` perf job on `main`. Known limits: `merge`, `split`, `edit` and the import are not undoable; journals older than the newest 50 are deleted; a case-only rename on a case-insensitive file system is reported as a collision.
 
 ### M3 – Semantics & MCP
 

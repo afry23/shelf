@@ -46,6 +46,21 @@ public sealed class WorkMatcherTests
         Assert.Contains("text fingerprint, distance 1", match.Signals);
     }
 
+    [Theory]
+    [InlineData(2002, 2012, null, null, true)]
+    [InlineData(2002, 2002, "9780321127426", "9780321200686", true)]
+    [InlineData(2002, 2002, null, null, false)]
+    [InlineData(null, 2002, null, null, false)]
+    public void A_match_with_another_year_or_ISBN_is_another_edition(int? known, int? incoming, string? knownIsbn, string? incomingIsbn, bool edition)
+    {
+        var matcher = new WorkMatcher(GroupingSettings.Default, [new WorkCandidate(Id(1), Sig("Patterns", "Martin Fowler", known, knownIsbn))]);
+
+        var decision = matcher.Decide(File("Patterns", "Martin Fowler", incoming, incomingIsbn));
+
+        var match = Assert.Single(decision.Matches);
+        Assert.Equal(edition, match.IsOtherEdition);
+    }
+
     [Fact]
     public void Review_matches_are_sorted_by_confidence_then_work()
     {

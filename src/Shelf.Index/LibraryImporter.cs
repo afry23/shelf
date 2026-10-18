@@ -53,8 +53,8 @@ public sealed class ImportException(string message, Exception? innerException = 
 /// </summary>
 /// <remarks>
 /// Order of effects per file: copy (verified), sidecar, index, then (move only) delete the source. A crash in
-/// between leaves a copy that the next scan finds; the source is never lost. The full journal of PRD 9.3
-/// (crash recovery for every file operation) comes with milestone M2.
+/// between leaves a copy that the next scan finds; the source is never lost. The import is not journaled: its source
+/// lies outside the library, and the journal of PRD 9.3 (<c>Shelf.Organize</c>) only covers paths inside the root.
 /// </remarks>
 public static class LibraryImporter
 {
@@ -273,6 +273,13 @@ public static class LibraryImporter
                 Files = [new SidecarFile(name)],
             };
 
+            // Another edition of a known book is a work of its own, marked as related on both sides (F-GRP-5).
+            var editions = decision.Matches.Where(m => m.IsOtherEdition).Select(m => m.WorkId).ToList();
+            if (editions.Count > 0)
+            {
+                sidecar = sidecar with { Related = editions };
+            }
+
             var folder = FolderNames.FreeFolder(FolderNames.WorkFolder(root, AuthorNames.Parse(authors[0]).SortKey, metadata.Title!, metadata.Year));
             var dir = LibraryReindexer.RelativePath(root, folder);
             var finalName = Directory.Exists(folder) ? FolderNames.UniqueFileName(folder, name) : name;
@@ -326,6 +333,11 @@ public static class LibraryImporter
                     var fileId = writer.InsertFile(id.ToString(), finalName, destination, placed.Length, placed.Mtime, progress: null);
                     writer.SetContent(fileId, placed.Length, placed.Mtime, analysis.Sha256, analysis.Book!.PageCount, analysis.Fingerprint, analysis.TextStatus, analysis.Chunks);
                     transaction.Commit();
+                }
+
+                foreach (var edition in editions)
+                {
+                    RelateTo(edition, id);
                 }
 
                 foreach (var entry in entries)
@@ -446,6 +458,22 @@ public static class LibraryImporter
             command.CommandText = "SELECT rel_path FROM files WHERE sha256 = $sha LIMIT 1";
             command.Parameters.AddWithValue("$sha", sha);
             return command.ExecuteScalar() as string;
+        }
+
+        /// <summary>Writes the new work's ID into the sidecar of the work that it is another edition of.</summary>
+        private void RelateTo(Ulid existing, Ulid created)
+        {
+            if (DirectoryOf(existing) is not { } directory)
+            {
+                return;
+            }
+
+            var path = Path.Combine(root, directory, SidecarStore.FileName);
+            var other = SidecarStore.Read(path);
+            if (!other.Related.Contains(created))
+            {
+                SidecarStore.Write(path, other with { Related = [.. other.Related, created] });
+            }
         }
 
         private string? DirectoryOf(Ulid workId)

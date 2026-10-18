@@ -1,4 +1,5 @@
 using Shelf.Core.Configuration;
+using Shelf.Core.Organization;
 using Xunit;
 
 namespace Shelf.Core.Tests.Configuration;
@@ -22,6 +23,7 @@ public sealed class ConfigTemplateTests
 
         Assert.Equal(GroupingSettings.Default, settings.Grouping);
         Assert.Empty(settings.Warnings);
-        Assert.Equal(4, ConfigFile.Parse(uncommented, "template").LeafKeys().Count);
+        Assert.Equal(PathPattern.DefaultText, settings.Organize.Pattern.Text);
+        Assert.Equal(5, ConfigFile.Parse(uncommented, "template").LeafKeys().Count);
     }
 }
