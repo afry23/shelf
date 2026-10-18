@@ -103,6 +103,13 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         File.WriteAllBytes(PathOf(name), SampleBooks.Epub(title, authors.Split("; "), isbn13: null, seed));
     }
 
+    [Given("a sample EPUB {string} with the title {string}, the authors {string}, the ISBN {string} and the text seed {int}")]
+    public void GivenASampleEpubWithIsbn(string name, string title, string authors, string isbn, int seed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathOf(name))!);
+        File.WriteAllBytes(PathOf(name), SampleBooks.Epub(title, authors.Split("; "), isbn, seed));
+    }
+
     [Then("the file {string} exists")]
     public void ThenTheFileExists(string name) => Assert.True(File.Exists(PathOf(name)), $"Missing file {name}");
 

@@ -329,6 +329,23 @@ public class JournalTests
     }
 
     [Fact]
+    public void The_same_file_replaced_twice_in_one_run_keeps_every_old_version()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.Write("a/book.json", "v1");
+        var journal = FileJournal.Begin(dir.Path, "dupes", undoable: true);
+
+        journal.Replace(path, "v2"u8.ToArray());
+        journal.Replace(path, "v3"u8.ToArray());
+        journal.Finish();
+
+        Assert.Equal("v3", File.ReadAllText(path));
+        var result = JournalUndo.Undo(dir.Path)!;
+        Assert.Empty(result.Skipped);
+        Assert.Equal("v1", File.ReadAllText(path));
+    }
+
+    [Fact]
     public void Replace_of_a_missing_file_is_an_error()
     {
         using var dir = new TempDirectory();

@@ -9,7 +9,7 @@ internal static class UndoCommand
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
         var library = LibraryContext.CreateOption();
-        var command = new Command("undo", "Revert the last organize or tag run");
+        var command = new Command("undo", "Revert the last organize, tag or dupes run");
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {

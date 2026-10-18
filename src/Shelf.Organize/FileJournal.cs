@@ -103,9 +103,16 @@ public sealed class FileJournal
         var full = System.IO.Path.GetFullPath(path);
         var relative = LibraryPaths.Relative(_root, full);
         var backup = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_path)!, _stamp + ".backup", relative.Replace('/', System.IO.Path.DirectorySeparatorChar));
-        if (Execute(JournalOpKind.Move, full, backup) != MoveStatus.Moved)
+        var free = backup;
+        for (var n = 2; File.Exists(free); n++)
         {
-            throw new JournalException($"cannot replace '{relative}': the file is missing or its backup name is taken");
+            // The same file replaced twice in one run: every old version is kept.
+            free = $"{backup}.{n}";
+        }
+
+        if (Execute(JournalOpKind.Move, full, free) != MoveStatus.Moved)
+        {
+            throw new JournalException($"cannot replace '{relative}': the file is missing");
         }
 
         if (Create(full, content) != MoveStatus.Moved)
