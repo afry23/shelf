@@ -53,8 +53,8 @@ public sealed class ImportException(string message, Exception? innerException = 
 /// </summary>
 /// <remarks>
 /// Order of effects per file: copy (verified), sidecar, index, then (move only) delete the source. A crash in
-/// between leaves a copy that the next scan finds; the source is never lost. The full journal of PRD 9.3
-/// (crash recovery for every file operation) comes with milestone M2.
+/// between leaves a copy that the next scan finds; the source is never lost. The import is not journaled: its source
+/// lies outside the library, and the journal of PRD 9.3 (<c>Shelf.Organize</c>) only covers paths inside the root.
 /// </remarks>
 public static class LibraryImporter
 {

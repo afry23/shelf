@@ -2,6 +2,7 @@ using Shelf.Core.Grouping;
 using Shelf.Core.Model;
 using Shelf.Core.Review;
 using Shelf.Extraction;
+using Shelf.Organize;
 
 namespace Shelf.Index;
 
@@ -57,6 +58,7 @@ public static class LibraryEditor
         var files = new List<SidecarFile>(t.Files);
         var renames = new Dictionary<string, string>(StringComparer.Ordinal);
         var movedPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+        var journal = FileJournal.Begin(root, "merge", undoable: false);
         foreach (var file in s.Files)
         {
             var from = Path.Combine(sourceDirectory, file.Name);
@@ -66,11 +68,13 @@ public static class LibraryEditor
             }
 
             var name = FolderNames.UniqueFileName(targetDirectory, file.Name);
-            File.Move(from, Path.Combine(targetDirectory, name));
+            Move(journal, from, Path.Combine(targetDirectory, name));
             renames[file.Name] = name;
             movedPaths[IndexWriter.JoinRelative(source.Directory, file.Name)] = IndexWriter.JoinRelative(target.Directory, name);
             files.Add(new SidecarFile(name, file.Progress));
         }
+
+        journal.Finish();
 
         string Renamed(string name) => renames.GetValueOrDefault(name, name);
         var pairs = t.NotDuplicates.Files
@@ -148,9 +152,10 @@ public static class LibraryEditor
         var id = Ulid.New();
         var folder = FolderNames.FreeFolder(FolderNames.WorkFolder(root, AuthorNames.Parse(authors[0]).SortKey, title, metadata.Year));
         var relativeFolder = LibraryReindexer.RelativePath(root, folder);
-        Directory.CreateDirectory(folder);
         var name = FolderNames.UniqueFileName(folder, entry.Name);
-        File.Move(from, Path.Combine(folder, name));
+        var journal = FileJournal.Begin(root, "split", undoable: false);
+        Move(journal, from, Path.Combine(folder, name));
+        journal.Finish();
 
         var created = new WorkSidecar
         {
@@ -215,6 +220,18 @@ public static class LibraryEditor
     }
 
     // ---- helpers ----
+
+    /// <summary>Moves a file through the journal; a target that is taken is an error, never overwritten (F-ORG-7).</summary>
+    private static void Move(FileJournal journal, string from, string to)
+    {
+        switch (journal.Move(from, to))
+        {
+            case MoveStatus.Collision:
+                throw new LibraryEditException($"{Path.GetFileName(to)} already exists");
+            case MoveStatus.Missing:
+                throw new LibraryEditException($"{Path.GetFileName(from)} does not exist");
+        }
+    }
 
     private static string SidecarPath(string root, LibraryWork work) => Path.Combine(root, work.Directory, SidecarStore.FileName);
 
