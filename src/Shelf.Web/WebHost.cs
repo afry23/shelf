@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.FileProviders;
 using Shelf.Index;
 
 namespace Shelf.Web;
@@ -56,7 +58,7 @@ public static class WebHost
         builder.Services.AddSingleton(library);
 
         var app = builder.Build();
-        Configure(app, options);
+        Configure(app, options, stderr);
 
         app.Lifetime.ApplicationStarted.Register(() =>
         {
@@ -76,8 +78,19 @@ public static class WebHost
         }
     }
 
-    private static void Configure(WebApplication app, WebOptions options)
+    private static void Configure(WebApplication app, WebOptions options, TextWriter stderr)
     {
+        // On every answer, whatever it is. No Content-Security-Policy yet: the reader's libraries need workers and blob frames,
+        // and the policy is written together with them.
+        app.Use((context, next) =>
+        {
+            var headers = context.Response.Headers;
+            headers.XContentTypeOptions = "nosniff";
+            headers.XFrameOptions = "SAMEORIGIN";
+            headers["Referrer-Policy"] = "same-origin";
+            return next(context);
+        });
+
         if (IPAddress.IsLoopback(options.Address))
         {
             app.Use(async (context, next) =>
@@ -100,6 +113,52 @@ public static class WebHost
         // A status without a body (404, 405, an unreadable request body) gets the problem document too.
         app.UseStatusCodePages(context => Problems.WriteAsync(context.HttpContext, context.HttpContext.Response.StatusCode));
 
+        var ui = EmbeddedUi();
+        if (ui is null)
+        {
+            stderr.WriteLine("warning: the UI is not embedded in this build; the pages answer with a problem document");
+        }
+        else
+        {
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = ui,
+                OnPrepareResponse = prepared =>
+                {
+                    // Vite puts a hash of the content into the names under /assets/: such a file never changes.
+                    if (prepared.Context.Request.Path.StartsWithSegments("/assets", StringComparison.Ordinal))
+                    {
+                        prepared.Context.Response.Headers.CacheControl = "public,max-age=31536000,immutable";
+                    }
+                },
+            });
+        }
+
+        if (ui is not null)
+        {
+            // The framework's fallback only takes addresses without a dot (it adds the constraint "nonfile" to any pattern). The
+            // address of the reader ends in the name of a book (/read/01J9...~kp.epub), and reloading it must give the page, so a
+            // browser's request for a page is sent to the root, where the fallback answers. A script or a style asks for anything
+            // but a page and gets its 404.
+            app.Use((context, next) =>
+            {
+                var request = context.Request;
+                if ((HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
+                    && !request.Path.StartsWithSegments("/api", StringComparison.Ordinal)
+                    && Path.HasExtension(request.Path.Value)
+                    && request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.Path = "/";
+                }
+
+                return next(context);
+            });
+        }
+
+        // The routing is placed here, by hand, so that the middleware above can still change the path before an endpoint is chosen
+        // (the framework adds it at the very start of the pipeline otherwise).
+        app.UseRouting();
+
         var api = app.MapGroup(ApiPrefix);
         api.MapGet("/status", Ok<StatusResponse> () =>
             {
@@ -112,7 +171,50 @@ public static class WebHost
 
         Api.Map(api);
 
+        // The page for every address without a file name (the browser runs its own routes), and a 404 for the rest. Only GET and
+        // HEAD: a fallback for every method would be a valid candidate for a POST to an endpoint of the API and turn its 405 into
+        // a 404. The framework's MapFallbackToFile would answer /api/v1/nothing with the page.
+        app.MapFallback("{**path}", (HttpContext context, string? path) => Fallback(context, ui, path))
+            .WithMetadata(new HttpMethodMetadata(["GET", "HEAD"]))
+            .ExcludeFromDescription();
+
         app.MapOpenApi(ApiPrefix + "/openapi.json");
+    }
+
+    private static IResult Fallback(HttpContext context, IFileProvider? ui, string? path)
+    {
+        path ??= string.Empty;
+        var isApi = path == "api" || path.StartsWith("api/", StringComparison.Ordinal);
+        if (isApi || ui is null)
+        {
+            return new ProblemResult(StatusCodes.Status404NotFound, isApi ? "no such endpoint" : "no such file");
+        }
+
+        var page = ui.GetFileInfo("index.html");
+        if (!page.Exists)
+        {
+            return new ProblemResult(StatusCodes.Status404NotFound, "no such file");
+        }
+
+        // The page is checked on every load, so that a new build is seen at once; its ETag makes the check cheap.
+        context.Response.Headers.CacheControl = "no-cache";
+        var tag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{page.Length.ToString("x", System.Globalization.CultureInfo.InvariantCulture)}-{page.LastModified.UtcTicks.ToString("x", System.Globalization.CultureInfo.InvariantCulture)}\"");
+        return Results.Stream(page.CreateReadStream(), "text/html; charset=utf-8", lastModified: page.LastModified, entityTag: tag);
+    }
+
+    /// <summary>The UI that the build embedded, or null when this build has none (<c>SkipUiBuild</c>).</summary>
+    private static ManifestEmbeddedFileProvider? EmbeddedUi()
+    {
+        try
+        {
+            var provider = new ManifestEmbeddedFileProvider(typeof(WebHost).Assembly, "ui");
+            return provider.GetFileInfo("index.html").Exists ? provider : null;
+        }
+        catch (InvalidOperationException)
+        {
+            // No manifest in the assembly: built without the UI.
+            return null;
+        }
     }
 
     /// <summary>

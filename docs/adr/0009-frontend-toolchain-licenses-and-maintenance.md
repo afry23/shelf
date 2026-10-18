@@ -121,3 +121,14 @@ Toolchain verdicts: **adopt T1-T9**; no candidate is rejected and none violates 
 ## M0 close: prototype removed (2026-10-17)
 
 M0 is closed (see the roadmap). `experiments/web/Ui/ (the lock file and the build that were assessed)` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.
+
+## Update from M4 slice `m4-ui-toolchain` (2026-10-18)
+
+The first web slice put the toolchain into the repository (`src/Shelf.Web.Ui`) and settled the points that this ADR left open.
+
+- **TypeScript 6.0.3 instead of 7.0.2 (T5).** The type check for `.svelte` files is `svelte-check` 4.7.7 (MIT, organization `sveltejs`), which declares `typescript` `^5.0.0 || ^6.0.0` as a peer. With TypeScript 7.0.2 `npm ci` stops with `ERESOLVE`; with 6.0.3 `svelte-check` reports 0 errors on the UI and `vite build` is unaffected (it does not run the compiler). This is the "TypeScript compiler requirement from Svelte tooling" that the re-check triggers named. TypeScript 6.0.3 is Apache-2.0 (the T5 verdict applies) and from the same organization. Moving to 7 is a re-check when `svelte-check` supports it.
+- **`svelte-check` 4.7.7** is a new devDependency (MIT); the other versions are those of the spike: `svelte` 5.57.2, `vite` 8.3.4, `@sveltejs/vite-plugin-svelte` 7.3.1. The lock file is committed; the build uses `npm ci`. Not assessed: the maintenance of the packages that `svelte-check` adds (the total is 102 entries in `npm ls --all`, up from 85 in the spike).
+- **fsevents (T9).** Decided: `.npmrc` sets `ignore-scripts=true`. The build is identical without the install script (measured above), and a build tool has no reason to run code at install time.
+- **Node.js 26** is pinned in `.node-version` (`26`), used by `actions/setup-node` in CI; `package.json` says `engines.node >= 26`.
+- **The `.gitignore` negation** is in `src/Shelf.Web.Ui/.gitignore` (a nested file overrides the root's `package.json` and `package-lock.json` patterns).
+- **Still open:** `THIRD-PARTY-NOTICES` (M5): the Svelte runtime (MIT) is the only third-party code in the bundle so far.

@@ -64,6 +64,16 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: src/Shelf.Web.Ui/package-lock.json
+      - name: Install the UI packages and type-check the UI
+        working-directory: src/Shelf.Web.Ui
+        run: |
+          npm ci
+          npm run check
       - name: Fetch sqlite-vec (pinned checksum)
         run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
       - name: Cache the embedding model
@@ -113,6 +123,16 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: src/Shelf.Web.Ui/package-lock.json
+      - name: Install the UI packages and type-check the UI
+        working-directory: src/Shelf.Web.Ui
+        run: |
+          npm ci
+          npm run check
       - name: Fetch sqlite-vec (pinned checksum)
         run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
       - name: Cache the embedding model

@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Reqnroll;
 using Shelf.Cli;
+using Shelf.TestData;
 using Xunit;
 
 namespace Shelf.Specs.Steps;
@@ -31,6 +32,8 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private string? _cookie;
     private JsonNode? _json;
     private string _workId = string.Empty;
+    private string _script = string.Empty;
+    private string _style = string.Empty;
 
     // ---- the server ----
 
@@ -131,6 +134,28 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     [Then("the JSON field {string} of the response is false")]
     public void ThenTheFieldIsFalse(string path) => Assert.False(Field(path)!.GetValue<bool>());
+
+    [Given("I note the script and the style of the page")]
+    public void GivenINoteTheScriptAndTheStyle()
+    {
+        Send("GET /", header: null, withCookie: false);
+        _script = System.Text.RegularExpressions.Regex.Match(_body, "src=\"(/assets/[^\"]+\\.js)\"").Groups[1].Value;
+        _style = System.Text.RegularExpressions.Regex.Match(_body, "href=\"(/assets/[^\"]+\\.css)\"").Groups[1].Value;
+        Assert.NotEmpty(_script);
+        Assert.NotEmpty(_style);
+    }
+
+    [Then("the response body is the built UI file {string}")]
+    public void ThenTheBodyIsTheBuiltUiFile(string path) => AssertBodyIsBuilt(path);
+
+    [Then("the response body is the built UI file of the noted script")]
+    public void ThenTheBodyIsTheBuiltScript() => AssertBodyIsBuilt(_script.TrimStart('/'));
+
+    [Then("the response body is the built UI file of the noted style")]
+    public void ThenTheBodyIsTheBuiltStyle() => AssertBodyIsBuilt(_style.TrimStart('/'));
+
+    [Then("the response body contains {string}")]
+    public void ThenTheBodyContains(string text) => Assert.Contains(text, _body, StringComparison.Ordinal);
 
     [Then("the response status is {int}")]
     public void ThenTheStatusIs(int status) =>
@@ -266,7 +291,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     private void Send(string request, string? header, bool withCookie, string? body = null)
     {
-        request = request.Replace("{id}", _workId, StringComparison.Ordinal);
+        request = request.Replace("{id}", _workId, StringComparison.Ordinal)
+            .Replace("{script}", _script, StringComparison.Ordinal)
+            .Replace("{style}", _style, StringComparison.Ordinal);
         var space = request.IndexOf(' ', StringComparison.Ordinal);
         var message = new HttpRequestMessage(new HttpMethod(request[..space]), $"http://127.0.0.1:{_port}{request[(space + 1)..]}");
         if (header is not null)
@@ -304,6 +331,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         {
             _cookie = set.Split(';')[0];
         }
+    }
+
+    private void AssertBodyIsBuilt(string path)
+    {
+        var built = global::System.IO.File.ReadAllBytes(Path.Combine(RepositoryPaths.Root(), "src", "Shelf.Web.Ui", "dist", path));
+        Assert.True(built.AsSpan().SequenceEqual(_bytes), $"The body ({_bytes.Length} bytes) is not the built file {path} ({built.Length} bytes).");
     }
 
     private byte[] File(string path) => System.IO.File.ReadAllBytes(Path.Combine(workspace.WorkingDirectory, path));

@@ -42,11 +42,6 @@ Feature: The web API frame
     When I request "POST /api/v1/status"
     Then the response header "Allow" contains "GET"
 
-  Scenario: A path outside the API is a problem document until the UI is embedded
-    When I request "GET /library"
-    Then the response status is 404
-    And the response header "Content-Type" is "application/problem+json"
-
   Scenario: The OpenAPI document describes the API
     When I request "GET /api/v1/openapi.json"
     Then the response status is 200
