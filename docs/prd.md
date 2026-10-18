@@ -139,6 +139,8 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 
 Calibrated on the generated reference library (1000 works, 1500 files): the files of one work are at most 5 bits apart, different works at least 6. Two guards keep a wrong merge from happening: a title + author match is capped at 0.6 if both files carry an ISBN-13 and the two differ, or if both have a fingerprint and the distance is above `max_hamming` (see `docs/slices/m1-import-scan.md`).
 
+Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generated libraries of 389 works / 500 files (100 works as EPUB + PDF, plus exact copies, editions, same-title pairs and series), seeds 1, 2, 3, 42: with these start values 99-100 of 100 pairs are merged, no work holds files of different books, and the library has at most 4 works more than the ground truth. The values are final for M1.
+
 **Thresholds (start values):**
 
 | Confidence | Action |
