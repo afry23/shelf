@@ -5,6 +5,7 @@
     <Project Path="src/Shelf.Extraction/Shelf.Extraction.csproj" />
     <Project Path="src/Shelf.Index/Shelf.Index.csproj" />
     <Project Path="src/Shelf.Organize/Shelf.Organize.csproj" />
+    <Project Path="src/Shelf.Semantic/Shelf.Semantic.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shelf.Cli.Tests/Shelf.Cli.Tests.csproj" />
@@ -12,6 +13,7 @@
     <Project Path="tests/Shelf.Extraction.Tests/Shelf.Extraction.Tests.csproj" />
     <Project Path="tests/Shelf.Index.Tests/Shelf.Index.Tests.csproj" />
     <Project Path="tests/Shelf.Organize.Tests/Shelf.Organize.Tests.csproj" />
+    <Project Path="tests/Shelf.Semantic.Tests/Shelf.Semantic.Tests.csproj" />
     <Project Path="tests/Shelf.Specs/Shelf.Specs.csproj" />
     <Project Path="tests/Shelf.TestData.Tests/Shelf.TestData.Tests.csproj" />
     <Project Path="tests/Shelf.TestData/Shelf.TestData.csproj" />
