@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end check of the native shelf binary: import, search, edit and reindex (M1), then organize, undo, tags,
-# duplicates and the trash (M2), then the MCP server and, when a model folder is given, semantic search (M3).
+# duplicates and the trash (M2), then the MCP server and, when a model folder is given, semantic search (M3), then the web
+# server (M4): the API, files with range requests, covers, the interface without Node.js, the access token and the cookie.
 # Usage: native.sh <path to shelf> <empty work directory>
 # SHELF_E5_DIR (optional): folder with model.onnx and sentencepiece.bpe.model of multilingual-e5-small.
 set -euo pipefail
@@ -90,6 +91,119 @@ for tool in search_books semantic_search get_book read_passage list_tags find_du
   grep -q "\"name\":\"$tool\"" mcp.txt
 done
 grep -q 'Event Streams in Practice' mcp.txt
+
+echo "== M4: web server (API, files with ranges, covers, the interface without Node.js, token and cookie)"
+# Covers: import made them (a rendered JPEG for the PDF); shelf covers has nothing left to do.
+find library -name 'cover.jpg' | grep -q .
+"$BIN" covers --library library | grep -q 'Created 0 covers'
+"$BIN" covers --json --library library | grep -q '"created":0'
+
+# The server runs the way a user would run it: from a reduced PATH, so that nothing can fall back on a Node.js on the machine.
+if PATH=/usr/bin:/bin command -v node > /dev/null 2>&1; then echo "note: node is on the reduced PATH"; fi
+serve_start() {
+  env -i PATH=/usr/bin:/bin HOME="$PWD" "$BIN" serve --library library --port 0 "$@" > serve-out.txt 2> serve-err.txt &
+  SERVE_PID=$!
+  for _ in $(seq 1 100); do grep -q 'Listening on' serve-err.txt && break; sleep 0.1; done
+  grep -q 'Listening on' serve-err.txt
+  BASE="$(sed -n 's#^Listening on \(http://[^ ]*\).*#\1#p' serve-err.txt | head -n 1)"
+}
+serve_stop() {
+  kill -TERM "$SERVE_PID"
+  wait "$SERVE_PID" # exit code 0: an orderly stop on SIGTERM
+  [ ! -s serve-out.txt ] # nothing on standard output
+}
+
+serve_start
+curl -sS "$BASE/api/v1/status" -o status.json
+grep -q '"works":' status.json
+curl -sS "$BASE/api/v1/works" -o works.json
+grep -q '"total":' works.json
+grep -q '"hasCover":true' works.json
+curl -sS "$BASE/api/v1/search?q=event" -o web-search.json
+grep -q 'Event Streams in Practice' web-search.json
+grep -q '"fileId":' web-search.json
+
+# A file with range requests, byte for byte against the file in the library.
+curl -sS "$BASE/api/v1/works?q=format%3Apdf" -o pdf-works.json
+BOOK="$(sed -n 's/.*"items":\[{"id":"\([^"]*\)".*/\1/p' pdf-works.json)"
+curl -sS "$BASE/api/v1/works/$BOOK" -o detail.json
+FILE_ID="$(sed -n 's/.*"files":\[{"id":"\([^"]*\)".*/\1/p' detail.json)"
+FILE_URL="$BASE/api/v1/files/${FILE_ID// /%20}"
+PDF="$(find library -name 'Event Streams in Practice.pdf' | head -n 1)"
+curl -sS "$FILE_URL" -o whole.bin
+cmp whole.bin "$PDF"
+curl -sS -D range.txt -H 'Range: bytes=100-199' "$FILE_URL" -o part.bin
+head -n 1 range.txt | grep -q ' 206'
+grep -qi '^content-range: bytes 100-199/' range.txt
+dd if="$PDF" bs=1 skip=100 count=100 2> /dev/null | cmp - part.bin
+curl -sS -D tail.txt -H 'Range: bytes=-50' "$FILE_URL" -o tail.bin
+tail -c 50 "$PDF" | cmp - tail.bin
+code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Range: bytes=99999999-' "$FILE_URL")"
+[ "$code" = 416 ]
+curl -sSI "$FILE_URL" -o head.txt
+grep -qi '^content-length: ' head.txt
+grep -qi '^accept-ranges: bytes' head.txt
+
+# The cover over HTTP is the file on disk.
+curl -sS "$BASE/api/v1/works/$BOOK/cover" -o web-cover.bin
+cmp web-cover.bin "$(dirname "$PDF")/cover.jpg"
+
+# The interface comes out of the binary: the page, its script and style, the policy, the data of PDF.js, the routes of the browser.
+curl -sS -D page-head.txt "$BASE/" -o page.html
+grep -q '<title>shelf</title>' page.html
+grep -qi "^content-security-policy: .*script-src 'self'" page-head.txt
+SCRIPT="$(sed -n 's#.*src="\(/assets/[^"]*\.js\)".*#\1#p' page.html | head -n 1)"
+STYLE="$(sed -n 's#.*href="\(/assets/[^"]*\.css\)".*#\1#p' page.html | head -n 1)"
+curl -sSf "$BASE$SCRIPT" -o /dev/null
+curl -sSf "$BASE$STYLE" -o /dev/null
+curl -sS -D wasm-head.txt "$BASE/pdfjs/wasm/openjpeg.wasm" -o /dev/null
+grep -qi '^content-type: application/wasm' wasm-head.txt
+code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: text/html' "$BASE/read/anything~book.pdf")"
+[ "$code" = 200 ]
+code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v1/unknown")"
+[ "$code" = 404 ]
+
+# A change over HTTP is a change of the library: the command line sees it, and undo takes it back in one step.
+curl -sS -X PUT -H 'Content-Type: application/json' -d '{"tags":["e2e-web"]}' "$BASE/api/v1/works/$BOOK/tags" -o web-tags.json
+grep -q '"added":1' web-tags.json
+"$BIN" tag list --library library | grep -q 'e2e-web'
+"$BIN" undo --library library > /dev/null
+if "$BIN" tag list --library library | grep -q 'e2e-web'; then echo "the tag of the web call is still there after undo"; exit 1; fi
+
+# Duplicates over HTTP: a copy is found, kept away by the action, and the command line brings it back.
+cp "$PDF" "${PDF%.pdf} (2).pdf"
+"$BIN" scan --library library > /dev/null
+snapshot > web-dupes-before.txt
+curl -sS "$BASE/api/v1/duplicates" -o web-dupes.json
+grep -q '"kind":"identical"' web-dupes.json
+curl -sS -X POST -H 'Content-Type: application/json' -d "{\"fileId\":\"$FILE_ID\"}" "$BASE/api/v1/duplicates/keep" -o web-keep.json
+grep -q '"trashed":1' web-keep.json
+[ ! -e "${PDF%.pdf} (2).pdf" ]
+"$BIN" undo --library library | grep -q 'Reverted the last dupes run'
+snapshot | diff web-dupes-before.txt -
+serve_stop
+
+# Access: a token is needed for the API and not for the interface; the link with the token sets a cookie.
+serve_start --token s3cret
+code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v1/status")"
+[ "$code" = 401 ]
+code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer s3cret' "$BASE/api/v1/status")"
+[ "$code" = 200 ]
+code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/")" # the page and its files are public
+[ "$code" = 200 ]
+curl -sS -c cookies.txt -D token-head.txt "$BASE/library?token=s3cret" -o /dev/null
+head -n 1 token-head.txt | grep -q ' 303'
+grep -qi '^set-cookie: shelf_token=' token-head.txt
+code="$(curl -s -b cookies.txt -o /dev/null -w '%{http_code}' "$BASE/api/v1/status")"
+[ "$code" = 200 ]
+serve_stop
+
+# An address that is not loopback needs a token (exit code 2, nothing on standard output).
+code=0
+"$BIN" serve --library library --port 0 --bind 0.0.0.0 > bind-out.txt 2> bind-err.txt || code=$?
+[ "$code" = 2 ]
+grep -q 'requires --token' bind-err.txt
+[ ! -s bind-out.txt ]
 
 if [ -n "${SHELF_E5_DIR:-}" ]; then
   echo "== M3: model, embeddings, semantic search"

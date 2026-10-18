@@ -62,6 +62,6 @@ jobs:
           time "$RUNNER_TEMP/aot/shelf" import "$RUNNER_TEMP/generated/input" --library "$RUNNER_TEMP/library"
       - name: Measure
         run: >
-          python3 tests/perf/measure.py
+          python3 tests/perf/measure.py --web
           --shelf "$RUNNER_TEMP/aot/shelf" --library "$RUNNER_TEMP/library"
           --tolerance "${{ github.event.inputs.tolerance || '2' }}"

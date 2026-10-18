@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Measures the performance targets of PRD 9.1 with the real shelf binary on a populated library.
 
-    measure.py --shelf BIN --library DIR [--tolerance 1.0] [--skip-reindex] [--semantic]
+    measure.py --shelf BIN --library DIR [--tolerance 1.0] [--skip-reindex] [--semantic] [--web]
 
 Every number is the wall time of a whole process, including its start. Targets (multiplied by --tolerance):
 cold start < 150 ms, scan without changes < 3 s, search p95 < 100 ms (250 ms for very common words), initial index (reindex from the sidecars) < 15 min.
@@ -10,14 +10,19 @@ as a dry run) have no target in the PRD; their times are only printed, so that a
 --semantic (the library must hold embeddings: shelf reindex --embeddings) adds the semantic search p95 (work < 300 ms,
 chunk < 800 ms), once as a one-shot `shelf semantic` process (model load included; reported, no target) and once as a request to a running
 `shelf mcp` server (model loaded). It runs before the reindex step, which drops the embeddings.
+--web starts `shelf serve` and measures what a browser asks for when the library view opens (the page, its script and style, and
+the first page of the list with its facets: < 500 ms), the other calls of the views (sorting, filters, search, details, cover,
+duplicates; printed, no target) and the resident memory of the idle server (< 200 MB, PRD 9.1). It runs before the reindex step.
 """
 import json
 import argparse
 import os
+import re
 import statistics
 import subprocess
 import sys
 import time
+import urllib.request
 
 # Queries a person types: one to three words, most of them selective.
 TYPICAL = [
@@ -75,6 +80,78 @@ def mcp_latencies(shelf, library, level, runs):
         server.wait(timeout=30)
 
 
+def get(url, headers=None):
+    """Seconds and body of one request on a connection of its own (a browser opening the page does the same)."""
+    start = time.perf_counter()
+    request = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        body = response.read()
+    return time.perf_counter() - start, body
+
+
+def resident_mb(pid):
+    out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+    return int(out) / 1024
+
+
+def web_rows(args, check, rows):
+    """Starts `shelf serve` on a free port and measures the web interface (PRD 9.1: library view < 500 ms, idle memory < 200 MB)."""
+    started = time.perf_counter()
+    server = subprocess.Popen([args.shelf, "serve", "--library", args.library, "--port", "0"], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.PIPE, text=True)
+    try:
+        line = ""
+        while "Listening on" not in line:
+            line = server.stderr.readline()
+            if not line:
+                raise RuntimeError("shelf serve did not start")
+        base = re.search(r"http://[^\s]+", line).group(0).replace("0.0.0.0", "127.0.0.1")
+        rows.append(("serve: start to listening", (time.perf_counter() - started) * 1000, None, "ms", True))
+        time.sleep(1)
+        check("serve: resident memory, idle (before any request)", resident_mb(server.pid), 200, "MB")
+
+        def timed(path, runs):
+            return [get(base + path)[0] * 1000 for _ in range(runs)]
+
+        # What a browser needs when the library view opens: the page, its script and style, then the first page of the list.
+        _, page = get(base + "/")
+        text = page.decode()
+        script = re.search(r'src="(/assets/[^"]+\.js)"', text).group(1)
+        style = re.search(r'href="(/assets/[^"]+\.css)"', text).group(1)
+        get(base + "/api/v1/works")  # the first request opens the index
+        opens = []
+        for _ in range(args.web_runs):
+            total = sum(get(base + path)[0] for path in ("/", script, style, "/api/v1/works"))
+            opens.append(total * 1000)
+        check(f"library view: page + script + style + first list ({len(opens)} runs, p95)", p95(opens), 500, "ms")
+        rows.append(("library view: the first list alone, median", statistics.median(timed("/api/v1/works", args.web_runs)), None, "ms", True))
+
+        for label, path in (
+            ("list sorted by author (folded keys in memory), p95", "/api/v1/works?sort=author"),
+            ("list sorted by year, p95", "/api/v1/works?sort=year&order=desc"),
+            ("list filtered by language, p95", "/api/v1/works?q=lang%3Ade"),
+            ("list filtered by tag, p95", "/api/v1/works?q=tag%3Acloud"),
+            ("list, last page of 48, p95", "/api/v1/works?offset=9950"),
+            ("search (full text), p95", "/api/v1/search?q=event"),
+            ("search, very common word, p95", "/api/v1/search?q=data"),
+            ("tags, p95", "/api/v1/tags"),
+        ):
+            rows.append((label, p95(timed(path, 20)), None, "ms", True))
+
+        listing = json.loads(get(base + "/api/v1/works?limit=5")[1])["items"]
+        detail = listing[0]["id"]
+        rows.append(("work details, p95", p95(timed(f"/api/v1/works/{detail}", 20)), None, "ms", True))
+        covered = next((i["id"] for i in json.loads(get(base + "/api/v1/works?limit=100")[1])["items"] if i["hasCover"]), None)
+        if covered:
+            rows.append(("cover of a work, p95", p95(timed(f"/api/v1/works/{covered}/cover", 20)), None, "ms", True))
+        rows.append(("duplicates (the whole library), once", timed("/api/v1/duplicates", 1)[0], None, "ms", True))
+        time.sleep(1)
+        check("serve: resident memory after these requests", resident_mb(server.pid), 200, "MB")
+    finally:
+        server.terminate()
+        server.wait(timeout=30)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--shelf", required=True)
@@ -83,6 +160,8 @@ def main():
     parser.add_argument("--skip-reindex", action="store_true")
     parser.add_argument("--semantic", action="store_true", help="also measure semantic search (needs embeddings)")
     parser.add_argument("--search-runs", type=int, default=200)
+    parser.add_argument("--web", action="store_true", help="also measure the web interface (starts shelf serve)")
+    parser.add_argument("--web-runs", type=int, default=40)
     args = parser.parse_args()
     lib = ["--library", args.library]
     rows = []
@@ -138,6 +217,9 @@ def main():
             print(result.stderr, file=sys.stderr)
             return 1
         rows.append((label, elapsed, None, "s", True))
+
+    if args.web:
+        web_rows(args, check, rows)
 
     if args.semantic:
         for level, flags, limit in (("work", [], 300), ("chunk", ["--chunks"], 800)):
