@@ -11,6 +11,7 @@ namespace Shelf.Index;
 /// <param name="UnchangedFiles">Files whose size and time were as recorded, plus touched files whose hash was the same.</param>
 /// <param name="TouchedFiles">Files with a new time but the same hash: not read again.</param>
 /// <param name="Untracked">Supported files outside any work folder, as library-relative paths.</param>
+/// <param name="ReadFiles">Library-relative paths of the files that were read in this run (new or changed); a cover is made for their works.</param>
 public sealed record ScanResult(
     int Works,
     int Files,
@@ -23,7 +24,8 @@ public sealed record ScanResult(
     int RemovedFiles,
     int UnchangedFiles,
     IReadOnlyList<string> Untracked,
-    IReadOnlyList<ReindexProblem> Problems);
+    IReadOnlyList<ReindexProblem> Problems,
+    IReadOnlyList<string> ReadFiles);
 
 /// <summary>
 /// Brings the index in line with the folders and sidecars of a library (F-LIB-7). Only what changed is looked
@@ -124,6 +126,7 @@ public static class LibraryScanner
         var queue = LoadQueue(root, problems);
         var queueChanged = false;
         int newFiles = 0, changedFiles = 0, touched = 0;
+        var readFiles = new List<string>();
 
         using (var transaction = writer.BeginTransaction())
         {
@@ -159,6 +162,7 @@ public static class LibraryScanner
             else
             {
                 writer.SetContent(need.Row.Id, analysis.Size, analysis.Mtime, analysis.Sha256, analysis.Book?.PageCount, analysis.Fingerprint, analysis.TextStatus, analysis.Chunks);
+                readFiles.Add(need.Row.RelPath);
                 if (need.IsNew)
                 {
                     newFiles++;
@@ -223,7 +227,8 @@ public static class LibraryScanner
             removedFiles,
             unchanged + touched,
             untracked,
-            problems);
+            problems,
+            readFiles);
     }
 
     // ---- works ----

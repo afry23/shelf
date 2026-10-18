@@ -465,19 +465,52 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         }
 
         var work = Find(workId);
-        WorkSidecar sidecar;
+        var sidecar = ReadSidecar(work);
+        if (!sidecar.Files.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)))
+        {
+            throw new LibraryException($"no file '{name}' in '{work.Title}'", LibraryErrorKind.NotFound);
+        }
+
+        return Locate(work, name)
+            ?? throw new LibraryException($"the file '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
+    }
+
+    /// <summary>The cover image of a work (F-IMP-5).</summary>
+    /// <exception cref="LibraryException">With the kind <see cref="LibraryErrorKind.NotFound"/>: no such work, no cover, or the file is gone.</exception>
+    public FileLocation ResolveCover(string id)
+    {
+        var work = Find(id);
+        var name = ReadSidecar(work).Cover
+            ?? throw new LibraryException($"'{work.Title}' has no cover", LibraryErrorKind.NotFound);
+        return Locate(work, name)
+            ?? throw new LibraryException($"the cover '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
+    }
+
+    /// <summary>True when the work has a cover and its file is there.</summary>
+    public bool HasCover(string id)
+    {
+        var work = Find(id);
+        return ReadSidecar(work).Cover is { } name && Locate(work, name) is not null;
+    }
+
+    private WorkSidecar ReadSidecar(LibraryWork work)
+    {
         try
         {
-            sidecar = LibraryEditor.Read(root, work);
+            return LibraryEditor.Read(root, work);
         }
         catch (SidecarException e)
         {
             throw new LibraryException(e.Message);
         }
+    }
 
-        if (!sidecar.Files.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)))
+    /// <summary>The file with this name in the folder of the work, if it is a plain name, lies inside the library and exists.</summary>
+    private FileLocation? Locate(LibraryWork work, string name)
+    {
+        if (name.Length == 0 || name != Path.GetFileName(name))
         {
-            throw new LibraryException($"no file '{name}' in '{work.Title}'", LibraryErrorKind.NotFound);
+            return null;
         }
 
         var full = Path.GetFullPath(LibraryEditor.FilePath(root, work, name));
@@ -485,7 +518,7 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         var info = new FileInfo(full);
         if (!full.StartsWith(inside, StringComparison.Ordinal) || !info.Exists)
         {
-            throw new LibraryException($"the file '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
+            return null;
         }
 
         return new FileLocation(work.Id, work.Title, name, Path.GetExtension(name).TrimStart('.').ToLowerInvariant(), full, info.Length, info.LastWriteTimeUtc);

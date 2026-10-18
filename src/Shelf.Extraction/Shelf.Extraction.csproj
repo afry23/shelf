@@ -4,9 +4,12 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
-  <!-- The only project that references the EPUB and PDF libraries (ADR 0005). -->
+  <!-- The only project that references the EPUB and PDF libraries (ADR 0005). PDFtoImage renders the cover of a PDF with PDFium;
+       SkiaSharp encodes it (ADR 0010). Their native libraries come with the packages and land next to the binary. -->
   <ItemGroup>
     <PackageReference Include="PdfPig" />
+    <PackageReference Include="PDFtoImage" />
+    <PackageReference Include="SkiaSharp" />
     <PackageReference Include="VersOne.Epub" />
   </ItemGroup>
 

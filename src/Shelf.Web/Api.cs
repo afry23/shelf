@@ -33,12 +33,12 @@ internal static class Api
             .Produces<WorkList>(StatusCodes.Status200OK);
 
         api.MapGet("/works/{id}", ([FromServices] LibraryHandle library, string id) =>
-                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service.GetBook(RequireId(id)))))
+                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.GetBook(RequireId(id)))))
             .WithName("GetWork")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
 
         api.MapMethods("/works/{id}", ["PATCH"], ([FromServices] LibraryHandle library, string id, [FromBody] JsonObject patch) =>
-                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service.EditMetadata(RequireId(id), patch))))
+                Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.EditMetadata(RequireId(id), patch))))
             .WithName("EditWork")
             .Accepts<JsonObject>("application/merge-patch+json", "application/json")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
@@ -53,6 +53,12 @@ internal static class Api
             .WithName("GetFile")
             .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .Produces(StatusCodes.Status206PartialContent, contentType: "application/octet-stream");
+
+        api.MapMethods("/works/{id}/cover", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id) =>
+                SendCover(library.Service, id))
+            .WithName("GetCover")
+            .Produces(StatusCodes.Status200OK, contentType: "image/jpeg")
+            .Produces(StatusCodes.Status304NotModified);
 
         api.MapGet("/duplicates", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.DuplicateList, () => DuplicateGroups(library.Service)))
@@ -91,22 +97,47 @@ internal static class Api
     /// </summary>
     private static IResult SendFile(LibraryService service, string id, bool download)
     {
-        FileLocation file;
         try
         {
-            file = service.ResolveFile(id);
+            var file = service.ResolveFile(id);
+            var type = file.Format switch
+            {
+                "epub" => "application/epub+zip",
+                "pdf" => "application/pdf",
+                _ => "application/octet-stream",
+            };
+            return Serve(file, type, download);
         }
         catch (LibraryException e)
         {
             return Problem(e);
         }
+    }
 
-        var type = file.Format switch
+    /// <summary>The cover of a work as the image it is (<c>image/jpeg</c>, <c>image/png</c>, ...), with <c>ETag</c> and <c>Last-Modified</c>.</summary>
+    private static IResult SendCover(LibraryService service, string id)
+    {
+        try
         {
-            "epub" => "application/epub+zip",
-            "pdf" => "application/pdf",
-            _ => "application/octet-stream",
-        };
+            var cover = service.ResolveCover(RequireId(id));
+            var type = cover.Format switch
+            {
+                "jpg" => "image/jpeg",
+                "png" => "image/png",
+                "gif" => "image/gif",
+                "webp" => "image/webp",
+                _ => "application/octet-stream",
+            };
+            return Serve(cover, type, download: false);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+    }
+
+    private static IResult Serve(FileLocation file, string type, bool download)
+    {
         var modified = new DateTimeOffset(file.LastWriteUtc, TimeSpan.Zero);
 
         // Size and modification time: a file that was replaced has another ETag even if the clock did not move far.
@@ -139,7 +170,7 @@ internal static class Api
             ? id
             : throw new LibraryException("fileId is required: the ID of a file, as in the files of a work");
 
-    private static WorkDetail Detail(BookDetails b) =>
+    private static WorkDetail Detail(LibraryService service, BookDetails b) =>
         new(
             b.Id,
             b.Title,
@@ -156,6 +187,7 @@ internal static class Api
             b.Rating,
             b.Tags,
             b.ReadStatus,
+            service.HasCover(b.Id),
             [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages))],
             b.Toc);
 
@@ -250,7 +282,7 @@ internal static class Api
             e.Message);
 
     private static WorkItem Item(WorkListEntry w) =>
-        new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus);
+        new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus, w.HasCover);
 
     private static Facets Facets(BrowseFacets f) =>
         new(Values(f.Tags), Values(f.Authors), Values(f.Languages), Values(f.Years), Values(f.Formats), Values(f.Statuses));

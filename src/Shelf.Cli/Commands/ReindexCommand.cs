@@ -38,6 +38,12 @@ internal static class ReindexCommand
 
             var result = LibraryReindexer.Rebuild(context.Root, includeContent: !parseResult.GetValue(metadataOnly));
 
+            // Every file was read again, so every work without a cover gets its chance (a plain scan would not give it one).
+            if (!parseResult.GetValue(metadataOnly))
+            {
+                CoverReport.Warn(LibraryCovers.FillAll(context.Root), stderr);
+            }
+
             foreach (var problem in result.Problems)
             {
                 stderr.WriteLine($"warning: {problem.Message}");

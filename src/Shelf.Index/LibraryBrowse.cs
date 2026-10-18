@@ -34,7 +34,8 @@ public sealed record WorkListEntry(
     string? Language,
     IReadOnlyList<string> Formats,
     IReadOnlyList<string> Tags,
-    string ReadStatus);
+    string ReadStatus,
+    bool HasCover);
 
 /// <summary>A value of a facet and the number of works of the filtered set that have it.</summary>
 public sealed record FacetCount(string Value, int Count);
@@ -90,10 +91,10 @@ public static class LibraryBrowse
             return [];
         }
 
-        var rows = new Dictionary<string, (string Title, string? Subtitle, List<string> Authors, int? Year, string? Language, string Status)>(StringComparer.Ordinal);
+        var rows = new Dictionary<string, (string Title, string? Subtitle, List<string> Authors, int? Year, string? Language, string Status, bool HasCover)>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = $"SELECT w.id, w.title, w.subtitle, w.authors_json, w.year, w.language, w.read_status FROM works w WHERE w.id IN ({Placeholders(command, ids)})";
+            command.CommandText = $"SELECT w.id, w.title, w.subtitle, w.authors_json, w.year, w.language, w.read_status, w.cover_path IS NOT NULL FROM works w WHERE w.id IN ({Placeholders(command, ids)})";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -103,7 +104,8 @@ public static class LibraryBrowse
                     Names(reader.GetString(3)),
                     reader.IsDBNull(4) ? null : reader.GetInt32(4),
                     reader.IsDBNull(5) ? null : reader.GetString(5),
-                    reader.GetString(6));
+                    reader.GetString(6),
+                    reader.GetBoolean(7));
             }
         }
 
@@ -112,7 +114,7 @@ public static class LibraryBrowse
         return [.. ids.Select(id =>
         {
             var r = rows[id];
-            return new WorkListEntry(Ulid.Parse(id), r.Title, r.Subtitle, r.Authors, r.Year, r.Language, formats.GetValueOrDefault(id) ?? [], tags.GetValueOrDefault(id) ?? [], r.Status);
+            return new WorkListEntry(Ulid.Parse(id), r.Title, r.Subtitle, r.Authors, r.Year, r.Language, formats.GetValueOrDefault(id) ?? [], tags.GetValueOrDefault(id) ?? [], r.Status, r.HasCover);
         })];
     }
 

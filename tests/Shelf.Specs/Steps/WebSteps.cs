@@ -15,7 +15,7 @@ namespace Shelf.Specs.Steps;
 /// and keeps no cookies of its own, so that a scenario sees exactly what the server answered.
 /// </summary>
 [Binding]
-public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps workspace, CliSteps cli) : IDisposable
+public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps workspace, CliSteps cli, CoverSteps covers) : IDisposable
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
@@ -30,6 +30,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     private byte[] _bytes = [];
     private string? _cookie;
     private JsonNode? _json;
+    private string _workId = string.Empty;
 
     // ---- the server ----
 
@@ -113,6 +114,23 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response header {string} is the size of the file {string}")]
     public void ThenTheHeaderIsTheSizeOfTheFile(string name, string path) =>
         Assert.Equal(File(path).Length.ToString(CultureInfo.InvariantCulture), Header(name));
+
+    [Given("I look up the ID of the work {string}")]
+    public void GivenILookUpTheIdOfTheWork(string title)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(global::System.IO.File.ReadAllText(Path.Combine(covers.FindWorkFolder(title), "book.json")));
+        _workId = document.RootElement.GetProperty("id").GetString()!;
+    }
+
+    [Then("the response body is the cover {string} of the work {string}")]
+    public void ThenTheBodyIsTheCover(string name, string title) =>
+        Assert.True(System.IO.File.ReadAllBytes(Path.Combine(covers.FindWorkFolder(title), name)).AsSpan().SequenceEqual(_bytes), "The body is not the cover file.");
+
+    [Then("the JSON field {string} of the response is true")]
+    public void ThenTheFieldIsTrue(string path) => Assert.True(Field(path)!.GetValue<bool>());
+
+    [Then("the JSON field {string} of the response is false")]
+    public void ThenTheFieldIsFalse(string path) => Assert.False(Field(path)!.GetValue<bool>());
 
     [Then("the response status is {int}")]
     public void ThenTheStatusIs(int status) =>
@@ -248,6 +266,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     private void Send(string request, string? header, bool withCookie, string? body = null)
     {
+        request = request.Replace("{id}", _workId, StringComparison.Ordinal);
         var space = request.IndexOf(' ', StringComparison.Ordinal);
         var message = new HttpRequestMessage(new HttpMethod(request[..space]), $"http://127.0.0.1:{_port}{request[(space + 1)..]}");
         if (header is not null)

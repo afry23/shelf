@@ -20,6 +20,9 @@ internal static class SplitCommand
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
             var result = LibraryEditor.Split(context.Root, work, parseResult.GetRequiredValue(file), environment.WorkingDirectory);
+
+            // The new work has no cover yet: its file is read for one.
+            CoverReport.Warn(LibraryCovers.FillWorks(context.Root, [result.NewWork]), stderr);
             if (parseResult.GetValue(json))
             {
                 stdout.WriteLine(JsonOutput.Write(writer =>

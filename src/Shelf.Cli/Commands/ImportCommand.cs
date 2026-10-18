@@ -30,6 +30,12 @@ internal static class ImportCommand
 
             var result = LibraryImporter.Import(context.Root, sources, new ImportOptions(parseResult.GetValue(move), isDryRun), context.Settings.Grouping);
 
+            if (!isDryRun)
+            {
+                var touched = result.Items.Where(i => i.Action != ImportAction.Error && i.WorkId is not null).Select(i => i.WorkId!.Value).Distinct();
+                CoverReport.Warn(LibraryCovers.FillWorks(context.Root, touched), stderr);
+            }
+
             var counts = Counts.Of(result);
             foreach (var item in result.Items.Where(i => i.Action == ImportAction.Error))
             {

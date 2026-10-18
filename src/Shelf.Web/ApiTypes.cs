@@ -16,7 +16,8 @@ public sealed record WorkItem(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Language,
     string[] Formats,
     string[] Tags,
-    string ReadStatus);
+    string ReadStatus,
+    bool HasCover);
 
 public sealed record FacetValue(string Value, int Count);
 
@@ -83,6 +84,7 @@ public sealed record WorkDetail(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,
     string ReadStatus,
+    bool HasCover,
     WorkFile[] Files,
     TocItem[] Toc);
 
