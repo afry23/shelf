@@ -35,8 +35,12 @@ public static class LibraryReindexer
     /// Also read every file (hash, text, fingerprint) as <see cref="LibraryScanner"/> does. Without it only the
     /// metadata of the sidecars is rebuilt, which is fast; a later scan fills in the content.
     /// </param>
+    /// <param name="vectorExtension">
+    /// How sqlite-vec is loaded; the default is the library next to the executable. A rebuild removes the vectors
+    /// (their passages get new ids); an index with sqlite-vec tables that cannot be opened without it is replaced.
+    /// </param>
     /// <exception cref="IndexException">The index cannot be written.</exception>
-    public static ReindexResult Rebuild(string root, bool includeContent = true)
+    public static ReindexResult Rebuild(string root, bool includeContent = true, IVectorExtension? vectorExtension = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
         root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
@@ -45,7 +49,7 @@ public static class LibraryReindexer
         var works = Discover(root, problems);
         var review = LoadReview(root, problems);
 
-        using var connection = OpenIndex(IndexDatabase.PathFor(root));
+        using var connection = OpenIndex(IndexDatabase.PathFor(root), vectorExtension ?? SqliteVecExtension.Default);
         int fileCount = 0;
         using (var writer = new IndexWriter(connection))
         using (var transaction = writer.BeginTransaction())
@@ -138,6 +142,7 @@ public static class LibraryReindexer
 
     private static void Reset(SqliteConnection connection)
     {
+        VectorTables.Drop(connection);
         if (IndexDatabase.GetVersion(connection) != IndexSchema.Version)
         {
             // Another version, or a new empty file: nothing in it is worth keeping, the index is a cache.
@@ -155,7 +160,29 @@ public static class LibraryReindexer
     }
 
     /// <summary>Opens the index; a file that is not a database at all is a cache that went bad, so it is replaced.</summary>
-    private static SqliteConnection OpenIndex(string path)
+    private static SqliteConnection OpenIndex(string path, IVectorExtension extension)
+    {
+        var connection = OpenIndexFile(path);
+        if (!VectorTables.NeedsExtension(connection) || extension.TryLoad(connection))
+        {
+            return connection;
+        }
+
+        // The vectors cannot be dropped without the library, and a rebuild discards them anyway.
+        connection.Dispose();
+        DeleteIndexFiles(path);
+        return IndexDatabase.OpenForRebuild(path);
+    }
+
+    private static void DeleteIndexFiles(string path)
+    {
+        foreach (var file in new[] { path, path + "-wal", path + "-shm" })
+        {
+            File.Delete(file);
+        }
+    }
+
+    private static SqliteConnection OpenIndexFile(string path)
     {
         try
         {
@@ -164,11 +191,7 @@ public static class LibraryReindexer
         // Only for "not a database" (26) and "corrupt" (11): a busy or locked index (5, 6) belongs to a running process.
         catch (IndexException e) when (e.InnerException is SqliteException { SqliteErrorCode: 26 or 11 } && File.Exists(path))
         {
-            foreach (var file in new[] { path, path + "-wal", path + "-shm" })
-            {
-                File.Delete(file);
-            }
-
+            DeleteIndexFiles(path);
             return IndexDatabase.OpenForRebuild(path);
         }
     }

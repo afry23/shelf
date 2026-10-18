@@ -13,12 +13,29 @@ internal static class ReindexCommand
         {
             Description = "Rebuild only the metadata of the sidecars; a later scan reads the files",
         };
+        var embeddings = new Option<bool>("--embeddings")
+        {
+            Description = "Only make the embeddings for semantic search that are missing (resumable); the rest of the index is not touched",
+        };
         var command = new Command("reindex", "Rebuild the index from the files and book.json sidecars");
         command.Options.Add(library);
         command.Options.Add(metadataOnly);
+        command.Options.Add(embeddings);
+        command.Validators.Add(result =>
+        {
+            if (result.GetValue(embeddings) && result.GetValue(metadataOnly))
+            {
+                result.AddError("--embeddings cannot be combined with --metadata-only");
+            }
+        });
         command.SetAction(parseResult =>
         {
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            if (parseResult.GetValue(embeddings))
+            {
+                return EmbeddingsRunner.Run(context, parseResult.GetValue(json), stdout, stderr, environment);
+            }
+
             var result = LibraryReindexer.Rebuild(context.Root, includeContent: !parseResult.GetValue(metadataOnly));
 
             foreach (var problem in result.Problems)

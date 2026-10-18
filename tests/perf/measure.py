@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Measures the performance targets of PRD 9.1 with the real shelf binary on a populated library.
 
-    measure.py --shelf BIN --library DIR [--tolerance 1.0] [--skip-reindex]
+    measure.py --shelf BIN --library DIR [--tolerance 1.0] [--skip-reindex] [--semantic]
 
 Every number is the wall time of a whole process, including its start. Targets (multiplied by --tolerance):
 cold start < 150 ms, scan without changes < 3 s, search p95 < 100 ms (250 ms for very common words), initial index (reindex from the sidecars) < 15 min.
 Prints a table and exits 1 if a target is missed. The M2 commands (organize as a dry run, tag list, dupes, trash empty
 as a dry run) have no target in the PRD; their times are only printed, so that a regression stands out.
+--semantic (the library must hold embeddings: shelf reindex --embeddings) adds the semantic search p95 (work < 300 ms,
+chunk < 800 ms), once as a one-shot `shelf semantic` process (model load included; reported, no target) and once as a request to a running
+`shelf mcp` server (model loaded). It runs before the reindex step, which drops the embeddings.
 """
+import json
 import argparse
 import os
 import statistics
@@ -37,12 +41,47 @@ def p95(values):
     return ordered[min(len(ordered) - 1, int(len(ordered) * 0.95 + 0.9999) - 1)]
 
 
+SEMANTIC = [
+    "Bücher über Messaging zwischen Microservices", "event sourcing", "verteilte Systeme Konsens",
+    "kubernetes cluster operations", "Datenbank Replikation", "stream processing", "Architektur Muster",
+    "how to scale a queue",
+]
+
+
+def mcp_latencies(shelf, library, level, runs):
+    """Milliseconds per semantic_search request to one running server; the first request (model load) is left out."""
+    server = subprocess.Popen([shelf, "mcp", "--library", library], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, text=True, bufsize=1)
+
+    def call(number, method, params=None):
+        server.stdin.write(json.dumps({"jsonrpc": "2.0", "id": number, "method": method, "params": params or {}}) + "\n")
+        server.stdin.flush()
+        while True:
+            reply = json.loads(server.stdout.readline())
+            if reply.get("id") == number:
+                return reply
+
+    try:
+        call(1, "initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "measure", "version": "1"}})
+        server.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+        values = []
+        for i in range(runs + 1):
+            start = time.perf_counter()
+            call(10 + i, "tools/call", {"name": "semantic_search", "arguments": {"query": f"{SEMANTIC[i % len(SEMANTIC)]} {i}", "level": level}})
+            values.append((time.perf_counter() - start) * 1000)
+        return values[1:]
+    finally:
+        server.stdin.close()
+        server.wait(timeout=30)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--shelf", required=True)
     parser.add_argument("--library", required=True)
     parser.add_argument("--tolerance", type=float, default=1.0, help="factor applied to every target (shared CI runners)")
     parser.add_argument("--skip-reindex", action="store_true")
+    parser.add_argument("--semantic", action="store_true", help="also measure semantic search (needs embeddings)")
     parser.add_argument("--search-runs", type=int, default=200)
     args = parser.parse_args()
     lib = ["--library", args.library]
@@ -99,6 +138,21 @@ def main():
             print(result.stderr, file=sys.stderr)
             return 1
         rows.append((label, elapsed, None, "s", True))
+
+    if args.semantic:
+        for level, flags, limit in (("work", [], 300), ("chunk", ["--chunks"], 800)):
+            one_shot = []
+            for i in range(40):
+                elapsed, result = run(args.shelf, ["semantic", SEMANTIC[i % len(SEMANTIC)], *flags, *lib])
+                if result.returncode != 0:
+                    print(result.stderr, file=sys.stderr)
+                    return 1
+                one_shot.append(elapsed * 1000)
+            # The model (470 MB) is read and set up on every start: about 0.45 s, whatever the query. Only a process that
+            # stays up (mcp, later serve) can meet the targets; the one-shot time is reported (ADR 0014).
+            rows.append((f"semantic {level} p95, one-shot process (40 runs)", p95(one_shot), None, "ms", True))
+            running = mcp_latencies(args.shelf, args.library, level, 40)
+            check(f"semantic {level} p95, running mcp server (40 runs)", p95(running), limit, "ms")
 
     # initial index from the sidecars
     if not args.skip_reindex:

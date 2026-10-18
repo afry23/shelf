@@ -81,6 +81,22 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
         cliEnvironment = cliEnvironment.WithStandardInput(new StringReader(_standardInput));
 
+        if (environment.Models is { } models)
+        {
+            cliEnvironment = cliEnvironment.WithModels(models.Catalog, models);
+        }
+
+        if (environment.Embedder is { } embedder)
+        {
+            cliEnvironment = cliEnvironment.WithEmbedder(folder =>
+            {
+                environment.EmbedderOpens++;
+                return environment.EmbedderFor(Path.GetFileName(folder.Directory));
+            });
+        }
+
+        cliEnvironment = cliEnvironment.WithCancellation(environment.Interrupt.Token);
+
         // Scenarios never start a real application.
         cliEnvironment = cliEnvironment.WithFileOpener(_opener);
 
@@ -178,6 +194,22 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("standard error contains no ANSI escape sequences")]
     public void ThenStandardErrorContainsNoAnsiEscapeSequences() =>
         Assert.DoesNotContain('\u001b', _stderr.ToString());
+
+    [Then("the JSON integer property {string} of standard output is {int}")]
+    public void ThenTheJsonIntegerPropertyOfStandardOutputIs(string property, int expected)
+    {
+        using var document = JsonDocument.Parse(_stdout.ToString());
+        Assert.Equal(expected, document.RootElement.GetProperty(property).GetInt32());
+    }
+
+    [Then("the JSON string property {string} of standard output matches {string}")]
+    public void ThenTheJsonStringPropertyOfStandardOutputMatches(string property, string pattern)
+    {
+        using var document = JsonDocument.Parse(_stdout.ToString());
+        var value = document.RootElement.GetProperty(property);
+        Assert.Equal(JsonValueKind.String, value.ValueKind);
+        Assert.Matches(new Regex(pattern), value.GetString()!);
+    }
 
     [Then("standard output is a JSON object with the string property {string} matching {string}")]
     public void ThenStandardOutputIsAJsonObjectWithTheStringPropertyMatching(string property, string pattern)

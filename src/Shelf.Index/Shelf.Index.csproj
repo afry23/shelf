@@ -15,6 +15,16 @@
     <ProjectReference Include="..\Shelf.Organize\Shelf.Organize.csproj" />
   </ItemGroup>
 
+  <!-- sqlite-vec (ADR 0004): vec0.* lands next to the executable; without it vectors use plain tables. -->
+  <PropertyGroup>
+    <VecRid>$(RuntimeIdentifier)</VecRid>
+    <VecRid Condition="'$(VecRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</VecRid>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\vendor\sqlite-vec\$(VecRid)\vec0.*" Condition="Exists('..\..\vendor\sqlite-vec\$(VecRid)')"
+          Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Shelf.Index.Tests" />
   </ItemGroup>

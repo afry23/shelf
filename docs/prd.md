@@ -241,9 +241,10 @@ Goal: cold start to first output < 150 ms (Native AOT, see chapter 9).
 shelf init <root>                         Create library
 shelf import <path> [--move] [--dry-run]  Import files
 shelf scan                                Incremental scan
-shelf reindex [--embeddings]              Rebuild index
+shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
 shelf search <query> [--limit] [--json]   Metadata/full-text search
-shelf semantic <text> [--chunks] [--json] Semantic search
+shelf semantic <text> [--chunks] [--hybrid] [--json]  Semantic search (--hybrid: combined with full text)
+shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf tag add|rm|list|rename|merge        Manage tags
@@ -288,7 +289,7 @@ Resources:
 Requirements for the MCP server:
 
 - Transport: stdio (M), Streamable HTTP (S).
-- Write tools can be disabled via configuration (`mcp.readOnly: true`).
+- Write tools can be disabled via configuration (`mcp.read_only = true`; the config keys use snake case). The hard maximum of `read_passage` is `mcp.max_chars`.
 - Destructive operations (delete, move) are **not** offered via MCP.
 
 ### 7.3 Web API

@@ -11,6 +11,9 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
 {
     private Dictionary<string, string>? _snapshot;
 
+    [Given("the file {string} is copied to {string}")]
+    public void GivenTheFileIsCopiedTo(string from, string to) => File.Copy(PathOf(from), PathOf(to));
+
     [Given("a file {string} in the working directory")]
     public void GivenAFileInTheWorkingDirectory(string name) => WriteFile(name, "data");
 
@@ -112,6 +115,17 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
 
     [Then("the file {string} exists")]
     public void ThenTheFileExists(string name) => Assert.True(File.Exists(PathOf(name)), $"Missing file {name}");
+
+    [Then("the file {string} has the content {string}")]
+    public void ThenTheFileHasTheContent(string name, string content) => Assert.Equal(content, File.ReadAllText(PathOf(name)));
+
+    [Given("the global config file contains the line {string}")]
+    public void GivenTheGlobalConfigFileContainsTheLine(string line)
+    {
+        var path = PathOf(Path.Combine(CliSteps.HomeFolder, ".config", "shelf", "config.toml"));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.AppendAllText(path, line + "\n");
+    }
 
     [Then("the file {string} does not exist")]
     public void ThenTheFileDoesNotExist(string name) => Assert.False(File.Exists(PathOf(name)), $"Unexpected file {name}");

@@ -173,7 +173,7 @@ internal sealed class IndexWriter : IDisposable
     {
         Execute("DELETE FROM chunks WHERE file_id = $id", ("$id", fileId));
         Execute(
-            "UPDATE files SET size = $size, mtime = $mtime, sha256 = $sha, page_count = $pages, simhash = $simhash, text_status = $status WHERE id = $id",
+            "UPDATE files SET size = $size, mtime = $mtime, sha256 = $sha, page_count = $pages, simhash = $simhash, text_status = $status, embed_status = 'pending' WHERE id = $id",
             ("$size", size),
             ("$mtime", mtime),
             ("$sha", sha256),

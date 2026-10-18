@@ -72,6 +72,9 @@ public static class ShelfApp
         root.Subcommands.Add(TagCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(DupesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(TrashCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ModelCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(SemanticCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(McpCommand.Create(json, stdout, stderr, environment));
 
         // Without a command there is nothing to run: that is a usage error, not success.
         root.SetAction(_ =>

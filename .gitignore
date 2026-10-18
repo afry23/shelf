@@ -56,3 +56,6 @@ TestResults/
 
 # Generated synthetic libraries (tests/Shelf.TestData)
 /artifacts/
+
+# sqlite-vec libraries fetched by tools/fetch-sqlite-vec.sh
+/vendor/

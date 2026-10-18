@@ -74,8 +74,8 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 
 | Gap | Lands in | Note |
 |---|---|---|
-| ONNX Runtime and the XLM-R tokenizer under Native AOT (managed and native part, token-ID parity) | first slice of M3 | no spike was done; [ADR 0001](adr/0001-dependency-licenses-and-maintenance.md) row 11 stays `pending` |
-| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | **CLI parts done in M1 and M2:** the `aot` job publishes the real `shelf` on `linux-x64` and runs `tests/e2e/native.sh` (M1 and M2 commands); MCP, web and covers remain |
+| ONNX Runtime and the XLM-R tokenizer under Native AOT (managed and native part, token-ID parity) | first slice of M3 (`m3-semantic-core`, as a gate, no spike) | **Done in M3 slice 1 on `osx-arm64`:** token-ID parity and an AOT run pass, row 11 is `adopt` ([ADR 0013](adr/0013-onnx-tokenizer-aot.md)); `linux-x64` is checked by the `aot` job since `m3-close` |
+| `linux-x64` verification of MCP, web, the combined binary and PDF cover rendering | first CI job that publishes the real `shelf` binary on `linux-x64` (M1 for the CLI parts, M3 for MCP, M4 for web and covers) | **CLI parts done in M1 and M2:** the `aot` job publishes the real `shelf` on `linux-x64` and runs `tests/e2e/native.sh` (M1 and M2 commands); **MCP added in M3** (`native.sh` starts `shelf mcp` and, with the model, `semantic`; first CI run pending); web and covers remain |
 | Cold start of the real commands against < 150 ms | M1 exit criteria (performance) | **Done in M1:** 30 ms for `--version` on `osx-arm64` ([ADR 0011](adr/0011-m1-performance.md)) |
 | Project setup for the executable: Web SDK or `MvcEnhancedModelMetadataSupport=false` with the runtime feature switch and the `<Using>` items; `CA1416` handling (assembly-level `SupportedOSPlatform`) with warnings as errors | M4 (web): the CLI of M1 has no web reference, so the setup does not apply yet | [ADR 0008](adr/0008-combined-aot-binary.md) findings 1 and 2, [ADR 0010](adr/0010-pdf-cover-rendering-aot.md) finding 2 |
 | UI build in CI: `actions/setup-node` with Node.js 26, `npm ci`, a type-check step, `allowScripts` decision for fsevents; negation in the root `.gitignore` for `package.json` and `package-lock.json` | M4 | [ADR 0009](adr/0009-frontend-toolchain-licenses-and-maintenance.md) |
@@ -155,7 +155,26 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 **Notes:**
 
 - Embeddings are indexed at work level first, chunks afterwards (risk "Initial embedding indexing takes long").
-- If sqlite-vec failed in M0, the brute-force cosine fallback in C# is used.
+- sqlite-vec is adopted ([ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md)). The brute-force cosine fallback in C# is used only when `vec0` cannot be loaded.
+- **No separate ONNX spike.** The gap carried over from M0 (ONNX Runtime and the XLM-R tokenizer under Native AOT) is a gate in the first slice: token-ID parity against reference IDs and an AOT publish on `osx-arm64`. If the gate fails, `Shelf.Semantic` falls back to ReadyToRun (PRD 9.2), recorded in an ADR. Speed, quantization and model comparisons are not measured up front; they are measured once, at the end (slice 9), against the exit criteria.
+- Chunks for embeddings get an overlap (F-SEM-2); the FTS chunks stay as they are.
+- The chunk-level budget at 1.5-2.5 million chunks is open ([ADR 0004](adr/0004-storage-sqlite-fts5-vector-search.md)): quantization, larger chunks or an in-memory index are decided in slice 9 after measuring.
+
+**Slices** (plans in `docs/slices/m3-*.md`, feature files first, stacked branches `feat/m3-*`):
+
+| # | Slice | Content | Requirements |
+|---|---|---|---|
+| 1 | `m3-semantic-core` (done) | `Shelf.Semantic`: tokenizer, ONNX session, mean pooling, L2 norm, E5 prefixes, `IEmbedder` with a fake for BDD; AOT gate; ADR 0013, ADR 0001 row 11 | F-SEM-1 |
+| 2 | `m3-model` (done) | `model install <path>`, download on first need (pinned URL + SHA-256), `[semantic]` config | F-SEM-1, 9.2 |
+| 3 | `m3-vector-store` (done) | `vec_works` / `vec_chunks` (cosine), `vec0` loading with brute-force fallback, pinned fetch, model and dimension metadata | F-SEM-4 |
+| 4 | `m3-embedding-index` (done) | Work level first, then chunks; `embed_status`, batching, interrupt and resume, progress, `reindex --embeddings`, hook in `import` / `scan` | F-SEM-2, F-SEM-3, F-SEM-7 |
+| 5 | `m3-semantic-search` (done) | `semantic [--chunks] [--json]`, locations, cross-language, incomplete-index notice | F-SEM-1 to 3, AC 4 |
+| 6 | `m3-hybrid` (done) | RRF of FTS and vectors; model change re-indexes | F-SEM-5, F-SEM-8 |
+| 7 | `m3-mcp-core` (done) | `shelf mcp` (stdio), read tools, resources, clean stdout, error scenarios from ADR 0006 | 7.2, AC 6 |
+| 8 | `m3-mcp-semantic-write` (done) | `semantic_search`, `add_tags` / `remove_tags`, `mcp.readOnly`, stdio protocol e2e | 7.2, AC 4, AC 6 |
+| 9 | `m3-close` (done) | Native e2e for M3 (incl. `linux-x64` in the `aot` job), measurements on the reference library, ADR 0014, status | exit criteria |
+
+Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in parallel to 4-6. Slice 8 needs 5. Slice 9 is last.
 
 **Exit criteria:**
 
@@ -163,6 +182,10 @@ For the roadmap this means: M0 sets up Reqnroll and CI, and every milestone's ex
 - Acceptance criteria 4 and 6 are met.
 - Semantic search p95: work level < 300 ms, chunk level < 800 ms.
 - Initial embedding indexing of the synthetic library < 6 h and resumable.
+
+**Status:** done, pending the tag `v0.3.0` (owner) and the first CI run of the `linux-x64` parts.
+
+**Result:** all exit criteria met, with one reading to confirm. Must items F-SEM-1 to F-SEM-4 and F-SEM-7, Should items F-SEM-5 and F-SEM-8, `model install`, and the MCP server with nine tools, two resources and `mcp.read_only` are implemented. AC 4 and AC 6 pass with the real model (`McpAcceptance`, `SemanticSearch`; `native.sh` with the native binary). Semantic p95 in a running server: work 7 ms, chunk 14 ms at 12,000 chunks; `vec0` nearest neighbors at 430,000 chunk vectors 170 ms. A one-shot `shelf semantic` takes 0.47 s (model load), so the 300 ms target is read as a target for a running process (ADR 0014; owner to confirm). Initial embedding: 56 passages per second, 2.1 h for the reference library by extrapolation (goal < 6 h); interrupt and resume tested. Not yet run: `linux-x64` (ONNX Runtime, MCP) in the `aot` job; the full embedding of the 10,000-work library. Known limits: `reindex` drops the embeddings (`reindex --embeddings` refills them); the work embedding does not use the table of contents; config changes need a restart of `shelf mcp`.
 
 ### M4 – Web
 

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Option A of ADR 0006: Core only, no generic host. -->
+    <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
+    <ProjectReference Include="..\Shelf.Extraction\Shelf.Extraction.csproj" />
+    <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
+    <ProjectReference Include="..\Shelf.Semantic\Shelf.Semantic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Mcp.Tests" />
+  </ItemGroup>
+
+</Project>

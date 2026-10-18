@@ -17,6 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
     <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
+    <ProjectReference Include="..\Shelf.Mcp\Shelf.Mcp.csproj" />
+    <ProjectReference Include="..\Shelf.Semantic\Shelf.Semantic.csproj" />
   </ItemGroup>
 
   <ItemGroup>
