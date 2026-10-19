@@ -87,7 +87,7 @@
       <p class="count muted" role="status">{plural(result.total, 'book')} for “{q}”</p>
       <ul class="results" aria-label="Results">
         {#each result.results as item (item.id)}
-          <li>
+          <li data-nav>
             <h2><a href={`/works/${item.id}`}>{item.title}</a></h2>
             <p class="byline">
               <span>{authorLine(item.authors)}</span>

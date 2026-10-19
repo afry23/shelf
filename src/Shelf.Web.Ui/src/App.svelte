@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { handleKey } from './keys';
   import { handleLinkClick, navigate, param, router } from './router.svelte';
   import { duplicateCount, refreshDuplicateCount } from './stores.svelte';
   import Duplicates from './views/Duplicates.svelte';
@@ -70,7 +71,7 @@
   const here = (name: string) => (route.name === name ? 'page' : undefined);
 </script>
 
-<svelte:document onclick={handleLinkClick} />
+<svelte:document onclick={handleLinkClick} onkeydown={handleKey} />
 
 <div class="app" class:fill={route.name === 'read'}>
 <header class="top">

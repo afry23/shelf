@@ -69,7 +69,7 @@
       <ul class="entries" aria-label="Review">
         {#each list.entries as entry (entry.id)}
           <li>
-            <article>
+            <article data-nav>
               <h2>{kindLabel(entry.kind)}</h2>
               {#if entry.file}<p class="path">{entry.file}</p>{/if}
               {#if entry.kind === 'grouping' && entry.work}

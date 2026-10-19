@@ -98,3 +98,12 @@ Feature: Duplicates in the browser
     And I click the "These are not duplicates" button of the group "Identical files" with the file "kp.epub"
     And I click the "These are not duplicates" button of the group "Different files of one book" with the file "a.epub"
     Then the page shows the text "No duplicates"
+
+  @F-WEB-5 @M5
+  Scenario: j moves through the files and Enter opens the book
+    Given I open "/duplicates" in the browser
+    Then the page shows the text "3 groups of duplicates"
+    When I press the key "j"
+    Then the focus is on the item "Cloud Native Patterns"
+    When I press the key "Enter"
+    Then the browser address contains "/works/01J9Z3K4000000000000000004"

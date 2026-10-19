@@ -88,8 +88,8 @@
           </p>
           <div class="cards">
             {#each group.files as file, position (file.id)}
-              <article aria-label={file.name} data-suggested={position === group.keep}>
-                <h3>{file.title}</h3>
+              <article aria-label={file.name} data-suggested={position === group.keep} data-nav>
+                <h3><a href={`/works/${file.workId}`}>{file.title}</a></h3>
                 <p class="path">{file.path}</p>
                 <dl>
                   <dt>Size</dt><dd>{bytes(file.sizeBytes)}</dd>
@@ -125,7 +125,7 @@
             <p class="reason">{reason(pair)}</p>
             <div class="cards">
               {#each [pair.a, pair.b] as work (work.id)}
-                <article aria-label={work.title}>
+                <article aria-label={work.title} data-nav>
                   <h3><a href={`/works/${work.id}`}>{work.title}</a></h3>
                   {#if work.authors.length}<p class="muted">{authorLine(work.authors)}</p>{/if}
                   <p class="path">{work.folder}</p>
