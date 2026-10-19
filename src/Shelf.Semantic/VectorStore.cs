@@ -173,6 +173,22 @@ public sealed class VectorStore
         command.ExecuteNonQuery();
     }
 
+    /// <summary>The vector stored under <paramref name="id"/>, or null if there is none.</summary>
+    public float[]? Get(VectorKind kind, long id)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT embedding FROM {TableOf(kind)} WHERE {IdColumn(kind)} = $id";
+        command.Parameters.AddWithValue("$id", id);
+        if (command.ExecuteScalar() is not byte[] bytes)
+        {
+            return null;
+        }
+
+        var vector = new float[Dimensions];
+        VectorCodec.CopyTo(bytes, vector);
+        return vector;
+    }
+
     /// <summary>Every id that has a vector.</summary>
     public IReadOnlyList<long> Ids(VectorKind kind)
     {

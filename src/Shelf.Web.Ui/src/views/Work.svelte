@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, editWork, fileUrl, setTags, tags as loadTags, work as loadWork, type ReadStatus, type TagNode, type WorkDetail } from '../api';
+  import { ApiError, editWork, fileUrl, setTags, similar as loadSimilar, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink } from '../format';
@@ -30,6 +30,29 @@
         if (current) {
           missing = e instanceof ApiError && e.status === 404;
           loadError = missing ? null : e.message;
+        }
+      });
+    return () => {
+      current = false;
+    };
+  });
+
+  // The works most like this one. Without embeddings the list is empty and the section stays away: the view needs nothing else.
+  let similarBooks = $state<SearchItem[]>([]);
+
+  $effect(() => {
+    const wanted = id;
+    let current = true;
+    similarBooks = [];
+    loadSimilar(wanted)
+      .then((result) => {
+        if (current) {
+          similarBooks = result.results;
+        }
+      })
+      .catch(() => {
+        if (current) {
+          similarBooks = [];
         }
       });
     return () => {
@@ -321,6 +344,20 @@
           </table>
         </section>
 
+        {#if similarBooks.length}
+          <section>
+            <h2>Similar books</h2>
+            <ul class="similar" aria-label="Similar books">
+              {#each similarBooks as item (item.id)}
+                <li>
+                  <a href={`/works/${item.id}`}>{item.title}</a>
+                  <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
         {#if book.toc.length && tocFile}
           <section>
             <h2>Contents</h2>
@@ -511,6 +548,21 @@
 
   .files .name {
     overflow-wrap: anywhere;
+  }
+
+  .similar {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .similar li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
   }
 
   .toc {

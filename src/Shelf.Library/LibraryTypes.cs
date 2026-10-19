@@ -74,6 +74,14 @@ public sealed record SemanticSearchResult(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SemanticItem[] Results);
 
+/// <summary>The works most like the work <paramref name="Id"/> (F-SEM-6), best first, without the work itself.</summary>
+public sealed record SimilarBooksResult(
+    string Id,
+    string Title,
+    int Total,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    SemanticItem[] Results);
+
 /// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
 public sealed record TagSetResult(string Id, string[] Tags, int Added, int Removed);
 

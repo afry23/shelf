@@ -243,6 +243,45 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
                 h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
     }
 
+    public SimilarBooksResult SimilarBooks(
+        string id,
+        int limit = 10)
+    {
+        if (limit is < 1 or > MaxLimit)
+        {
+            throw new LibraryException($"limit must be between 1 and {MaxLimit}.");
+        }
+
+        var work = Find(id);
+        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
+        VectorStore? store;
+        try
+        {
+            store = VectorStore.OpenExisting(connection);
+        }
+        catch (VectorStoreException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        var hits = store is null ? null : Shelf.Semantic.SemanticSearch.SimilarWorks(connection, store, work.Id.ToString(), limit);
+        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+        return new SimilarBooksResult(
+            work.Id.ToString(),
+            work.Title,
+            hits?.Count ?? 0,
+            Shelf.Semantic.SemanticSearch.SimilarNote(hits, store, coverage),
+            [.. (hits ?? []).Select(h => new SemanticItem(
+                h.Work.Id.ToString(),
+                h.Work.Title,
+                [.. h.Work.Authors],
+                h.Work.Year,
+                h.Work.Language,
+                [.. h.Work.Formats],
+                Math.Round(h.Score, 4),
+                null))]);
+    }
+
     public TagChange AddTags(
         string id,
         string[] tags) =>

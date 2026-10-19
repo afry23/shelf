@@ -69,6 +69,48 @@ public static class SemanticSearch
     }
 
     /// <summary>
+    /// The works nearest to the work with the ID <paramref name="workId"/> (F-SEM-6), best first, without the work itself; null if
+    /// the work has no vector (yet). The vector of the work is used as it is stored: no model is needed.
+    /// </summary>
+    public static List<SemanticHit>? SimilarWorks(SqliteConnection connection, VectorStore store, string workId, int limit)
+    {
+        using var find = connection.CreateCommand();
+        find.CommandText = "SELECT seq FROM works WHERE id = $id";
+        find.Parameters.AddWithValue("$id", workId);
+        if (find.ExecuteScalar() is not long seq || store.Get(VectorKind.Work, seq) is not { } vector)
+        {
+            return null;
+        }
+
+        // One more than asked for: the work itself is the nearest vector.
+        var near = store.Nearest(VectorKind.Work, vector, limit + 1).Where(h => h.Id != seq).Take(limit).ToList();
+        if (near.Count == 0)
+        {
+            return [];
+        }
+
+        var bySeq = LoadWorks(connection, "seq", near.Select(h => (object)h.Id)).ToDictionary(w => w.Seq, w => w.Work);
+        return [.. near.Where(h => bySeq.ContainsKey(h.Id)).Select(h => new SemanticHit(bySeq[h.Id], Similarity(h.Distance), null))];
+    }
+
+    /// <summary>
+    /// What to tell about a search for similar works, or null: the work has no vector, or the index is incomplete.
+    /// <paramref name="hits"/> is the result of <see cref="SimilarWorks"/>.
+    /// </summary>
+    public static string? SimilarNote(List<SemanticHit>? hits, VectorStore? store, SemanticCoverage coverage, string command = "shelf reindex --embeddings")
+    {
+        var empty = store is null || (store.Count(VectorKind.Work) == 0 && store.Count(VectorKind.Chunk) == 0);
+        if (hits is not null)
+        {
+            return coverage.Note(empty, command);
+        }
+
+        return empty
+            ? coverage.Note(true, command) ?? $"no embeddings yet; run: {command}"
+            : $"this work has no embedding yet; run: {command}";
+    }
+
+    /// <summary>
     /// The passages nearest to <paramref name="query"/>, best first, one per chunk (its best window). Passages of files that
     /// wait for their embeddings are left out: their vectors may belong to text that has been replaced.
     /// </summary>

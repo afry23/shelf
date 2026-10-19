@@ -12,6 +12,7 @@ namespace Shelf.Web;
 internal static class Api
 {
     private const int DefaultSearchLimit = 20;
+    private const int DefaultSimilarLimit = 10;
 
     public static void Map(RouteGroupBuilder api)
     {
@@ -36,6 +37,11 @@ internal static class Api
                 Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.GetBook(RequireId(id)))))
             .WithName("GetWork")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
+
+        api.MapGet("/works/{id}/similar", ([FromServices] LibraryHandle library, string id, string? limit) =>
+                Run(WebJsonContext.Default.SimilarResponse, () => Similar(library.Service, RequireId(id), limit)))
+            .WithName("SimilarWorks")
+            .Produces<SimilarResponse>(StatusCodes.Status200OK);
 
         api.MapMethods("/works/{id}", ["PATCH"], ([FromServices] LibraryHandle library, string id, [FromBody] JsonObject patch) =>
                 Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.EditMetadata(RequireId(id), patch))))
@@ -246,6 +252,17 @@ internal static class Api
             semantic.WorksWithoutEmbedding,
             semantic.Note,
             [.. books]);
+    }
+
+    private static SimilarResponse Similar(LibraryService service, string id, string? limit)
+    {
+        var similar = service.SimilarBooks(id, Whole(limit, $"limit must be between 1 and {LibraryService.MaxLimit}.", DefaultSimilarLimit));
+        return new SimilarResponse(
+            similar.Id,
+            similar.Title,
+            similar.Total,
+            similar.Note,
+            [.. similar.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, []))]);
     }
 
     private static Passage Passage(string work, PassageRef p) =>

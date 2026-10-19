@@ -128,6 +128,14 @@ export interface SearchResponse {
   results: SearchItem[];
 }
 
+export interface SimilarResponse {
+  id: string;
+  title: string;
+  total: number;
+  note: string | null;
+  results: SearchItem[];
+}
+
 export interface DuplicateFile {
   id: string;
   workId: string;
@@ -205,6 +213,9 @@ export const works = (params: { q?: string; sort?: string; order?: string; offse
   request<WorkList>('GET', `/works${query(params)}`);
 
 export const work = (id: string) => request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+
+export const similar = (id: string, limit = 6) =>
+  request<SimilarResponse>('GET', `/works/${encodeURIComponent(id)}/similar?limit=${limit}`);
 
 export const editWork = (id: string, patch: Record<string, unknown>) =>
   request<WorkDetail>('PATCH', `/works/${encodeURIComponent(id)}`, patch, 'application/merge-patch+json');

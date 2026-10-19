@@ -49,6 +49,7 @@ Feature: A read-only MCP server
       | read_passage         |
       | search_books         |
       | semantic_search      |
+      | similar_books        |
     And every tool is marked read-only
     And the server instructions mention "read-only"
 

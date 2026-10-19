@@ -63,6 +63,14 @@ public sealed record SearchResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SearchItem[] Results);
 
+/// <summary>The works most like the work <paramref name="Id"/> (<c>GET /works/{id}/similar</c>), best first; <paramref name="Note"/> says when the embeddings are missing.</summary>
+public sealed record SimilarResponse(
+    string Id,
+    string Title,
+    int Total,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    SearchItem[] Results);
+
 /// <summary>The body of <c>PUT /works/{id}/tags</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record TagsRequest(JsonNode? Tags);
 
