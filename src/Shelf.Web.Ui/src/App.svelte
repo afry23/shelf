@@ -167,9 +167,11 @@
     width: 100%;
   }
 
+  /* Five links do not fit in a phone's width in every font: they wrap instead of widening the page. */
   nav {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
     margin-left: auto;
   }
 
