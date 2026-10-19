@@ -48,4 +48,4 @@
 
 - The debounce lives in TypeScript and has no unit test (the UI has no test runner; `npm run check` only). The scenarios cover that a position is saved on leaving, not the 30 s rule.
 - A saved EPUB position is a CFI. If the file is replaced (same name, other content) the CFI may point nowhere; foliate-js then opens at the start.
-- The position of a file is lost when `organize` renames the file or `merge` moves it? No: `merge` carries `progress` along (`LibraryEditor.Merge` keeps `file.Progress`); a rename inside the work keeps the sidecar entry. Not covered by a scenario of its own.
+- `merge` and `split` carry the position with the file (`LibraryEditor` copies `Progress`); no scenario covers it. Whether `organize` keeps it when it renames a file is not checked.
