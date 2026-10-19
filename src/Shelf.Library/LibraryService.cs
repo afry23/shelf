@@ -314,6 +314,61 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         return new TagTree(direct.Count, [.. Build(direct, string.Empty)]);
     }
 
+    /// <summary>Renames a tag and the tags below it on every work (F-TAG-4); the new name must be unused. One undoable step.</summary>
+    /// <exception cref="LibraryException">Invalid: a bad name. NotFound: no work has the tag. Conflict: the new name is in use.</exception>
+    public TagMoveResult RenameTag(string from, string to) => MoveTag(from, to, merge: false);
+
+    /// <summary>Puts a tag and the tags below it into another tag, which may exist (F-TAG-4). One undoable step.</summary>
+    /// <exception cref="LibraryException">Invalid: a bad name. NotFound: no work has the tag.</exception>
+    public TagMoveResult MergeTag(string from, string into) => MoveTag(from, into, merge: true);
+
+    private TagMoveResult MoveTag(string from, string to, bool merge)
+    {
+        if (!TagNames.TryNormalize(from, out var source, out var problem))
+        {
+            throw new LibraryException($"from: {problem}");
+        }
+
+        if (!TagNames.TryNormalize(to, out var target, out problem))
+        {
+            throw new LibraryException($"{(merge ? "into" : "to")}: {problem}");
+        }
+
+        if (source == target)
+        {
+            throw new LibraryException("the two names are the same tag");
+        }
+
+        if (merge && (TagNames.IsSameOrBelow(target, source) || TagNames.IsSameOrBelow(source, target)))
+        {
+            throw new LibraryException("a tag cannot be merged into a tag above or below it");
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                var existing = LibraryTags.List(root).Select(t => t.Tag).ToList();
+                if (!existing.Any(t => TagNames.IsSameOrBelow(t, source)))
+                {
+                    throw new LibraryException($"no work has the tag '{source}'", LibraryErrorKind.NotFound);
+                }
+
+                if (!merge && existing.Any(t => TagNames.IsSameOrBelow(t, target)))
+                {
+                    throw new LibraryException($"the tag '{target}' already exists; merge into it instead", LibraryErrorKind.Conflict);
+                }
+
+                var result = merge ? LibraryTags.Merge(root, source, target) : LibraryTags.Rename(root, source, target);
+                return new TagMoveResult(source, target, result.Changed);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     public DuplicatesResult FindDuplicates()
     {
         var groups = LibraryDuplicates.Find(root);

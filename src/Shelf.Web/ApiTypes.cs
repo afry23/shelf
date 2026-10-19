@@ -130,3 +130,6 @@ public sealed record FileRequest(JsonNode? FileId);
 
 /// <summary>The body of the action on a probable pair: the IDs of the two works. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record PairRequest(JsonNode? A, JsonNode? B);
+
+/// <summary>The body of <c>POST /tags/rename</c> and <c>/tags/merge</c>: the tag, and the name it gets (<c>to</c>) or the tag it goes into (<c>into</c>).</summary>
+public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into);

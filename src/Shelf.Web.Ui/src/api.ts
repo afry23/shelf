@@ -268,6 +268,16 @@ export const setTags = (id: string, tags: string[]) =>
 
 export const tags = () => request<TagTree>('GET', '/tags');
 
+export interface TagMoveResult {
+  from: string;
+  to: string;
+  changed: number;
+}
+
+export const renameTag = (from: string, to: string) => request<TagMoveResult>('POST', '/tags/rename', { from, to });
+
+export const mergeTag = (from: string, into: string) => request<TagMoveResult>('POST', '/tags/merge', { from, into });
+
 export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; limit?: number }) =>
   request<SearchResponse>('GET', `/search${query(params)}`);
 

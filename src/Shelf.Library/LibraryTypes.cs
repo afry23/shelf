@@ -128,3 +128,6 @@ public sealed record OrganizationProposal(string Pattern, int Files, int Works, 
 /// <summary>A file of the library, found by its ID: where it is and what a server needs to send it.</summary>
 /// <param name="Path">The full path.</param>
 public sealed record FileLocation(Ulid Work, string Title, string Name, string Format, string Path, long Size, DateTime LastWriteUtc);
+
+/// <summary>What renaming or merging a tag did: the names, and the number of works whose tags changed (F-TAG-4).</summary>
+public sealed record TagMoveResult(string From, string To, int Changed);

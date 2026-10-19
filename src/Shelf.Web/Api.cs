@@ -106,6 +106,16 @@ internal static class Api
             .WithName("ListTags")
             .Produces<TagTree>(StatusCodes.Status200OK);
 
+        api.MapPost("/tags/rename", ([FromServices] LibraryHandle library, [FromBody] TagMoveRequest body) =>
+                Run(WebJsonContext.Default.TagMoveResult, () => library.Service.RenameTag(RequireText(body.From, "from"), RequireText(body.To, "to"))))
+            .WithName("RenameTag")
+            .Produces<TagMoveResult>(StatusCodes.Status200OK);
+
+        api.MapPost("/tags/merge", ([FromServices] LibraryHandle library, [FromBody] TagMoveRequest body) =>
+                Run(WebJsonContext.Default.TagMoveResult, () => library.Service.MergeTag(RequireText(body.From, "from"), RequireText(body.Into, "into"))))
+            .WithName("MergeTag")
+            .Produces<TagMoveResult>(StatusCodes.Status200OK);
+
         api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit) =>
                 Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit)))
             .WithName("Search")
@@ -195,6 +205,11 @@ internal static class Api
         node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
             ? id
             : throw new LibraryException($"{name} is required: the ID of a work");
+
+    private static string RequireText(JsonNode? node, string name) =>
+        node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } text
+            ? text
+            : throw new LibraryException($"{name} is required: text");
 
     private static string RequireLocator(ProgressRequest body) =>
         body.Locator is not null && body.Locator.GetValueKind() == System.Text.Json.JsonValueKind.String && body.Locator.GetValue<string>() is { Length: > 0 } locator

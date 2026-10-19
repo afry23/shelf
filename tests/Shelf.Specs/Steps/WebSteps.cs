@@ -223,6 +223,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the JSON array {string} of the response has {int} entries")]
     public void ThenTheArrayHasEntries(string path, int count) => Assert.Equal(count, Field(path)!.AsArray().Count);
 
+    [Then("the JSON array {string} of the response includes {string}")]
+    public void ThenTheArrayIncludes(string path, string text) => Assert.Contains(text, Field(path)!.AsArray().Select(n => n!.GetValue<string>()));
+
+    [Then("the JSON array {string} of the response does not include {string}")]
+    public void ThenTheArrayDoesNotInclude(string path, string text) => Assert.DoesNotContain(text, Field(path)!.AsArray().Select(n => n!.GetValue<string>()));
+
     [Then("the JSON document has the path {string} with the method {string}")]
     public void ThenTheDocumentHasThePath(string path, string method) => Assert.NotNull(Json()["paths"]![path]![method]);
 
