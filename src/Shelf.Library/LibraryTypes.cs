@@ -100,6 +100,20 @@ public sealed record DuplicateSet(string Kind, string Format, DuplicateEntry[] F
 
 public sealed record DuplicatesResult(int Total, DuplicateSet[] Sets);
 
+/// <param name="Folder">The folder of the work, library-relative.</param>
+public sealed record ProbableEntry(string Id, string Title, string[] Authors, string Folder);
+
+/// <param name="Hamming">Distance of the text fingerprints; null if the texts are not that close (or a work has no text).</param>
+/// <param name="Cosine">Similarity of the vectors of the works; null if it is below the threshold or the library has no embeddings.</param>
+public sealed record ProbablePair(
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Hamming,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? Cosine,
+    ProbableEntry A,
+    ProbableEntry B);
+
+/// <param name="Note">What is missing for the comparison of the vectors (no embeddings yet), or null.</param>
+public sealed record ProbablePairsResult(int Total, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note, ProbablePair[] Pairs);
+
 public sealed record PlannedMove(string Id, string From, string To);
 
 public sealed record SkippedMove(string Id, string From, string To, string Reason);

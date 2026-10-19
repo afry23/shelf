@@ -576,6 +576,71 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         }
     }
 
+    /// <summary>
+    /// Works that probably are one book (F-DUP-3): nearly the same text, or very similar vectors. For manual review only; pairs marked
+    /// as not duplicates (F-DUP-6) are left out.
+    /// </summary>
+    public ProbablePairsResult FindProbableDuplicates()
+    {
+        try
+        {
+            var found = Shelf.Semantic.ProbableDuplicates.Find(root, settings.Grouping);
+            return new ProbablePairsResult(
+                found.Pairs.Count,
+                found.Note,
+                [.. found.Pairs.Select(p => new ProbablePair(p.Hamming, p.Cosine is { } c ? Math.Round(c, 4) : null, Entry(p.A), Entry(p.B)))]);
+        }
+        catch (Exception e) when (e is IndexException or Shelf.Semantic.VectorStoreException)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        static ProbableEntry Entry(ProbableWork work) => new(work.Id.ToString(), work.Title, [.. work.Authors], work.Folder);
+    }
+
+    /// <summary>Marks two works as not duplicates (F-DUP-6) if they are a probable pair now. Nothing moves.</summary>
+    public DuplicateOutcome IgnoreProbableDuplicates(string a, string b)
+    {
+        if (!Ulid.TryParse(a, out var first) || !Ulid.TryParse(b, out var second))
+        {
+            throw new LibraryException("a and b must be the IDs of two works (26 characters each)");
+        }
+
+        if (first == second)
+        {
+            throw new LibraryException("a and b must be two different works");
+        }
+
+        // An ID that names no work is a 404.
+        Find(a);
+        Find(b);
+        lock (_writeGate)
+        {
+            try
+            {
+                // The pair is looked up again now: the library may have changed since the list was shown.
+                var pair = Shelf.Semantic.ProbableDuplicates.Find(root, settings.Grouping).Pairs
+                    .FirstOrDefault(p => (p.A.Id == first && p.B.Id == second) || (p.A.Id == second && p.B.Id == first))
+                    ?? throw new LibraryException("These two works are not probable duplicates (any more)", LibraryErrorKind.Conflict);
+                var session = LibraryDuplicates.Begin(root);
+                try
+                {
+                    session.MarkNotDuplicates(pair);
+                }
+                finally
+                {
+                    session.Finish();
+                }
+
+                return new DuplicateOutcome(0, []);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException or Shelf.Semantic.VectorStoreException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     /// <summary>Moves every other file of the group of this file to the trash.</summary>
     public DuplicateOutcome KeepDuplicate(string fileId) =>
         ActOnDuplicate(fileId, (session, group, index) => session.Resolve(group, index));

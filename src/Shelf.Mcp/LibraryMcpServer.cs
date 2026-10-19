@@ -73,6 +73,7 @@ public static class LibraryMcpServer
         collection.Add(McpServerTool.Create((Func<string, string, int?, int, string?, PassageText>)tools.ReadPassage, Read("read_passage", json)));
         collection.Add(McpServerTool.Create((Func<TagTree>)tools.ListTags, Read("list_tags", json)));
         collection.Add(McpServerTool.Create((Func<DuplicatesResult>)tools.FindDuplicates, Read("find_duplicates", json)));
+        collection.Add(McpServerTool.Create((Func<ProbablePairsResult>)tools.FindProbableDuplicates, Read("find_probable_duplicates", json)));
         collection.Add(McpServerTool.Create((Func<string?, OrganizationProposal>)tools.ProposeOrganization, Read("propose_organization", json)));
 
         // Tools that change something exist only when the library allows it: a tool that is not registered cannot be listed or called

@@ -65,6 +65,10 @@ internal sealed class LibraryTools(LibraryService service)
     public DuplicatesResult FindDuplicates() =>
         Run(() => service.FindDuplicates());
 
+    [Description("Works that probably are one book although they are separate works: nearly the same text (a small 'hamming' distance of the text fingerprints), or very similar vectors ('cosine'). For a person to check; read-only, nothing is deleted or marked.")]
+    public ProbablePairsResult FindProbableDuplicates() =>
+        Run(() => service.FindProbableDuplicates());
+
     [Description("A dry run of 'shelf organize': which files would move to which folders and names. Nothing is moved.")]
     public OrganizationProposal ProposeOrganization(
         [Description("A path pattern such as '{author_sort}/{title} ({year})/{title}.{ext}' (default: the pattern of the library)")] string? pattern = null) =>

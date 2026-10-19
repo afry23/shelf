@@ -17,6 +17,7 @@ namespace Shelf.Mcp;
 [JsonSerializable(typeof(TagChange))]
 [JsonSerializable(typeof(TagTree))]
 [JsonSerializable(typeof(DuplicatesResult))]
+[JsonSerializable(typeof(ProbablePairsResult))]
 [JsonSerializable(typeof(OrganizationProposal))]
 [JsonSerializable(typeof(TocItem[]))]
 [JsonSerializable(typeof(string[]))]

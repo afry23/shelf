@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Numerics.Tensors;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Shelf.Core.Model;
+using Shelf.Index;
 
 namespace Shelf.Semantic;
 
@@ -91,6 +93,50 @@ public static class SemanticSearch
 
         var bySeq = LoadWorks(connection, "seq", near.Select(h => (object)h.Id)).ToDictionary(w => w.Seq, w => w.Work);
         return [.. near.Where(h => bySeq.ContainsKey(h.Id)).Select(h => new SemanticHit(bySeq[h.Id], Similarity(h.Distance), null))];
+    }
+
+    /// <summary>
+    /// Every pair of works whose vectors have a cosine similarity of at least <paramref name="minimum"/> (F-DUP-3). All pairs are
+    /// compared in memory, so the cost grows with the square of the number of works.
+    /// </summary>
+    public static List<WorkSimilarity> SimilarPairs(SqliteConnection connection, VectorStore store, double minimum)
+    {
+        var vectors = store.All(VectorKind.Work);
+        var ids = new Dictionary<long, string>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT seq, id FROM works";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                ids[reader.GetInt64(0)] = reader.GetString(1);
+            }
+        }
+
+        var known = vectors.Where(v => ids.ContainsKey(v.Id)).ToList();
+        foreach (var (_, vector) in known)
+        {
+            var length = Math.Sqrt(TensorPrimitives.Dot<float>(vector, vector));
+            if (length > 0)
+            {
+                TensorPrimitives.Divide(vector, (float)length, vector);
+            }
+        }
+
+        var pairs = new List<WorkSimilarity>();
+        for (var i = 0; i < known.Count; i++)
+        {
+            for (var j = i + 1; j < known.Count; j++)
+            {
+                var cosine = TensorPrimitives.Dot<float>(known[i].Vector, known[j].Vector);
+                if (cosine >= minimum)
+                {
+                    pairs.Add(new WorkSimilarity(Ulid.Parse(ids[known[i].Id]), Ulid.Parse(ids[known[j].Id]), cosine));
+                }
+            }
+        }
+
+        return pairs;
     }
 
     /// <summary>

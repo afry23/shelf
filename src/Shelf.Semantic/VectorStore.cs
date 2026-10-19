@@ -189,6 +189,23 @@ public sealed class VectorStore
         return vector;
     }
 
+    /// <summary>Every vector with its id, in one pass.</summary>
+    public IReadOnlyList<(long Id, float[] Vector)> All(VectorKind kind)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT {IdColumn(kind)}, embedding FROM {TableOf(kind)}";
+        using var reader = command.ExecuteReader();
+        var all = new List<(long, float[])>();
+        while (reader.Read())
+        {
+            var vector = new float[Dimensions];
+            VectorCodec.CopyTo(reader.GetFieldValue<byte[]>(1), vector);
+            all.Add((reader.GetInt64(0), vector));
+        }
+
+        return all;
+    }
+
     /// <summary>Every id that has a vector.</summary>
     public IReadOnlyList<long> Ids(VectorKind kind)
     {

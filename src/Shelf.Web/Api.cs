@@ -86,6 +86,16 @@ internal static class Api
             .WithName("IgnoreDuplicates")
             .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
 
+        api.MapGet("/duplicates/probable", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.ProbablePairsResult, () => library.Service.FindProbableDuplicates()))
+            .WithName("ListProbableDuplicates")
+            .Produces<ProbablePairsResult>(StatusCodes.Status200OK);
+
+        api.MapPost("/duplicates/probable/ignore", ([FromServices] LibraryHandle library, [FromBody] PairRequest body) =>
+                Run(WebJsonContext.Default.DuplicateOutcome, () => library.Service.IgnoreProbableDuplicates(RequireWorkId(body.A, "a"), RequireWorkId(body.B, "b"))))
+            .WithName("IgnoreProbableDuplicates")
+            .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
+
         api.MapGet("/tags", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.TagTree, () => library.Service.ListTags()))
             .WithName("ListTags")
@@ -175,6 +185,11 @@ internal static class Api
         body.FileId is { } node && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
             ? id
             : throw new LibraryException("fileId is required: the ID of a file, as in the files of a work");
+
+    private static string RequireWorkId(System.Text.Json.Nodes.JsonNode? node, string name) =>
+        node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
+            ? id
+            : throw new LibraryException($"{name} is required: the ID of a work");
 
     private static WorkDetail Detail(LibraryService service, BookDetails b) =>
         new(

@@ -14,6 +14,10 @@ public static class ConfigTemplate
         # review = 0.5
         # max_hamming = 5
         # auto_hamming = 3
+        # Probable duplicates across works (shelf dupes --probable): text fingerprint distance up to
+        # probable_hamming, or similarity of the vectors from probable_cosine on.
+        # probable_hamming = 3
+        # probable_cosine = 0.95
 
         # How shelf organize names folders and files. Placeholders: {author_sort}, {author}, {title},
         # {year}, {series}, {series_index}, {language}, {first_tag}, {ext}. The last part must end with ".{ext}".

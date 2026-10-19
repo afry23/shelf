@@ -106,6 +106,13 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         File.WriteAllBytes(PathOf(name), SampleBooks.Epub(title, authors.Split("; "), isbn13: null, seed));
     }
 
+    [Given("a sample EPUB {string} with the title {string}, the authors {string} and the text seed {int} with {int} words changed")]
+    public void GivenASampleEpubWithChangedWords(string name, string title, string authors, int seed, int changed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathOf(name))!);
+        File.WriteAllBytes(PathOf(name), SampleBooks.EpubWithChangedWords(title, authors.Split("; "), seed, changed));
+    }
+
     [Given("a sample EPUB {string} with the title {string}, the authors {string}, the ISBN {string} and the text seed {int}")]
     public void GivenASampleEpubWithIsbn(string name, string title, string authors, string isbn, int seed)
     {

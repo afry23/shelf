@@ -82,6 +82,8 @@ public sealed class SettingsSteps
             "grouping.review" => grouping.Review.ToString(CultureInfo.InvariantCulture),
             "grouping.max_hamming" => grouping.MaxHamming.ToString(CultureInfo.InvariantCulture),
             "grouping.auto_hamming" => grouping.AutoHamming.ToString(CultureInfo.InvariantCulture),
+            "grouping.probable_hamming" => grouping.ProbableHamming.ToString(CultureInfo.InvariantCulture),
+            "grouping.probable_cosine" => grouping.ProbableCosine.ToString(CultureInfo.InvariantCulture),
             "organize.pattern" => Settings().Organize.Pattern.Text,
             "semantic.model" => Settings().Semantic.Model,
             "mcp.read_only" => Settings().Mcp.ReadOnly ? "true" : "false",

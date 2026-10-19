@@ -159,6 +159,27 @@ export interface DuplicateList {
   groups: DuplicateGroup[];
 }
 
+export interface ProbableWork {
+  id: string;
+  title: string;
+  authors: string[];
+  folder: string;
+}
+
+/** Works that probably are one book: `hamming` is the distance of the text fingerprints, `cosine` the similarity of the vectors. */
+export interface ProbablePair {
+  hamming: number | null;
+  cosine: number | null;
+  a: ProbableWork;
+  b: ProbableWork;
+}
+
+export interface ProbableList {
+  total: number;
+  note: string | null;
+  pairs: ProbablePair[];
+}
+
 export interface DuplicateOutcome {
   trashed: number;
   worksRemoved: string[];
@@ -229,6 +250,10 @@ export const search = (params: { q: string; mode?: SearchMode; level?: SearchLev
   request<SearchResponse>('GET', `/search${query(params)}`);
 
 export const duplicates = () => request<DuplicateList>('GET', '/duplicates');
+
+export const probableDuplicates = () => request<ProbableList>('GET', '/duplicates/probable');
+
+export const ignoreProbable = (a: string, b: string) => request<DuplicateOutcome>('POST', '/duplicates/probable/ignore', { a, b });
 
 export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: string) =>
   request<DuplicateOutcome>('POST', `/duplicates/${action}`, { fileId });

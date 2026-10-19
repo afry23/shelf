@@ -23,6 +23,29 @@ public static class SampleBooks
             Document = TextGenerator.Generate(language == "de" ? Languages.German : Languages.English, (ulong)seed, words),
         });
 
+    /// <summary>
+    /// The EPUB of <see cref="Epub(string?, IReadOnlyList{string}, string?, int, int, string, int)"/> with the same seed, but with
+    /// <paramref name="changedWords"/> words replaced, spread evenly over the text: a second edition of the same book.
+    /// </summary>
+    public static byte[] EpubWithChangedWords(string? title, IReadOnlyList<string> authors, int seed, int changedWords, int words = 1000)
+    {
+        var document = TextGenerator.Generate(Languages.English, (ulong)seed, words);
+        var every = Math.Max(1, words / Math.Max(1, changedWords));
+        var index = 0;
+        bool Changed(int position) => position % every == 0 && position / every < changedWords;
+        var chapters = document.Chapters.Select(chapter => new Chapter(chapter.Title, [.. chapter.Paragraphs.Select(paragraph =>
+            string.Join(' ', paragraph.Split(' ').Select(word => Changed(index++) ? "edition" : word)))])).ToList();
+        return EpubWriter.Write(new EpubSpec
+        {
+            Version = 3,
+            Title = title,
+            Authors = [.. authors.Select(a => new EpubAuthor(a, a))],
+            Language = "en",
+            IdentitySeed = $"sample-{seed}-{changedWords}-{title}",
+            Document = new TextDocument(chapters),
+        });
+    }
+
     /// <summary>An EPUB 3 whose chapters are exactly the given ones (title and one paragraph of text each).</summary>
     public static byte[] Epub(string? title, IReadOnlyList<string> authors, IReadOnlyList<(string Title, string Text)> chapters, string language = "en") =>
         EpubWriter.Write(new EpubSpec

@@ -43,6 +43,7 @@ Feature: A read-only MCP server
     Then the server offers exactly the tools:
       | tool                 |
       | find_duplicates      |
+      | find_probable_duplicates |
       | get_book             |
       | list_tags            |
       | propose_organization |

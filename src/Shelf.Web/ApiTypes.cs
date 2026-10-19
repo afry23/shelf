@@ -122,3 +122,6 @@ public sealed record DuplicateList(int Total, DuplicateGroupItem[] Groups);
 
 /// <summary>The body of a duplicate action. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record FileRequest(JsonNode? FileId);
+
+/// <summary>The body of the action on a probable pair: the IDs of the two works. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record PairRequest(JsonNode? A, JsonNode? B);

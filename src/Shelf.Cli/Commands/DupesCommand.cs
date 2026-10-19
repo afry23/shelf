@@ -13,9 +13,14 @@ internal static class DupesCommand
         {
             Description = "Ask for every group which file stays; the others go to the trash (shelf undo reverts the session)",
         };
+        var probable = new Option<bool>("--probable")
+        {
+            Description = "Show works that probably are one book (nearly the same text or very similar vectors) for manual review; with --interactive pairs can be marked as not duplicates",
+        };
         var library = LibraryContext.CreateOption();
         var command = new Command("dupes", "Find duplicate files: identical ones, and different files of one work in the same format");
         command.Options.Add(interactive);
+        command.Options.Add(probable);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
@@ -28,6 +33,11 @@ internal static class DupesCommand
             }
 
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            if (parseResult.GetValue(probable))
+            {
+                return ProbableDupes.Run(context, useJson, ask, stdout, stderr, environment);
+            }
+
             var groups = LibraryDuplicates.Find(context.Root);
             if (useJson)
             {

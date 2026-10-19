@@ -42,6 +42,7 @@ Feature: The MCP server
       | tool                 |
       | add_tags             |
       | find_duplicates      |
+      | find_probable_duplicates |
       | get_book             |
       | list_tags            |
       | propose_organization |
@@ -64,6 +65,7 @@ Feature: The MCP server
     And the tool "add_tags" requires the arguments "id, tags"
     And the tool "remove_tags" requires the arguments "id, tags"
     And the tool "list_tags" requires no arguments
+    And the tool "find_probable_duplicates" requires no arguments
     And the tool "propose_organization" requires no arguments
 
   Scenario Outline: Every argument has a description
@@ -106,6 +108,7 @@ Feature: The MCP server
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
       | list_tags            | {}                                                |
       | find_duplicates      | {}                                                |
+      | find_probable_duplicates | {}                                            |
       | propose_organization | {}                                                |
 
   Scenario: An unknown tool is an error, and the server goes on
@@ -137,4 +140,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_tags, find_duplicates, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"
+    Then the tool names sorted are "add_tags, find_duplicates, find_probable_duplicates, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"
