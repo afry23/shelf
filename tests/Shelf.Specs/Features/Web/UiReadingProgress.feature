@@ -46,8 +46,9 @@ Feature: A book opens where I stopped
     And the reader shows the text "The sidecar container extends the main container"
     When I click the "Next page" button
     Then the reader shows the text "A daemon service runs on every node"
+    And the browser address contains "#cfi=epubcfi(/6/4"
     When I click the "Back to the book" link
-    Then the file "library/Ibryam/Kubernetes Patterns/book.json" soon contains "epubcfi("
+    Then the file "library/Ibryam/Kubernetes Patterns/book.json" soon contains "epubcfi(/6/4"
     When I open "/read/01J9Z3K0000000000000000001~kp.epub" in the browser
     Then the reader shows the text "A daemon service runs on every node"
 

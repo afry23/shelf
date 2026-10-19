@@ -131,6 +131,21 @@ internal static class Api
             .WithName("DismissReview")
             .Produces<ReviewOutcome>(StatusCodes.Status200OK);
 
+        api.MapGet("/organize", ([FromServices] LibraryHandle library, string? pattern) =>
+                Run(WebJsonContext.Default.OrganizePreview, () => library.Service.PreviewOrganize(pattern)))
+            .WithName("PreviewOrganize")
+            .Produces<OrganizePreview>(StatusCodes.Status200OK);
+
+        api.MapPost("/organize", ([FromServices] LibraryHandle library, [FromBody] OrganizeRequest? body) =>
+                Run(WebJsonContext.Default.OrganizeOutcome, () => library.Service.ApplyOrganize(body?.Pattern is null ? null : RequireText(body.Pattern, "pattern"))))
+            .WithName("ApplyOrganize")
+            .Produces<OrganizeOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/undo", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.UndoOutcome, () => library.Service.UndoLast()))
+            .WithName("Undo")
+            .Produces<UndoOutcome>(StatusCodes.Status200OK);
+
         api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit) =>
                 Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit)))
             .WithName("Search")

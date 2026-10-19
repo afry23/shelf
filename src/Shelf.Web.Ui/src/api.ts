@@ -242,20 +242,40 @@ export const status = () => request<Status>('GET', '/status');
 export const works = (params: { q?: string; sort?: string; order?: string; offset?: number; limit?: number }) =>
   request<WorkList>('GET', `/works${query(params)}`);
 
-export const work = (id: string) => request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+export const work = async (id: string) => {
+  await Promise.allSettled([...saving]);
+  return request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+};
+
+// Saves that have not been answered yet. They go one after the other, so that an older position never arrives after a newer one,
+// and a page that shows the progress of a file waits for them: leaving the reader and opening the book page must not read the
+// file before the position is written.
+const saving = new Set<Promise<unknown>>();
+let lastSave: Promise<unknown> = Promise.resolve();
 
 /**
  * Saves the reading position of a file. `keepalive` lets the request finish when the page is being closed.
  * A failure is not shown: the next move saves again.
  */
-export const saveProgress = (fileId: string, locator: string): Promise<unknown> =>
-  fetch(`/api/v1/files/${encodeURIComponent(fileId)}/progress`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ locator }),
-    keepalive: true,
-    credentials: 'same-origin',
-  }).catch(() => undefined);
+export const saveProgress = (fileId: string, locator: string): Promise<unknown> => {
+  // A page that is going away cannot wait for the one before: its request has to leave now (`keepalive` carries it on).
+  const before = document.visibilityState === 'hidden' ? Promise.resolve() : lastSave;
+  const sent: Promise<unknown> = before
+    .then(() =>
+      fetch(`/api/v1/files/${encodeURIComponent(fileId)}/progress`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locator }),
+        keepalive: true,
+        credentials: 'same-origin',
+      }),
+    )
+    .catch(() => undefined)
+    .finally(() => saving.delete(sent));
+  saving.add(sent);
+  lastSave = sent;
+  return sent;
+};
 
 export const similar = (id: string, limit = 6) =>
   request<SimilarResponse>('GET', `/works/${encodeURIComponent(id)}/similar?limit=${limit}`);
@@ -313,6 +333,48 @@ export const acceptReview = (id: string, into?: string) =>
   request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/accept`, into ? { into } : {});
 
 export const dismissReview = (id: string) => request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/dismiss`, {});
+
+export interface PlannedMove {
+  id: string;
+  from: string;
+  to: string;
+}
+
+export interface SkippedMove extends PlannedMove {
+  reason: string;
+}
+
+export interface OrganizePreview {
+  pattern: string;
+  files: number;
+  works: number;
+  unchanged: number;
+  truncated: boolean;
+  moves: PlannedMove[];
+  collisions: SkippedMove[];
+  /** The label of the run that "undo" would revert now, or null. */
+  nextUndo: string | null;
+}
+
+export interface OrganizeOutcome {
+  pattern: string;
+  files: number;
+  works: number;
+  unchanged: number;
+  collisions: SkippedMove[];
+}
+
+export interface UndoOutcome {
+  label: string;
+  reverted: number;
+  skipped: { path: string; reason: string }[];
+}
+
+export const previewOrganize = (pattern?: string) => request<OrganizePreview>('GET', `/organize${pattern ? query({ pattern }) : ''}`);
+
+export const applyOrganize = (pattern: string) => request<OrganizeOutcome>('POST', '/organize', { pattern });
+
+export const undoLast = () => request<UndoOutcome>('POST', '/undo', {});
 
 export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; limit?: number }) =>
   request<SearchResponse>('GET', `/search${query(params)}`);

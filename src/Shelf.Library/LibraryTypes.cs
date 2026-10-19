@@ -157,3 +157,20 @@ public sealed record ReviewOutcome(
     string Entry,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Into,
     int MovedFiles);
+
+/// <summary>The dry run of <c>organize</c>; <paramref name="NextUndo"/> is the label of the run that <c>undo</c> would revert now.</summary>
+public sealed record OrganizePreview(
+    string Pattern,
+    int Files,
+    int Works,
+    int Unchanged,
+    bool Truncated,
+    PlannedMove[] Moves,
+    SkippedMove[] Collisions,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? NextUndo);
+
+public sealed record OrganizeOutcome(string Pattern, int Files, int Works, int Unchanged, SkippedMove[] Collisions);
+
+public sealed record UndoSkipped(string Path, string Reason);
+
+public sealed record UndoOutcome(string Label, int Reverted, UndoSkipped[] Skipped);

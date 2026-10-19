@@ -136,3 +136,6 @@ public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into
 
 /// <summary>The body of <c>POST /review/{id}/accept</c>: the work to merge into; without it the best candidate of the entry.</summary>
 public sealed record AcceptRequest(JsonNode? Into);
+
+/// <summary>The body of <c>POST /organize</c>: the pattern that was previewed; without it the configured one.</summary>
+public sealed record OrganizeRequest(JsonNode? Pattern);
