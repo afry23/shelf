@@ -86,6 +86,7 @@ public sealed class SettingsSteps
             "grouping.probable_cosine" => grouping.ProbableCosine.ToString(CultureInfo.InvariantCulture),
             "organize.pattern" => Settings().Organize.Pattern.Text,
             "semantic.model" => Settings().Semantic.Model,
+            "reader.preferred_format" => Settings().Reader.PreferredFormat,
             "mcp.read_only" => Settings().Mcp.ReadOnly ? "true" : "false",
             "mcp.max_chars" => Settings().Mcp.MaxChars.ToString(CultureInfo.InvariantCulture),
             "web.port" => Settings().Web.Port.ToString(CultureInfo.InvariantCulture),

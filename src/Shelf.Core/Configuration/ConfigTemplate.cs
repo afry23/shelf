@@ -23,5 +23,9 @@ public static class ConfigTemplate
         # {year}, {series}, {series_index}, {language}, {first_tag}, {ext}. The last part must end with ".{ext}".
         # [organize]
         # pattern = "{author_sort}/{title} ({year})/{title}.{ext}"
+
+        # The reader of the web interface: the format that "Read" opens when a work has an EPUB and a PDF.
+        # [reader]
+        # preferred_format = "epub"
         """ + "\n";
 }

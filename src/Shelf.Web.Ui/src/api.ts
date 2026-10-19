@@ -59,12 +59,19 @@ export interface WorkList {
   facets: Facets;
 }
 
+/** Where a person stopped reading a file (F-RDR-4): `page=N` for a PDF, an `epubcfi(...)` for an EPUB. */
+export interface ReadingPosition {
+  locator: string;
+  updatedAt: string;
+}
+
 export interface WorkFile {
   id: string;
   name: string;
   format: string;
   sizeBytes: number;
   pages: number | null;
+  progress: ReadingPosition | null;
 }
 
 export interface TocItem {
@@ -91,6 +98,8 @@ export interface WorkDetail {
   readStatus: ReadStatus;
   hasCover: boolean;
   files: WorkFile[];
+  /** The ID of the file that "Read" opens (F-RDR-5), or null for a work without files. */
+  readFile: string | null;
   toc: TocItem[];
 }
 
@@ -234,6 +243,19 @@ export const works = (params: { q?: string; sort?: string; order?: string; offse
   request<WorkList>('GET', `/works${query(params)}`);
 
 export const work = (id: string) => request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+
+/**
+ * Saves the reading position of a file. `keepalive` lets the request finish when the page is being closed.
+ * A failure is not shown: the next move saves again.
+ */
+export const saveProgress = (fileId: string, locator: string): Promise<unknown> =>
+  fetch(`/api/v1/files/${encodeURIComponent(fileId)}/progress`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locator }),
+    keepalive: true,
+    credentials: 'same-origin',
+  }).catch(() => undefined);
 
 export const similar = (id: string, limit = 6) =>
   request<SimilarResponse>('GET', `/works/${encodeURIComponent(id)}/similar?limit=${limit}`);

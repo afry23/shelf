@@ -60,6 +60,11 @@ internal static class Api
             .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .Produces(StatusCodes.Status206PartialContent, contentType: "application/octet-stream");
 
+        api.MapPut("/files/{id}/progress", ([FromServices] LibraryHandle library, string id, [FromBody] ProgressRequest body) =>
+                Run(WebJsonContext.Default.ReadingPosition, () => library.Service.SaveProgress(id, RequireLocator(body))))
+            .WithName("SaveReadingProgress")
+            .Produces<ReadingPosition>(StatusCodes.Status200OK);
+
         api.MapMethods("/works/{id}/cover", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id) =>
                 SendCover(library.Service, id))
             .WithName("GetCover")
@@ -191,6 +196,11 @@ internal static class Api
             ? id
             : throw new LibraryException($"{name} is required: the ID of a work");
 
+    private static string RequireLocator(ProgressRequest body) =>
+        body.Locator is not null && body.Locator.GetValueKind() == System.Text.Json.JsonValueKind.String && body.Locator.GetValue<string>() is { Length: > 0 } locator
+            ? locator
+            : throw new LibraryException("locator is required: the place in the file, as text");
+
     private static WorkDetail Detail(LibraryService service, BookDetails b) =>
         new(
             b.Id,
@@ -209,7 +219,8 @@ internal static class Api
             b.Tags,
             b.ReadStatus,
             service.HasCover(b.Id),
-            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages))],
+            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages, f.Progress))],
+            service.PreferredFile(b.Files) is { } preferred ? FileIds.Make(b.Id, preferred) : null,
             b.Toc);
 
     private static SearchResponse Search(LibraryService service, string? q, string mode, string level, string? limit)

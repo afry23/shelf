@@ -21,11 +21,16 @@ public sealed record BookSummary(
 
 public sealed record SearchBooksResult(string Query, int Total, BookSummary[] Results);
 
+/// <summary>Where a person stopped reading a file (F-RDR-4): <c>page=N</c> for a PDF, an <c>epubcfi(...)</c> for an EPUB.</summary>
+/// <param name="UpdatedAt">UTC, as <c>yyyy-MM-ddTHH:mm:ssZ</c>.</param>
+public sealed record ReadingPosition(string Locator, string UpdatedAt);
+
 public sealed record BookFile(
     string Name,
     string Format,
     long SizeBytes,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress = null);
 
 public sealed record TocItem(
     string Title,

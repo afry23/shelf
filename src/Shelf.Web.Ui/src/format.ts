@@ -28,6 +28,12 @@ export function readLink(fileId: string, location?: string | null): string {
   return location.startsWith('epubcfi(') ? `${base}#cfi=${location}` : `${base}#${location}`;
 }
 
+/** Where a person stopped in a file, for the book page: `page=12` is page 12; an EPUB position has no number to show. */
+export function resumeText(locator: string): string {
+  const page = /^page=(\d+)$/.exec(locator);
+  return page ? `Page ${page[1]}` : 'Where you stopped';
+}
+
 /** Splits a snippet of the search into plain and marked parts; the server marks a hit as [word]. */
 export function snippetParts(snippet: string): { text: string; hit: boolean }[] {
   const parts: { text: string; hit: boolean }[] = [];

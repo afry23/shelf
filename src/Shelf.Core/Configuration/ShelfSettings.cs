@@ -37,6 +37,13 @@ public sealed record McpSettings(int MaxChars, bool ReadOnly = false)
     public static McpSettings Default { get; } = new(DefaultMaxChars);
 }
 
+/// <summary>The reader of the web interface (F-RDR-5).</summary>
+/// <param name="PreferredFormat">The format that <c>Read</c> opens when a work has more than one: <c>epub</c> or <c>pdf</c>.</param>
+public sealed record ReaderSettings(string PreferredFormat)
+{
+    public static ReaderSettings Default { get; } = new("epub");
+}
+
 /// <summary>The web server (F-WEB-1, F-WEB-2). Set in the global config only: a token must not travel with a library folder.</summary>
 /// <param name="Port">The port; 0 lets the system choose one.</param>
 /// <param name="Bind">The IP address to listen on; a loopback address unless a token is set.</param>
@@ -68,20 +75,22 @@ public sealed class ShelfSettings
     private const string ModelKey = "semantic.model";
     private const string McpMaxCharsKey = "mcp.max_chars";
     private const string McpReadOnlyKey = "mcp.read_only";
+    private const string PreferredFormatKey = "reader.preferred_format";
     private const string WebPortKey = "web.port";
     private const string WebBindKey = "web.bind";
     private const string WebTokenKey = "web.token";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
         OrganizeSettings organize,
         SemanticSettings semantic,
         McpSettings mcp,
+        ReaderSettings reader,
         WebSettings web,
         IReadOnlyList<LibraryEntry> libraries,
         string? defaultLibrary,
@@ -91,6 +100,7 @@ public sealed class ShelfSettings
         Organize = organize;
         Semantic = semantic;
         Mcp = mcp;
+        Reader = reader;
         Web = web;
         Libraries = libraries;
         DefaultLibrary = defaultLibrary;
@@ -105,6 +115,8 @@ public sealed class ShelfSettings
 
     public McpSettings Mcp { get; }
 
+    public ReaderSettings Reader { get; }
+
     public WebSettings Web { get; }
 
     /// <summary>Libraries from <c>[[libraries]]</c> of the global config; the per-library config cannot add any.</summary>
@@ -117,7 +129,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, WebSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, ReaderSettings.Default, WebSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -143,6 +155,7 @@ public sealed class ShelfSettings
         var model = SemanticSettings.Default.Model;
         var maxChars = McpSettings.DefaultMaxChars;
         var readOnly = false;
+        var preferredFormat = ReaderSettings.Default.PreferredFormat;
         foreach (var layer in new[] { global, library })
         {
             if (layer is null)
@@ -160,6 +173,7 @@ public sealed class ShelfSettings
             model = ReadModel(layer) ?? model;
             maxChars = ReadMaxChars(layer) ?? maxChars;
             readOnly = layer.GetBoolean(McpReadOnlyKey) ?? readOnly;
+            preferredFormat = ReadPreferredFormat(layer) ?? preferredFormat;
         }
 
         if (review > autoMerge)
@@ -185,7 +199,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars, readOnly), web, libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars, readOnly), new ReaderSettings(preferredFormat), web, libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -222,6 +236,17 @@ public sealed class ShelfSettings
         }
 
         return (int?)value;
+    }
+
+    private static string? ReadPreferredFormat(ConfigDocument document)
+    {
+        var name = document.GetString(PreferredFormatKey)?.Trim().ToLowerInvariant();
+        if (name is not (null or "epub" or "pdf"))
+        {
+            throw new ConfigException($"{document.SourceName}: {PreferredFormatKey}: must be epub or pdf", document.SourceName, key: PreferredFormatKey);
+        }
+
+        return name;
     }
 
     private static WebSettings ReadWeb(ConfigDocument document)

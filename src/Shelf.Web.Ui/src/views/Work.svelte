@@ -2,7 +2,7 @@
   import { ApiError, editWork, fileUrl, setTags, similar as loadSimilar, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import { authorLine, bytes, readLink } from '../format';
+  import { authorLine, bytes, readLink, resumeText } from '../format';
 
   let { id }: { id: string } = $props();
 
@@ -68,7 +68,7 @@
       .catch(() => (suggestions = []));
   });
 
-  const readFile = $derived(book?.files.find((f) => f.format === 'epub') ?? book?.files[0]);
+  const readFile = $derived(book?.files.find((f) => f.id === book?.readFile) ?? book?.files[0]);
   // The table of contents belongs to one file; its locations say which kind: epubcfi(...) for an EPUB, page=N for a PDF.
   const tocFile = $derived(
     book?.toc.find((t) => t.location)?.location?.startsWith('epubcfi(')
@@ -239,7 +239,10 @@
       <aside class="side">
         <div class="cover-box"><Cover id={book.id} title={book.title} authors={book.authors} hasCover={book.hasCover} /></div>
         {#if readFile}
-          <a class="button primary read" href={readLink(readFile.id)}>Read</a>
+          <a class="button primary read" href={readLink(readFile.id)}>{readFile.progress ? 'Continue reading' : 'Read'}</a>
+          {#if readFile.progress}
+            <p class="muted resume">{resumeText(readFile.progress.locator)}</p>
+          {/if}
         {/if}
         <div class="control">
           <Segmented
@@ -423,6 +426,12 @@
     bottom: 0;
     height: 0.5rem;
     background: linear-gradient(var(--shelf), var(--shelf-edge));
+  }
+
+  .resume {
+    margin: 0;
+    font-size: 0.875rem;
+    text-align: center;
   }
 
   .read {

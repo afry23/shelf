@@ -6,6 +6,7 @@
   import { fileUrl, type WorkDetail, type WorkFile } from '../api';
   import { replaceHash, router } from '../router.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
 
   let { book, file }: { book: WorkDetail; file: WorkFile } = $props();
@@ -47,18 +48,27 @@
     bus = eventBus;
     links = linkService;
 
+    // The place of the address wins; without one the reader opens where the file was left (F-RDR-4).
+    const progress = createProgress(file.id, file.progress?.locator ?? 'page=1');
+    let opened = false;
+
     eventBus.on('pagesinit', () => {
       pages = pdfViewer.pagesCount;
       pdfViewer.currentScaleValue = 'page-width';
-      const wanted = /^#page=(\d+)/.exec(router.hash);
+      const wanted = /^#page=(\d+)/.exec(router.hash) ?? /^page=(\d+)$/.exec(file.progress?.locator ?? '');
       pdfViewer.currentPageNumber = clamp(wanted ? Number(wanted[1]) : 1);
       page = pdfViewer.currentPageNumber;
       replaceHash(`#page=${page}`);
+      opened = true;
+      progress.move(`page=${page}`);
     });
     eventBus.on('pagechanging', (event: { pageNumber: number }) => {
       page = event.pageNumber;
       pageInput = String(page);
       replaceHash(`#page=${page}`);
+      if (opened) {
+        progress.move(`page=${page}`);
+      }
     });
     eventBus.on('scalechanging', (event: { scale: number; presetValue?: string }) => {
       scaleLabel = event.presetValue === 'page-width' ? 'Fit width' : `Zoom ${Math.round(event.scale * 100)}%`;
@@ -100,6 +110,7 @@
     resizing.observe(container);
 
     return () => {
+      progress.close();
       resizing.disconnect();
       void task.destroy();
       pdfViewer.setDocument(null as never);

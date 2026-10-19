@@ -80,7 +80,11 @@ public sealed record WorkFile(
     string Name,
     string Format,
     long SizeBytes,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress);
+
+/// <summary>The body of <c>PUT /files/{id}/progress</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
+public sealed record ProgressRequest(JsonNode? Locator);
 
 /// <summary>A work as the work view shows it: the metadata, the tags, the files with their IDs and the table of contents.</summary>
 public sealed record WorkDetail(
@@ -101,6 +105,7 @@ public sealed record WorkDetail(
     string ReadStatus,
     bool HasCover,
     WorkFile[] Files,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadFile,
     TocItem[] Toc);
 
 /// <param name="Completeness">How many of the 8 metadata fields the file has; only for different files of one work (null for identical files).</param>

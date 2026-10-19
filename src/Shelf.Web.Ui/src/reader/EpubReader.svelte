@@ -3,6 +3,7 @@
   import { fileUrl, type WorkDetail, type WorkFile } from '../api';
   import { replaceHash, router } from '../router.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
 
   let { book, file }: { book: WorkDetail; file: WorkFile } = $props();
@@ -73,6 +74,8 @@
     element.style.position = 'absolute';
     element.style.inset = '0';
     host.append(element);
+    // Where the file was left (F-RDR-4); the place of the address wins over it.
+    const progress = createProgress(file.id, file.progress?.locator ?? null);
 
     (async () => {
       const response = await fetch(fileUrl(file.id), { credentials: 'same-origin' });
@@ -85,22 +88,30 @@
         return;
       }
       view = element;
-      element.addEventListener('relocate', (event: Event) => {
-        const detail = (event as CustomEvent<{ cfi: string; fraction: number }>).detail;
-        percent = Math.round(detail.fraction * 100);
-        lastCfi = detail.cfi;
-        replaceHash(`#cfi=${detail.cfi}`);
-      });
-      element.renderer.setStyles(styles());
-      contents = toEntries(element.book.toc ?? []);
-
       let wanted: string | undefined;
       try {
         wanted = /^#cfi=(.+)$/.exec(decodeURIComponent(router.hash))?.[1];
       } catch {
         wanted = undefined;
       }
-      await element.init({ lastLocation: wanted ?? null, showTextStart: !wanted });
+      const resume = wanted ?? file.progress?.locator;
+      let first = true;
+      element.addEventListener('relocate', (event: Event) => {
+        const detail = (event as CustomEvent<{ cfi: string; fraction: number }>).detail;
+        percent = Math.round(detail.fraction * 100);
+        lastCfi = detail.cfi;
+        replaceHash(`#cfi=${detail.cfi}`);
+        // Opening where the file was left, or at its start, is not a move.
+        if (first && !wanted) {
+          progress.start(detail.cfi);
+        } else {
+          progress.move(detail.cfi);
+        }
+        first = false;
+      });
+      element.renderer.setStyles(styles());
+      contents = toEntries(element.book.toc ?? []);
+      await element.init({ lastLocation: resume ?? null, showTextStart: !resume });
       loading = false;
     })().catch((e: Error) => {
       if (current) {
@@ -111,6 +122,7 @@
 
     return () => {
       current = false;
+      progress.close();
       view = null;
       element.close?.();
       element.remove();

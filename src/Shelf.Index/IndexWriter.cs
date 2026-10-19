@@ -157,6 +157,20 @@ internal sealed class IndexWriter : IDisposable
         NonQuery(command);
     }
 
+    /// <summary>Gives the file at this path of the library its reading position, or none.</summary>
+    public void SetProgressOfPath(string relPath, FileProgress? progress)
+    {
+        Execute("DELETE FROM reading_progress WHERE file_id IN (SELECT id FROM files WHERE rel_path = $p)", ("$p", relPath));
+        if (progress is not null)
+        {
+            Execute(
+                "INSERT INTO reading_progress(file_id, locator, updated_at) SELECT id, $l, $u FROM files WHERE rel_path = $p",
+                ("$l", progress.Locator),
+                ("$u", Timestamp(progress.UpdatedAt.UtcDateTime)),
+                ("$p", relPath));
+        }
+    }
+
     public void UpdateFilePath(long fileId, string relPath) =>
         Execute("UPDATE files SET rel_path = $p WHERE id = $id", ("$p", relPath), ("$id", fileId));
 

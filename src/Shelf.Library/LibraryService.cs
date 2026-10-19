@@ -18,7 +18,7 @@ namespace Shelf.Library;
 /// organization proposals over one library. Errors the caller can act on (unknown work, bad query, no text at a location)
 /// are <see cref="LibraryException"/>s. Only the tag methods change anything.
 /// </summary>
-public sealed class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic)
+public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic)
 {
     public const int DefaultMaxChars = 4_000;
     public const int MaxLimit = 100;
@@ -514,6 +514,70 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
             ?? throw new LibraryException($"the file '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
     }
 
+    /// <summary>
+    /// The file that <c>Read</c> opens (F-RDR-5): the first of the configured format (<c>reader.preferred_format</c>, EPUB by default),
+    /// else the first file that has a reader, else the first file. Null for a work without files.
+    /// </summary>
+    public string? PreferredFile(IReadOnlyList<BookFile> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        var wanted = settings.Reader.PreferredFormat;
+        return (files.FirstOrDefault(f => f.Format == wanted)
+            ?? files.FirstOrDefault(f => f.Format is "epub" or "pdf")
+            ?? files.FirstOrDefault())?.Name;
+    }
+
+    /// <summary>
+    /// Remembers where a person stopped reading a file (F-RDR-4) in <c>book.json</c>. The location must fit the format: <c>page=N</c>
+    /// for a PDF, <c>epubcfi(...)</c> for an EPUB. The same location as before changes nothing.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: the location is not one of this kind of file. NotFound: no such file.</exception>
+    public ReadingPosition SaveProgress(string fileId, string locator)
+    {
+        var file = ResolveFile(fileId);
+        var problem = file.Format switch
+        {
+            "pdf" => PageLocator().IsMatch(locator)
+                ? null
+                : "locator of a PDF must be page=N, with N a page number from 1",
+            "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
+                ? null
+                : "locator of an EPUB must be an epubcfi(...)",
+            _ => $"files of the format {file.Format} have no reading position",
+        };
+        if (problem is not null)
+        {
+            throw new LibraryException(problem);
+        }
+
+        var work = Find(file.Work.ToString());
+        lock (_writeGate)
+        {
+            try
+            {
+                var current = LibraryEditor.Read(root, work).Files.First(f => f.Name == file.Name).Progress;
+                if (current is not null && current.Locator == locator)
+                {
+                    return Position(current);
+                }
+
+                var saved = new FileProgress(locator, DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+                LibraryEditor.SetProgress(root, work, file.Name, saved);
+                return Position(saved);
+            }
+            catch (Exception e) when (e is SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    private static ReadingPosition Position(FileProgress progress) =>
+        new(progress.Locator, progress.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+
+    [System.Text.RegularExpressions.GeneratedRegex("^page=[1-9][0-9]{0,8}$")]
+    private static partial System.Text.RegularExpressions.Regex PageLocator();
+
     /// <summary>The cover image of a work (F-IMP-5).</summary>
     /// <exception cref="LibraryException">With the kind <see cref="LibraryErrorKind.NotFound"/>: no such work, no cover, or the file is gone.</exception>
     public FileLocation ResolveCover(string id)
@@ -811,7 +875,7 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         {
             var full = LibraryEditor.FilePath(root, work, entry.Name);
             var info = new FileInfo(full);
-            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name)));
+            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name), entry.Progress is { } progress ? Position(progress) : null));
             if (withToc && toc.Count == 0 && info.Exists)
             {
                 toc.AddRange(TocExtractor.Read(full).Select(t => new TocItem(t.Title, t.Level, t.Locator)));
