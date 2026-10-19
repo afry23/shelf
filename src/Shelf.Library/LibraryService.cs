@@ -821,6 +821,43 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>
+    /// Moves a file of a work into a work of its own, described by the file's own metadata (F-GRP-4), as <c>shelf split</c> does.
+    /// The two works are marked as not duplicates. Like the CLI, this cannot be undone.
+    /// </summary>
+    /// <exception cref="LibraryException">NotFound: no such work or file. Conflict: the work has only this file.</exception>
+    public SplitOutcome SplitFile(string fileId)
+    {
+        // A malformed ID is a bad request; an ID that names nothing is a 404.
+        if (!FileIds.TryParse(fileId, out _, out _))
+        {
+            throw new LibraryException($"'{fileId}' is not the ID of a file (the ID of a work, a tilde and the file name)");
+        }
+
+        var file = ResolveFile(fileId);
+        var work = Find(file.Work.ToString());
+        lock (_writeGate)
+        {
+            try
+            {
+                if (ReadSidecar(work).Files.Count < 2)
+                {
+                    throw new LibraryException($"'{work.Title}' has only one file; there is nothing to split off", LibraryErrorKind.Conflict);
+                }
+
+                var result = LibraryEditor.Split(root, work, file.Name, root);
+
+                // The new work has no cover yet. A file without one is no reason to fail a split that happened.
+                LibraryCovers.FillWorks(root, [result.NewWork]);
+                return new SplitOutcome(result.Source.ToString(), result.NewWork.ToString(), result.File, result.Folder);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     // ---- resources ----
 
     /// <summary>Metadata of a work, without the table of contents (see <see cref="GetToc"/>).</summary>

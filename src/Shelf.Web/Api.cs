@@ -65,6 +65,11 @@ internal static class Api
             .WithName("SaveReadingProgress")
             .Produces<ReadingPosition>(StatusCodes.Status200OK);
 
+        api.MapPost("/files/{id}/split", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.SplitOutcome, () => library.Service.SplitFile(id)))
+            .WithName("SplitFile")
+            .Produces<SplitOutcome>(StatusCodes.Status200OK);
+
         api.MapMethods("/works/{id}/cover", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id) =>
                 SendCover(library.Service, id))
             .WithName("GetCover")

@@ -318,7 +318,7 @@ Requirements for the MCP server:
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
-| **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate" | M |
+| **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for different files of one book also "split into own work" (F-GRP-4) | M |
 | **Review** | Confirm or correct uncertain assignments | S |
 | **Organize** | Diff preview of the organization pattern, execute, undo | S |
 
