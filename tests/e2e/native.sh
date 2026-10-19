@@ -240,6 +240,19 @@ mcp_http_start --token s3cret
 [ "$(mcp_post 'Authorization: Bearer s3cret' "$LIST")" = 200 ]
 mcp_http_stop
 
+echo "== M5: shell completion (the scripts come out of the binary)"
+"$BIN" completion bash > completion.bash
+"$BIN" completion zsh > completion.zsh
+"$BIN" completion fish > completion.fish
+grep -q 'complete -F _shelf shelf' completion.bash
+grep -q '^#compdef shelf' completion.zsh
+grep -q 'complete -c shelf' completion.fish
+bash -n completion.bash
+[ "$(bash --norc --noprofile -c 'source completion.bash; COMP_WORDS=(shelf ta); COMP_CWORD=1; _shelf; echo "${COMPREPLY[@]}"')" = tag ]
+code=0
+"$BIN" completion powershell > /dev/null 2> completion-err.txt || code=$?
+[ "$code" = 2 ]
+
 if [ -n "${SHELF_E5_DIR:-}" ]; then
   echo "== M3: model, embeddings, semantic search"
   "$BIN" model install "$SHELF_E5_DIR" --library library | grep -q 'multilingual-e5-small'

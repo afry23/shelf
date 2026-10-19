@@ -60,6 +60,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     /// <summary>What the last run wrote to standard output.</summary>
     public string StandardOutput => _stdout.ToString();
 
+    [Given("I run shelf with arguments {string}")]
     [When("I run shelf with arguments {string}")]
     public void WhenIRunShelfWithArguments(string arguments)
     {
