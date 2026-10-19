@@ -116,6 +116,21 @@ internal static class Api
             .WithName("MergeTag")
             .Produces<TagMoveResult>(StatusCodes.Status200OK);
 
+        api.MapGet("/review", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.ReviewList, () => library.Service.ListReview()))
+            .WithName("ListReview")
+            .Produces<ReviewList>(StatusCodes.Status200OK);
+
+        api.MapPost("/review/{id}/accept", ([FromServices] LibraryHandle library, string id, [FromBody] AcceptRequest? body) =>
+                Run(WebJsonContext.Default.ReviewOutcome, () => library.Service.AcceptReview(id, OptionalWorkId(body?.Into))))
+            .WithName("AcceptReview")
+            .Produces<ReviewOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/review/{id}/dismiss", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.ReviewOutcome, () => library.Service.DismissReview(id)))
+            .WithName("DismissReview")
+            .Produces<ReviewOutcome>(StatusCodes.Status200OK);
+
         api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit) =>
                 Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit)))
             .WithName("Search")
@@ -205,6 +220,9 @@ internal static class Api
         node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
             ? id
             : throw new LibraryException($"{name} is required: the ID of a work");
+
+    private static string? OptionalWorkId(JsonNode? node) =>
+        node is null ? null : RequireWorkId(node, "into");
 
     private static string RequireText(JsonNode? node, string name) =>
         node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } text

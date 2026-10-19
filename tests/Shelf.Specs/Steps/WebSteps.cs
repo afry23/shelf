@@ -124,6 +124,11 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     public void ThenTheHeaderIsTheSizeOfTheFile(string name, string path) =>
         Assert.Equal(File(path).Length.ToString(CultureInfo.InvariantCulture), Header(name));
 
+    /// <summary>Keeps a value of the last answer for the next request, as <c>{entry}</c> (the ID of a review entry).</summary>
+    [Given("I note the JSON field {string} of the response as the entry")]
+    [When("I note the JSON field {string} of the response as the entry")]
+    public void WhenINoteTheEntry(string path) => _entry = Field(path)!.GetValue<string>();
+
     [Given("I look up the ID of the work {string}")]
     public void GivenILookUpTheIdOfTheWork(string title)
     {
@@ -309,9 +314,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _server = null;
     }
 
+    private string _entry = string.Empty;
+
     private void Send(string request, string? header, bool withCookie, string? body = null)
     {
         request = request.Replace("{id}", _workId, StringComparison.Ordinal)
+            .Replace("{entry}", _entry, StringComparison.Ordinal)
             .Replace("{script}", _script, StringComparison.Ordinal)
             .Replace("{style}", _style, StringComparison.Ordinal);
         var space = request.IndexOf(' ', StringComparison.Ordinal);

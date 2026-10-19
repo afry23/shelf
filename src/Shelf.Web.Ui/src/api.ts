@@ -278,6 +278,42 @@ export const renameTag = (from: string, to: string) => request<TagMoveResult>('P
 
 export const mergeTag = (from: string, into: string) => request<TagMoveResult>('POST', '/tags/merge', { from, into });
 
+export interface ReviewCandidate {
+  work: string;
+  title: string | null;
+  confidence: number;
+  signals: string[];
+}
+
+export interface ReviewEntry {
+  id: string;
+  kind: 'grouping' | 'extraction-error' | 'weak-metadata';
+  createdAt: string;
+  message: string;
+  file: string | null;
+  work: string | null;
+  workTitle: string | null;
+  candidates: ReviewCandidate[];
+}
+
+export interface ReviewList {
+  total: number;
+  entries: ReviewEntry[];
+}
+
+export interface ReviewOutcome {
+  entry: string;
+  into: string | null;
+  movedFiles: number;
+}
+
+export const review = () => request<ReviewList>('GET', '/review');
+
+export const acceptReview = (id: string, into?: string) =>
+  request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/accept`, into ? { into } : {});
+
+export const dismissReview = (id: string) => request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/dismiss`, {});
+
 export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; limit?: number }) =>
   request<SearchResponse>('GET', `/search${query(params)}`);
 

@@ -133,3 +133,6 @@ public sealed record PairRequest(JsonNode? A, JsonNode? B);
 
 /// <summary>The body of <c>POST /tags/rename</c> and <c>/tags/merge</c>: the tag, and the name it gets (<c>to</c>) or the tag it goes into (<c>into</c>).</summary>
 public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into);
+
+/// <summary>The body of <c>POST /review/{id}/accept</c>: the work to merge into; without it the best candidate of the entry.</summary>
+public sealed record AcceptRequest(JsonNode? Into);

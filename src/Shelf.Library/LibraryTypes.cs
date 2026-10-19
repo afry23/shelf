@@ -131,3 +131,29 @@ public sealed record FileLocation(Ulid Work, string Title, string Name, string F
 
 /// <summary>What renaming or merging a tag did: the names, and the number of works whose tags changed (F-TAG-4).</summary>
 public sealed record TagMoveResult(string From, string To, int Changed);
+
+/// <summary>A work that an uncertain file may belong to; <paramref name="Title"/> is null when the index does not know the work.</summary>
+public sealed record ReviewCandidateItem(
+    string Work,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Title,
+    double Confidence,
+    string[] Signals);
+
+/// <summary>One thing that needs a decision (F-IMP-7): <paramref name="Kind"/> is grouping, extraction-error or weak-metadata.</summary>
+public sealed record ReviewItem(
+    string Id,
+    string Kind,
+    string CreatedAt,
+    string Message,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? File,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Work,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? WorkTitle,
+    ReviewCandidateItem[] Candidates);
+
+public sealed record ReviewList(int Total, ReviewItem[] Entries);
+
+/// <summary>What deciding an entry did; <paramref name="Into"/> is the work that took the files, null when the entry was dismissed.</summary>
+public sealed record ReviewOutcome(
+    string Entry,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Into,
+    int MovedFiles);
