@@ -39,6 +39,33 @@ public static class LibraryEditor
         Reconcile(root);
     }
 
+    /// <summary>
+    /// Stores the reading position of one file in the sidecar and in the index (F-RDR-4). A reader saves often, so this does
+    /// not scan the library: the sidecar is written and the one row of the index is changed.
+    /// </summary>
+    /// <exception cref="SidecarException">The sidecar is invalid, or the file is not one of the work.</exception>
+    /// <exception cref="IndexException"/>
+    public static void SetProgress(string root, LibraryWork work, string fileName, FileProgress? progress)
+    {
+        var path = SidecarPath(root, work);
+        var sidecar = SidecarStore.Read(path);
+        if (!sidecar.Files.Any(f => string.Equals(f.Name, fileName, StringComparison.Ordinal)))
+        {
+            throw new SidecarException($"{path}: no file '{fileName}'", path);
+        }
+
+        SidecarStore.Write(path, sidecar with
+        {
+            Files = [.. sidecar.Files.Select(f => string.Equals(f.Name, fileName, StringComparison.Ordinal) ? f with { Progress = progress } : f)],
+        });
+
+        using var connection = IndexDatabase.OpenWrite(IndexDatabase.PathFor(root));
+        using var writer = new IndexWriter(connection);
+        using var transaction = writer.BeginTransaction();
+        writer.SetProgressOfPath(IndexWriter.JoinRelative(work.Directory, fileName), progress);
+        transaction.Commit();
+    }
+
     /// <summary>Moves the files of <paramref name="source"/> into <paramref name="target"/> and removes the source work.</summary>
     /// <exception cref="LibraryEditException"/>
     public static MergeResult Merge(string root, LibraryWork target, LibraryWork source)

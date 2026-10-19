@@ -12,6 +12,7 @@ namespace Shelf.Web;
 internal static class Api
 {
     private const int DefaultSearchLimit = 20;
+    private const int DefaultSimilarLimit = 10;
 
     public static void Map(RouteGroupBuilder api)
     {
@@ -37,6 +38,11 @@ internal static class Api
             .WithName("GetWork")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
 
+        api.MapGet("/works/{id}/similar", ([FromServices] LibraryHandle library, string id, string? limit) =>
+                Run(WebJsonContext.Default.SimilarResponse, () => Similar(library.Service, RequireId(id), limit)))
+            .WithName("SimilarWorks")
+            .Produces<SimilarResponse>(StatusCodes.Status200OK);
+
         api.MapMethods("/works/{id}", ["PATCH"], ([FromServices] LibraryHandle library, string id, [FromBody] JsonObject patch) =>
                 Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.EditMetadata(RequireId(id), patch))))
             .WithName("EditWork")
@@ -53,6 +59,11 @@ internal static class Api
             .WithName("GetFile")
             .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .Produces(StatusCodes.Status206PartialContent, contentType: "application/octet-stream");
+
+        api.MapPut("/files/{id}/progress", ([FromServices] LibraryHandle library, string id, [FromBody] ProgressRequest body) =>
+                Run(WebJsonContext.Default.ReadingPosition, () => library.Service.SaveProgress(id, RequireLocator(body))))
+            .WithName("SaveReadingProgress")
+            .Produces<ReadingPosition>(StatusCodes.Status200OK);
 
         api.MapMethods("/works/{id}/cover", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id) =>
                 SendCover(library.Service, id))
@@ -80,10 +91,60 @@ internal static class Api
             .WithName("IgnoreDuplicates")
             .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
 
+        api.MapGet("/duplicates/probable", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.ProbablePairsResult, () => library.Service.FindProbableDuplicates()))
+            .WithName("ListProbableDuplicates")
+            .Produces<ProbablePairsResult>(StatusCodes.Status200OK);
+
+        api.MapPost("/duplicates/probable/ignore", ([FromServices] LibraryHandle library, [FromBody] PairRequest body) =>
+                Run(WebJsonContext.Default.DuplicateOutcome, () => library.Service.IgnoreProbableDuplicates(RequireWorkId(body.A, "a"), RequireWorkId(body.B, "b"))))
+            .WithName("IgnoreProbableDuplicates")
+            .Produces<DuplicateOutcome>(StatusCodes.Status200OK);
+
         api.MapGet("/tags", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.TagTree, () => library.Service.ListTags()))
             .WithName("ListTags")
             .Produces<TagTree>(StatusCodes.Status200OK);
+
+        api.MapPost("/tags/rename", ([FromServices] LibraryHandle library, [FromBody] TagMoveRequest body) =>
+                Run(WebJsonContext.Default.TagMoveResult, () => library.Service.RenameTag(RequireText(body.From, "from"), RequireText(body.To, "to"))))
+            .WithName("RenameTag")
+            .Produces<TagMoveResult>(StatusCodes.Status200OK);
+
+        api.MapPost("/tags/merge", ([FromServices] LibraryHandle library, [FromBody] TagMoveRequest body) =>
+                Run(WebJsonContext.Default.TagMoveResult, () => library.Service.MergeTag(RequireText(body.From, "from"), RequireText(body.Into, "into"))))
+            .WithName("MergeTag")
+            .Produces<TagMoveResult>(StatusCodes.Status200OK);
+
+        api.MapGet("/review", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.ReviewList, () => library.Service.ListReview()))
+            .WithName("ListReview")
+            .Produces<ReviewList>(StatusCodes.Status200OK);
+
+        api.MapPost("/review/{id}/accept", ([FromServices] LibraryHandle library, string id, [FromBody] AcceptRequest? body) =>
+                Run(WebJsonContext.Default.ReviewOutcome, () => library.Service.AcceptReview(id, OptionalWorkId(body?.Into))))
+            .WithName("AcceptReview")
+            .Produces<ReviewOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/review/{id}/dismiss", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.ReviewOutcome, () => library.Service.DismissReview(id)))
+            .WithName("DismissReview")
+            .Produces<ReviewOutcome>(StatusCodes.Status200OK);
+
+        api.MapGet("/organize", ([FromServices] LibraryHandle library, string? pattern) =>
+                Run(WebJsonContext.Default.OrganizePreview, () => library.Service.PreviewOrganize(pattern)))
+            .WithName("PreviewOrganize")
+            .Produces<OrganizePreview>(StatusCodes.Status200OK);
+
+        api.MapPost("/organize", ([FromServices] LibraryHandle library, [FromBody] OrganizeRequest? body) =>
+                Run(WebJsonContext.Default.OrganizeOutcome, () => library.Service.ApplyOrganize(body?.Pattern is null ? null : RequireText(body.Pattern, "pattern"))))
+            .WithName("ApplyOrganize")
+            .Produces<OrganizeOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/undo", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.UndoOutcome, () => library.Service.UndoLast()))
+            .WithName("Undo")
+            .Produces<UndoOutcome>(StatusCodes.Status200OK);
 
         api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit) =>
                 Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit)))
@@ -170,6 +231,24 @@ internal static class Api
             ? id
             : throw new LibraryException("fileId is required: the ID of a file, as in the files of a work");
 
+    private static string RequireWorkId(System.Text.Json.Nodes.JsonNode? node, string name) =>
+        node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
+            ? id
+            : throw new LibraryException($"{name} is required: the ID of a work");
+
+    private static string? OptionalWorkId(JsonNode? node) =>
+        node is null ? null : RequireWorkId(node, "into");
+
+    private static string RequireText(JsonNode? node, string name) =>
+        node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } text
+            ? text
+            : throw new LibraryException($"{name} is required: text");
+
+    private static string RequireLocator(ProgressRequest body) =>
+        body.Locator is not null && body.Locator.GetValueKind() == System.Text.Json.JsonValueKind.String && body.Locator.GetValue<string>() is { Length: > 0 } locator
+            ? locator
+            : throw new LibraryException("locator is required: the place in the file, as text");
+
     private static WorkDetail Detail(LibraryService service, BookDetails b) =>
         new(
             b.Id,
@@ -188,7 +267,8 @@ internal static class Api
             b.Tags,
             b.ReadStatus,
             service.HasCover(b.Id),
-            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages))],
+            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages, f.Progress))],
+            service.PreferredFile(b.Files) is { } preferred ? FileIds.Make(b.Id, preferred) : null,
             b.Toc);
 
     private static SearchResponse Search(LibraryService service, string? q, string mode, string level, string? limit)
@@ -246,6 +326,17 @@ internal static class Api
             semantic.WorksWithoutEmbedding,
             semantic.Note,
             [.. books]);
+    }
+
+    private static SimilarResponse Similar(LibraryService service, string id, string? limit)
+    {
+        var similar = service.SimilarBooks(id, Whole(limit, $"limit must be between 1 and {LibraryService.MaxLimit}.", DefaultSimilarLimit));
+        return new SimilarResponse(
+            similar.Id,
+            similar.Title,
+            similar.Total,
+            similar.Note,
+            [.. similar.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, []))]);
     }
 
     private static Passage Passage(string work, PassageRef p) =>

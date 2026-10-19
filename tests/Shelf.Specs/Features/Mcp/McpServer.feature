@@ -42,6 +42,7 @@ Feature: The MCP server
       | tool                 |
       | add_tags             |
       | find_duplicates      |
+      | find_probable_duplicates |
       | get_book             |
       | list_tags            |
       | propose_organization |
@@ -49,6 +50,7 @@ Feature: The MCP server
       | remove_tags          |
       | search_books         |
       | semantic_search      |
+      | similar_books        |
     And every tool except "add_tags" and "remove_tags" is marked read-only
     And no tool is marked destructive
     And every tool has a description
@@ -59,9 +61,11 @@ Feature: The MCP server
     And the tool "get_book" requires the arguments "id"
     And the tool "read_passage" requires the arguments "id, location"
     And the tool "semantic_search" requires the arguments "query"
+    And the tool "similar_books" requires the arguments "id"
     And the tool "add_tags" requires the arguments "id, tags"
     And the tool "remove_tags" requires the arguments "id, tags"
     And the tool "list_tags" requires no arguments
+    And the tool "find_probable_duplicates" requires no arguments
     And the tool "propose_organization" requires no arguments
 
   Scenario Outline: Every argument has a description
@@ -71,6 +75,7 @@ Feature: The MCP server
       | tool                 |
       | search_books         |
       | semantic_search      |
+      | similar_books        |
       | get_book             |
       | read_passage         |
       | add_tags             |
@@ -95,6 +100,7 @@ Feature: The MCP server
       | tool                 | arguments                                         |
       | search_books         | { "query": "kubernetes" }                         |
       | semantic_search      | { "query": "kubernetes" }                         |
+      | similar_books        | { "id": "01J9Z3K0000000000000000002" }            |
       | add_tags             | { "id": "01J9Z3K0000000000000000002", "tags": ["x"] } |
       | remove_tags          | { "id": "01J9Z3K0000000000000000002", "tags": ["x"] } |
       | get_book             | { "id": "01J9Z3K0000000000000000002" }            |
@@ -102,6 +108,7 @@ Feature: The MCP server
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
       | list_tags            | {}                                                |
       | find_duplicates      | {}                                                |
+      | find_probable_duplicates | {}                                            |
       | propose_organization | {}                                                |
 
   Scenario: An unknown tool is an error, and the server goes on
@@ -133,4 +140,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_tags, find_duplicates, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search"
+    Then the tool names sorted are "add_tags, find_duplicates, find_probable_duplicates, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"

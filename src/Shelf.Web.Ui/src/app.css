@@ -113,6 +113,12 @@ code {
   padding: 0.05em 0.35em;
 }
 
+[data-nav]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

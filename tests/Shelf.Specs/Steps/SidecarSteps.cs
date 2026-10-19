@@ -169,6 +169,21 @@ public sealed class SidecarSteps(ConfigSteps workspace)
     public void ThenTheFileContains(string name, string text) =>
         Assert.Contains(text, File.ReadAllText(PathOf(name)), StringComparison.Ordinal);
 
+    /// <summary>For a change that the browser sends after the page has moved on (the reading position, F-RDR-4).</summary>
+    [Then("the file {string} soon contains {string}")]
+    public void ThenTheFileSoonContains(string name, string text)
+    {
+        var path = PathOf(name);
+        var limit = DateTime.UtcNow.AddSeconds(10);
+        string content;
+        while (!(content = File.ReadAllText(path)).Contains(text, StringComparison.Ordinal) && DateTime.UtcNow < limit)
+        {
+            Thread.Sleep(100);
+        }
+
+        Assert.Contains(text, content, StringComparison.Ordinal);
+    }
+
     [Then("the file {string} does not contain {string}")]
     public void ThenTheFileDoesNotContain(string name, string text) =>
         Assert.DoesNotContain(text, File.ReadAllText(PathOf(name)), StringComparison.Ordinal);

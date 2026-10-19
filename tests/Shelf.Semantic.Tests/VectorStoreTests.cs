@@ -21,6 +21,21 @@ public sealed class VectorStoreTests : IDisposable
     }
 
     [Fact]
+    public void A_stored_vector_can_be_read_back_with_both_backends()
+    {
+        Assert.SkipUnless(File.Exists(SqliteVecExtension.LibraryPath), "vec0 is not next to the test assembly");
+        using var plainDb = Open(Path.Combine(_root, "plain.db"));
+        using var vecDb = Open(Path.Combine(_root, "vec.db"));
+        foreach (var store in new[] { VectorStore.Open(plainDb, 3, "m", NoVectorExtension.Instance), VectorStore.Open(vecDb, 3, "m", SqliteVecExtension.Default) })
+        {
+            store.Put(VectorKind.Work, 5, [0.25f, -0.5f, 1f]);
+            Assert.Equal(new[] { 0.25f, -0.5f, 1f }, store.Get(VectorKind.Work, 5));
+            Assert.Null(store.Get(VectorKind.Work, 6));
+            Assert.Null(store.Get(VectorKind.Chunk, 5));
+        }
+    }
+
+    [Fact]
     public void Plain_and_sqlite_vec_find_the_same_neighbours()
     {
         Assert.SkipUnless(File.Exists(SqliteVecExtension.LibraryPath), "vec0 is not next to the test assembly");

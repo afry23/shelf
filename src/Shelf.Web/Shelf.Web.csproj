@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" />
   </ItemGroup>
 
@@ -25,6 +26,7 @@
     <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
     <ProjectReference Include="..\Shelf.Index\Shelf.Index.csproj" />
     <ProjectReference Include="..\Shelf.Library\Shelf.Library.csproj" />
+    <ProjectReference Include="..\Shelf.Mcp\Shelf.Mcp.csproj" />
   </ItemGroup>
 
   <!-- A plain SDK project with a FrameworkReference lacks the implicit usings of Microsoft.NET.Sdk.Web; without them the

@@ -14,6 +14,9 @@ public enum DuplicateKind
 
     /// <summary>Different files of one work in the same format (F-DUP-2).</summary>
     SameFormat,
+
+    /// <summary>Different works with (nearly) the same text or vectors (F-DUP-3); for review only.</summary>
+    Probable,
 }
 
 /// <param name="Folder">The folder of the work, library-relative.</param>
@@ -192,6 +195,8 @@ public static partial class LibraryDuplicates
 
         public void Add(string a, string b, string kind) => (kind == "work" ? _works : _files).Add(Order(a, b));
 
+        public bool ContainsWorks(Ulid a, Ulid b) => _works.Contains(Order(a.ToString(), b.ToString()));
+
         public bool Contains(DuplicateFile x, DuplicateFile y) => x.Work == y.Work
             ? _files.Contains(Order(x.Path, y.Path))
             : _works.Contains(Order(x.Work.ToString(), y.Work.ToString()));
@@ -335,6 +340,14 @@ public sealed class DuplicateSession
         {
             LibraryEditor.Reconcile(_root);
         }
+    }
+
+    /// <summary>Marks two works as "not a duplicate" (F-DUP-6): on both sides with the ID of the other work. Nothing else moves.</summary>
+    public void MarkNotDuplicates(ProbableDuplicate pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+        DuplicateFile Representative(ProbableWork work) => new(work.Id, work.Title, work.Folder, string.Empty, work.Files.FirstOrDefault() ?? work.Folder, 0, null, null);
+        MarkNotDuplicates(new DuplicateGroup(DuplicateKind.Probable, string.Empty, [Representative(pair.A), Representative(pair.B)], 0));
     }
 
     /// <summary>Closes the journal, if any change was made.</summary>

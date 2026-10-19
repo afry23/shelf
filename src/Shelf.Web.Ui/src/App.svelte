@@ -1,13 +1,17 @@
 <script lang="ts">
+  import { handleKey } from './keys';
   import { handleLinkClick, navigate, param, router } from './router.svelte';
   import { duplicateCount, refreshDuplicateCount } from './stores.svelte';
   import Duplicates from './views/Duplicates.svelte';
   import Library from './views/Library.svelte';
   import Reader from './views/Reader.svelte';
+  import Organize from './views/Organize.svelte';
+  import Review from './views/Review.svelte';
   import Search from './views/Search.svelte';
+  import Tags from './views/Tags.svelte';
   import Work from './views/Work.svelte';
 
-  // The route is the path: /library, /search, /works/{id}, /duplicates, /read/{fileId}. The root leads to the library.
+  // The route is the path: /library, /search, /works/{id}, /tags, /review, /organize, /duplicates, /read/{fileId}. The root leads to the library.
   const route = $derived.by(() => {
     const path = router.path.replace(/\/+$/, '') || '/';
     const segments = path.split('/').filter(Boolean).map(decodeURIComponent);
@@ -17,6 +21,12 @@
         return { name: 'library' } as const;
       case 'search':
         return { name: 'search' } as const;
+      case 'organize':
+        return { name: 'organize' } as const;
+      case 'review':
+        return { name: 'review' } as const;
+      case 'tags':
+        return { name: 'tags' } as const;
       case 'duplicates':
         return { name: 'duplicates' } as const;
       case 'works':
@@ -61,7 +71,7 @@
   const here = (name: string) => (route.name === name ? 'page' : undefined);
 </script>
 
-<svelte:document onclick={handleLinkClick} />
+<svelte:document onclick={handleLinkClick} onkeydown={handleKey} />
 
 <div class="app" class:fill={route.name === 'read'}>
 <header class="top">
@@ -71,6 +81,9 @@
   </form>
   <nav aria-label="Main">
     <a href="/library" aria-current={here('library')}>Library</a>
+    <a href="/tags" aria-current={here('tags')}>Tags</a>
+    <a href="/review" aria-current={here('review')}>Review</a>
+    <a href="/organize" aria-current={here('organize')}>Organize</a>
     <a href="/duplicates" aria-current={here('duplicates')}>
       Duplicates{#if duplicateCount.value}<span class="badge">{duplicateCount.value}</span>{/if}
     </a>
@@ -82,6 +95,12 @@
     <Library />
   {:else if route.name === 'search'}
     <Search />
+  {:else if route.name === 'organize'}
+    <Organize />
+  {:else if route.name === 'review'}
+    <Review />
+  {:else if route.name === 'tags'}
+    <Tags />
   {:else if route.name === 'duplicates'}
     <Duplicates />
   {:else if route.name === 'work'}
@@ -148,9 +167,11 @@
     width: 100%;
   }
 
+  /* Five links do not fit in a phone's width in every font: they wrap instead of widening the page. */
   nav {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
     margin-left: auto;
   }
 

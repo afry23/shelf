@@ -163,3 +163,12 @@ No fallback (ReadyToRun, hand-written JSON-RPC layer) is required. The estimate 
 ## M0 close: prototype removed (2026-10-17)
 
 M0 is closed (see the roadmap). `experiments/mcp/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.
+
+## Addendum: Streamable HTTP (2026-10-19, M5 slice `m5-mcp-http`)
+
+The spike left `ModelContextProtocol.AspNetCore` out of scope. It is checked now.
+
+- **Package:** `ModelContextProtocol.AspNetCore` 2.2.0 (same version as Core), referenced by `Shelf.Web`. `WithHttpTransport` plus `MapMcp("/mcp")` on the slim builder, `Stateless = true`: every request is answered on its own, no `Mcp-Session-Id`, no `GET`/`DELETE`/SSE endpoints. `ConfigureSessionOptions` hands the hand-registered tools and resources (the same objects as for stdio, so `mcp.read_only` applies) to each request.
+- **Native AOT:** `dotnet publish -r osx-arm64 -p:PublishAot=true` gives 0 warnings (no `IL*`/`AOT*`); the binary answers `initialize`, `tools/list` and `tools/call` over HTTP (`tests/e2e/native.sh`, section M5). Binary size 42.8 MB with the UI (the size before the change was not re-measured). Not yet run on `linux-x64`.
+- **Not measured:** latency and memory of the HTTP transport; behavior of a client that expects sessions (the stateless mode answers `initialize` without a session ID).
+- **Access:** the rules of `shelf serve` apply (loopback unless `--bind`, a token for any other address, `Host` check on loopback), with one difference: only the `Authorization: Bearer` header counts (no cookie, no `?token=`). The default port is 8421.

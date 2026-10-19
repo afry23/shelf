@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Shelf.Core.Model;
@@ -45,7 +46,10 @@ public static class LibrarySearch
     // Candidates examined per source; far more than a person reads, bounded so that a one-letter query stays fast.
     private const int MaxCandidates = 500;
 
-    private const string MetadataRank = "bm25(works_fts, 10.0, 5.0, 8.0, 1.0, 3.0)";
+    private const string MetadataRank = "bm25(works_fts, 10.0, 5.0, 8.0, 1.0, 3.0, 2.0, 2.0)";
+
+    // The columns that hold the text as written; the stem columns are only reached by the stemmed form of a word.
+    private const string ExactColumns = "{title subtitle authors description tags}";
 
     public static List<SearchHit> Search(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit, int hitsPerWork = DefaultHitsPerWork)
     {
@@ -68,6 +72,7 @@ public static class LibrarySearch
     private static List<Ranked> RankByText(SqliteConnection connection, SearchQuery query, Filter filter, int limit, int hitsPerWork)
     {
         var match = string.Join(' ', query.Include.Select(Phrase));
+        var metadataMatch = string.Join(" AND ", query.Include.Select(MetadataTerm));
         var metadata = new Dictionary<string, double>(StringComparer.Ordinal);
         var content = new Dictionary<string, List<(double Score, long ChunkId, ContentHit Hit)>>(StringComparer.Ordinal);
 
@@ -79,7 +84,7 @@ public static class LibrarySearch
                 WHERE works_fts MATCH $match {filter.AndSql}
                 ORDER BY 2 LIMIT {MaxCandidates}
                 """;
-            command.Parameters.AddWithValue("$match", match);
+            command.Parameters.AddWithValue("$match", metadataMatch);
             filter.Bind(command);
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -259,7 +264,9 @@ public static class LibrarySearch
         if (query.Exclude.Count > 0)
         {
             var any = string.Join(" OR ", query.Exclude.Select(Phrase));
-            filter.Add("w.seq NOT IN (SELECT rowid FROM works_fts WHERE works_fts MATCH {0})", any);
+            filter.Add(
+                "w.seq NOT IN (SELECT rowid FROM works_fts WHERE works_fts MATCH {0})",
+                string.Join(" OR ", query.Exclude.Select(t => $"{ExactColumns} : {Phrase(t)}")));
             filter.Add(
                 "w.id NOT IN (SELECT fe.work_id FROM chunks_fts JOIN chunks ce ON ce.id = chunks_fts.rowid JOIN files fe ON fe.id = ce.file_id WHERE chunks_fts MATCH {0})",
                 any);
@@ -270,6 +277,141 @@ public static class LibrarySearch
 
     /// <summary>A term as an FTS5 phrase: always quoted (so no character is syntax), with a star after it for a prefix.</summary>
     private static string Phrase(SearchTerm term) => "\"" + term.Text.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"" + (term.Prefix ? "*" : string.Empty);
+
+    /// <summary>
+    /// A word for the metadata: the word as written, or, for a plain word, also its stem in the column of each
+    /// language (F-SRC-6). A quoted phrase, a prefix and a word with other characters than letters stay exact.
+    /// </summary>
+    private static string MetadataTerm(SearchTerm term)
+    {
+        var exact = $"{ExactColumns} : {Phrase(term)}";
+        if (term.Quoted || term.Prefix || term.Text.Length < 3 || !term.Text.All(char.IsLetter))
+        {
+            return exact;
+        }
+
+        var lower = term.Text.ToLowerInvariant();
+        return $"({exact} OR stems_en : {Quote(Stemmer.Stem(lower, Stemmer.English))} OR stems_de : {Quote(Stemmer.Stem(lower, Stemmer.German))})";
+    }
+
+    private static string Quote(string text) => "\"" + text.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+
+    // ---- fuzzy search (F-SRC-4) ----
+
+    private const double MinSimilarity = 0.4;
+    private const int MinFuzzyLength = 4;
+
+    /// <summary>
+    /// The works with a word in title, subtitle or authors that is close to <b>every</b> plain word of the query,
+    /// by the overlap of trigrams, best first. For the fallback when <see cref="Search"/> finds nothing. A quoted
+    /// phrase or a prefix is exact, so a query with one has no fuzzy results; a word of fewer than four letters must
+    /// be the same word. Filters and exclusions apply as in <see cref="Search"/>.
+    /// </summary>
+    public static List<SearchHit> SearchFuzzy(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        if (query.Include.Count == 0 || query.Include.Any(t => t.Quoted || t.Prefix))
+        {
+            return [];
+        }
+
+        var terms = query.Include.Select(t => Fold(t.Text)).ToList();
+        var grams = terms.Select(t => t.Length >= MinFuzzyLength ? Trigrams(t) : null).ToList();
+        var filter = BuildFilter(query);
+        var ranked = new List<Ranked>();
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"SELECT w.id, w.title, w.subtitle, w.authors_json FROM works w WHERE 1 = 1 {filter.AndSql}";
+            filter.Bind(command);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var words = new HashSet<string>(StringComparer.Ordinal);
+                AddWords(words, reader.GetString(1));
+                AddWords(words, reader.IsDBNull(2) ? null : reader.GetString(2));
+                using (var authors = JsonDocument.Parse(reader.GetString(3)))
+                {
+                    foreach (var author in authors.RootElement.EnumerateArray())
+                    {
+                        AddWords(words, author.GetString());
+                    }
+                }
+
+                var total = 0.0;
+                for (var i = 0; i < terms.Count && total >= 0; i++)
+                {
+                    var best = 0.0;
+                    foreach (var word in words)
+                    {
+                        var similarity = grams[i] is { } wanted ? Similarity(wanted, word) : (word == terms[i] ? 1.0 : 0.0);
+                        best = Math.Max(best, similarity);
+                    }
+
+                    total = best >= MinSimilarity ? total + best : -1;
+                }
+
+                if (total > 0)
+                {
+                    ranked.Add(new Ranked(reader.GetString(0), total, []));
+                }
+            }
+        }
+
+        return Load(connection, [.. ranked.OrderByDescending(r => r.Score).ThenBy(r => r.WorkId, StringComparer.Ordinal).Take(limit)]);
+    }
+
+    private static void AddWords(HashSet<string> words, string? text)
+    {
+        foreach (var word in Stemmer.Words(text))
+        {
+            words.Add(Fold(word));
+        }
+    }
+
+    /// <summary>Lower case, without accents: the way the index compares words (ß stays ß, as in the index).</summary>
+    private static string Fold(string text)
+    {
+        var decomposed = text.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var result = new StringBuilder(decomposed.Length);
+        foreach (var c in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            {
+                result.Append(c);
+            }
+        }
+
+        return result.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    // The trigrams of " word ": three letters packed in a long.
+    private static HashSet<long> Trigrams(string word)
+    {
+        var padded = " " + word + " ";
+        var set = new HashSet<long>();
+        for (var i = 0; i + 3 <= padded.Length; i++)
+        {
+            set.Add(((long)padded[i] << 32) | ((long)padded[i + 1] << 16) | padded[i + 2]);
+        }
+
+        return set;
+    }
+
+    private static double Similarity(HashSet<long> wanted, string word)
+    {
+        if (word.Length < MinFuzzyLength)
+        {
+            return 0;
+        }
+
+        var other = Trigrams(word);
+        var common = wanted.Count(other.Contains);
+        return common == 0 ? 0 : (double)common / (wanted.Count + other.Count - common);
+    }
 
     // ---- result data ----
 

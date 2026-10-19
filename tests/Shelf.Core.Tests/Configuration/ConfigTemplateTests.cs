@@ -24,6 +24,6 @@ public sealed class ConfigTemplateTests
         Assert.Equal(GroupingSettings.Default, settings.Grouping);
         Assert.Empty(settings.Warnings);
         Assert.Equal(PathPattern.DefaultText, settings.Organize.Pattern.Text);
-        Assert.Equal(5, ConfigFile.Parse(uncommented, "template").LeafKeys().Count);
+        Assert.Equal(8, ConfigFile.Parse(uncommented, "template").LeafKeys().Count);
     }
 }

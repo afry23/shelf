@@ -133,3 +133,7 @@ Details decided in this slice:
 ## M0 close: prototype removed (2026-10-17)
 
 M0 is closed (see the roadmap). `experiments/cli-framework/` was deleted from the repository. The last commit that contains it is `f6089e6a490d8ada02cca8db79ab034f671bbad1` (`git show f6089e6:<path>` or `git checkout f6089e6`). The measurements and the decision in this ADR stand; the commands under "Reproduce" and the paths named above refer to that commit.
+
+## Addendum: shell completion (2026-10-19, M5 slice `m5-completion`)
+
+`shelf completion bash|zsh|fish` generates its scripts from the command model (every command, subcommand and option the parser knows), as planned under "Shell completion". The scripts are static: no process is started at completion time. `Argument.GetCompletions` supplies the values of the `shell` argument; no reflection, AOT publish 0 warnings.

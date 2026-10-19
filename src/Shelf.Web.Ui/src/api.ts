@@ -59,12 +59,19 @@ export interface WorkList {
   facets: Facets;
 }
 
+/** Where a person stopped reading a file (F-RDR-4): `page=N` for a PDF, an `epubcfi(...)` for an EPUB. */
+export interface ReadingPosition {
+  locator: string;
+  updatedAt: string;
+}
+
 export interface WorkFile {
   id: string;
   name: string;
   format: string;
   sizeBytes: number;
   pages: number | null;
+  progress: ReadingPosition | null;
 }
 
 export interface TocItem {
@@ -91,6 +98,8 @@ export interface WorkDetail {
   readStatus: ReadStatus;
   hasCover: boolean;
   files: WorkFile[];
+  /** The ID of the file that "Read" opens (F-RDR-5), or null for a work without files. */
+  readFile: string | null;
   toc: TocItem[];
 }
 
@@ -128,6 +137,14 @@ export interface SearchResponse {
   results: SearchItem[];
 }
 
+export interface SimilarResponse {
+  id: string;
+  title: string;
+  total: number;
+  note: string | null;
+  results: SearchItem[];
+}
+
 export interface DuplicateFile {
   id: string;
   workId: string;
@@ -149,6 +166,27 @@ export interface DuplicateGroup {
 export interface DuplicateList {
   total: number;
   groups: DuplicateGroup[];
+}
+
+export interface ProbableWork {
+  id: string;
+  title: string;
+  authors: string[];
+  folder: string;
+}
+
+/** Works that probably are one book: `hamming` is the distance of the text fingerprints, `cosine` the similarity of the vectors. */
+export interface ProbablePair {
+  hamming: number | null;
+  cosine: number | null;
+  a: ProbableWork;
+  b: ProbableWork;
+}
+
+export interface ProbableList {
+  total: number;
+  note: string | null;
+  pairs: ProbablePair[];
 }
 
 export interface DuplicateOutcome {
@@ -204,7 +242,43 @@ export const status = () => request<Status>('GET', '/status');
 export const works = (params: { q?: string; sort?: string; order?: string; offset?: number; limit?: number }) =>
   request<WorkList>('GET', `/works${query(params)}`);
 
-export const work = (id: string) => request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+export const work = async (id: string) => {
+  await Promise.allSettled([...saving]);
+  return request<WorkDetail>('GET', `/works/${encodeURIComponent(id)}`);
+};
+
+// Saves that have not been answered yet. They go one after the other, so that an older position never arrives after a newer one,
+// and a page that shows the progress of a file waits for them: leaving the reader and opening the book page must not read the
+// file before the position is written.
+const saving = new Set<Promise<unknown>>();
+let lastSave: Promise<unknown> = Promise.resolve();
+
+/**
+ * Saves the reading position of a file. `keepalive` lets the request finish when the page is being closed.
+ * A failure is not shown: the next move saves again.
+ */
+export const saveProgress = (fileId: string, locator: string): Promise<unknown> => {
+  // A page that is going away cannot wait for the one before: its request has to leave now (`keepalive` carries it on).
+  const before = document.visibilityState === 'hidden' ? Promise.resolve() : lastSave;
+  const sent: Promise<unknown> = before
+    .then(() =>
+      fetch(`/api/v1/files/${encodeURIComponent(fileId)}/progress`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locator }),
+        keepalive: true,
+        credentials: 'same-origin',
+      }),
+    )
+    .catch(() => undefined)
+    .finally(() => saving.delete(sent));
+  saving.add(sent);
+  lastSave = sent;
+  return sent;
+};
+
+export const similar = (id: string, limit = 6) =>
+  request<SimilarResponse>('GET', `/works/${encodeURIComponent(id)}/similar?limit=${limit}`);
 
 export const editWork = (id: string, patch: Record<string, unknown>) =>
   request<WorkDetail>('PATCH', `/works/${encodeURIComponent(id)}`, patch, 'application/merge-patch+json');
@@ -214,10 +288,102 @@ export const setTags = (id: string, tags: string[]) =>
 
 export const tags = () => request<TagTree>('GET', '/tags');
 
+export interface TagMoveResult {
+  from: string;
+  to: string;
+  changed: number;
+}
+
+export const renameTag = (from: string, to: string) => request<TagMoveResult>('POST', '/tags/rename', { from, to });
+
+export const mergeTag = (from: string, into: string) => request<TagMoveResult>('POST', '/tags/merge', { from, into });
+
+export interface ReviewCandidate {
+  work: string;
+  title: string | null;
+  confidence: number;
+  signals: string[];
+}
+
+export interface ReviewEntry {
+  id: string;
+  kind: 'grouping' | 'extraction-error' | 'weak-metadata';
+  createdAt: string;
+  message: string;
+  file: string | null;
+  work: string | null;
+  workTitle: string | null;
+  candidates: ReviewCandidate[];
+}
+
+export interface ReviewList {
+  total: number;
+  entries: ReviewEntry[];
+}
+
+export interface ReviewOutcome {
+  entry: string;
+  into: string | null;
+  movedFiles: number;
+}
+
+export const review = () => request<ReviewList>('GET', '/review');
+
+export const acceptReview = (id: string, into?: string) =>
+  request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/accept`, into ? { into } : {});
+
+export const dismissReview = (id: string) => request<ReviewOutcome>('POST', `/review/${encodeURIComponent(id)}/dismiss`, {});
+
+export interface PlannedMove {
+  id: string;
+  from: string;
+  to: string;
+}
+
+export interface SkippedMove extends PlannedMove {
+  reason: string;
+}
+
+export interface OrganizePreview {
+  pattern: string;
+  files: number;
+  works: number;
+  unchanged: number;
+  truncated: boolean;
+  moves: PlannedMove[];
+  collisions: SkippedMove[];
+  /** The label of the run that "undo" would revert now, or null. */
+  nextUndo: string | null;
+}
+
+export interface OrganizeOutcome {
+  pattern: string;
+  files: number;
+  works: number;
+  unchanged: number;
+  collisions: SkippedMove[];
+}
+
+export interface UndoOutcome {
+  label: string;
+  reverted: number;
+  skipped: { path: string; reason: string }[];
+}
+
+export const previewOrganize = (pattern?: string) => request<OrganizePreview>('GET', `/organize${pattern ? query({ pattern }) : ''}`);
+
+export const applyOrganize = (pattern: string) => request<OrganizeOutcome>('POST', '/organize', { pattern });
+
+export const undoLast = () => request<UndoOutcome>('POST', '/undo', {});
+
 export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; limit?: number }) =>
   request<SearchResponse>('GET', `/search${query(params)}`);
 
 export const duplicates = () => request<DuplicateList>('GET', '/duplicates');
+
+export const probableDuplicates = () => request<ProbableList>('GET', '/duplicates/probable');
+
+export const ignoreProbable = (a: string, b: string) => request<DuplicateOutcome>('POST', '/duplicates/probable/ignore', { a, b });
 
 export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: string) =>
   request<DuplicateOutcome>('POST', `/duplicates/${action}`, { fileId });

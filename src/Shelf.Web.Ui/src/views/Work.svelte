@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { ApiError, editWork, fileUrl, setTags, tags as loadTags, work as loadWork, type ReadStatus, type TagNode, type WorkDetail } from '../api';
+  import { ApiError, editWork, fileUrl, setTags, similar as loadSimilar, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import { authorLine, bytes, readLink } from '../format';
+  import { authorLine, bytes, readLink, resumeText } from '../format';
 
   let { id }: { id: string } = $props();
 
@@ -37,6 +37,29 @@
     };
   });
 
+  // The works most like this one. Without embeddings the list is empty and the section stays away: the view needs nothing else.
+  let similarBooks = $state<SearchItem[]>([]);
+
+  $effect(() => {
+    const wanted = id;
+    let current = true;
+    similarBooks = [];
+    loadSimilar(wanted)
+      .then((result) => {
+        if (current) {
+          similarBooks = result.results;
+        }
+      })
+      .catch(() => {
+        if (current) {
+          similarBooks = [];
+        }
+      });
+    return () => {
+      current = false;
+    };
+  });
+
   // The tags of the library, for the suggestions of the field.
   $effect(() => {
     const flatten = (nodes: TagNode[]): string[] => nodes.flatMap((n) => [n.path, ...flatten(n.children)]);
@@ -45,7 +68,7 @@
       .catch(() => (suggestions = []));
   });
 
-  const readFile = $derived(book?.files.find((f) => f.format === 'epub') ?? book?.files[0]);
+  const readFile = $derived(book?.files.find((f) => f.id === book?.readFile) ?? book?.files[0]);
   // The table of contents belongs to one file; its locations say which kind: epubcfi(...) for an EPUB, page=N for a PDF.
   const tocFile = $derived(
     book?.toc.find((t) => t.location)?.location?.startsWith('epubcfi(')
@@ -216,7 +239,10 @@
       <aside class="side">
         <div class="cover-box"><Cover id={book.id} title={book.title} authors={book.authors} hasCover={book.hasCover} /></div>
         {#if readFile}
-          <a class="button primary read" href={readLink(readFile.id)}>Read</a>
+          <a class="button primary read" href={readLink(readFile.id)}>{readFile.progress ? 'Continue reading' : 'Read'}</a>
+          {#if readFile.progress}
+            <p class="muted resume">{resumeText(readFile.progress.locator)}</p>
+          {/if}
         {/if}
         <div class="control">
           <Segmented
@@ -321,6 +347,20 @@
           </table>
         </section>
 
+        {#if similarBooks.length}
+          <section>
+            <h2>Similar books</h2>
+            <ul class="similar" aria-label="Similar books">
+              {#each similarBooks as item (item.id)}
+                <li>
+                  <a href={`/works/${item.id}`}>{item.title}</a>
+                  <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
         {#if book.toc.length && tocFile}
           <section>
             <h2>Contents</h2>
@@ -386,6 +426,12 @@
     bottom: 0;
     height: 0.5rem;
     background: linear-gradient(var(--shelf), var(--shelf-edge));
+  }
+
+  .resume {
+    margin: 0;
+    font-size: 0.875rem;
+    text-align: center;
   }
 
   .read {
@@ -511,6 +557,21 @@
 
   .files .name {
     overflow-wrap: anywhere;
+  }
+
+  .similar {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .similar li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
   }
 
   .toc {

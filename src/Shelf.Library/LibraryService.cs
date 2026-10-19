@@ -18,7 +18,7 @@ namespace Shelf.Library;
 /// organization proposals over one library. Errors the caller can act on (unknown work, bad query, no text at a location)
 /// are <see cref="LibraryException"/>s. Only the tag methods change anything.
 /// </summary>
-public sealed class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic)
+public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic)
 {
     public const int DefaultMaxChars = 4_000;
     public const int MaxLimit = 100;
@@ -243,6 +243,45 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
                 h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
     }
 
+    public SimilarBooksResult SimilarBooks(
+        string id,
+        int limit = 10)
+    {
+        if (limit is < 1 or > MaxLimit)
+        {
+            throw new LibraryException($"limit must be between 1 and {MaxLimit}.");
+        }
+
+        var work = Find(id);
+        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
+        VectorStore? store;
+        try
+        {
+            store = VectorStore.OpenExisting(connection);
+        }
+        catch (VectorStoreException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        var hits = store is null ? null : Shelf.Semantic.SemanticSearch.SimilarWorks(connection, store, work.Id.ToString(), limit);
+        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+        return new SimilarBooksResult(
+            work.Id.ToString(),
+            work.Title,
+            hits?.Count ?? 0,
+            Shelf.Semantic.SemanticSearch.SimilarNote(hits, store, coverage),
+            [.. (hits ?? []).Select(h => new SemanticItem(
+                h.Work.Id.ToString(),
+                h.Work.Title,
+                [.. h.Work.Authors],
+                h.Work.Year,
+                h.Work.Language,
+                [.. h.Work.Formats],
+                Math.Round(h.Score, 4),
+                null))]);
+    }
+
     public TagChange AddTags(
         string id,
         string[] tags) =>
@@ -273,6 +312,61 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         }
 
         return new TagTree(direct.Count, [.. Build(direct, string.Empty)]);
+    }
+
+    /// <summary>Renames a tag and the tags below it on every work (F-TAG-4); the new name must be unused. One undoable step.</summary>
+    /// <exception cref="LibraryException">Invalid: a bad name. NotFound: no work has the tag. Conflict: the new name is in use.</exception>
+    public TagMoveResult RenameTag(string from, string to) => MoveTag(from, to, merge: false);
+
+    /// <summary>Puts a tag and the tags below it into another tag, which may exist (F-TAG-4). One undoable step.</summary>
+    /// <exception cref="LibraryException">Invalid: a bad name. NotFound: no work has the tag.</exception>
+    public TagMoveResult MergeTag(string from, string into) => MoveTag(from, into, merge: true);
+
+    private TagMoveResult MoveTag(string from, string to, bool merge)
+    {
+        if (!TagNames.TryNormalize(from, out var source, out var problem))
+        {
+            throw new LibraryException($"from: {problem}");
+        }
+
+        if (!TagNames.TryNormalize(to, out var target, out problem))
+        {
+            throw new LibraryException($"{(merge ? "into" : "to")}: {problem}");
+        }
+
+        if (source == target)
+        {
+            throw new LibraryException("the two names are the same tag");
+        }
+
+        if (merge && (TagNames.IsSameOrBelow(target, source) || TagNames.IsSameOrBelow(source, target)))
+        {
+            throw new LibraryException("a tag cannot be merged into a tag above or below it");
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                var existing = LibraryTags.List(root).Select(t => t.Tag).ToList();
+                if (!existing.Any(t => TagNames.IsSameOrBelow(t, source)))
+                {
+                    throw new LibraryException($"no work has the tag '{source}'", LibraryErrorKind.NotFound);
+                }
+
+                if (!merge && existing.Any(t => TagNames.IsSameOrBelow(t, target)))
+                {
+                    throw new LibraryException($"the tag '{target}' already exists; merge into it instead", LibraryErrorKind.Conflict);
+                }
+
+                var result = merge ? LibraryTags.Merge(root, source, target) : LibraryTags.Rename(root, source, target);
+                return new TagMoveResult(source, target, result.Changed);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
     }
 
     public DuplicatesResult FindDuplicates()
@@ -475,6 +569,70 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
             ?? throw new LibraryException($"the file '{name}' of '{work.Title}' is missing from the library folder", LibraryErrorKind.NotFound);
     }
 
+    /// <summary>
+    /// The file that <c>Read</c> opens (F-RDR-5): the first of the configured format (<c>reader.preferred_format</c>, EPUB by default),
+    /// else the first file that has a reader, else the first file. Null for a work without files.
+    /// </summary>
+    public string? PreferredFile(IReadOnlyList<BookFile> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        var wanted = settings.Reader.PreferredFormat;
+        return (files.FirstOrDefault(f => f.Format == wanted)
+            ?? files.FirstOrDefault(f => f.Format is "epub" or "pdf")
+            ?? files.FirstOrDefault())?.Name;
+    }
+
+    /// <summary>
+    /// Remembers where a person stopped reading a file (F-RDR-4) in <c>book.json</c>. The location must fit the format: <c>page=N</c>
+    /// for a PDF, <c>epubcfi(...)</c> for an EPUB. The same location as before changes nothing.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: the location is not one of this kind of file. NotFound: no such file.</exception>
+    public ReadingPosition SaveProgress(string fileId, string locator)
+    {
+        var file = ResolveFile(fileId);
+        var problem = file.Format switch
+        {
+            "pdf" => PageLocator().IsMatch(locator)
+                ? null
+                : "locator of a PDF must be page=N, with N a page number from 1",
+            "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
+                ? null
+                : "locator of an EPUB must be an epubcfi(...)",
+            _ => $"files of the format {file.Format} have no reading position",
+        };
+        if (problem is not null)
+        {
+            throw new LibraryException(problem);
+        }
+
+        var work = Find(file.Work.ToString());
+        lock (_writeGate)
+        {
+            try
+            {
+                var current = LibraryEditor.Read(root, work).Files.First(f => f.Name == file.Name).Progress;
+                if (current is not null && current.Locator == locator)
+                {
+                    return Position(current);
+                }
+
+                var saved = new FileProgress(locator, DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+                LibraryEditor.SetProgress(root, work, file.Name, saved);
+                return Position(saved);
+            }
+            catch (Exception e) when (e is SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    private static ReadingPosition Position(FileProgress progress) =>
+        new(progress.Locator, progress.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+
+    [System.Text.RegularExpressions.GeneratedRegex("^page=[1-9][0-9]{0,8}$")]
+    private static partial System.Text.RegularExpressions.Regex PageLocator();
+
     /// <summary>The cover image of a work (F-IMP-5).</summary>
     /// <exception cref="LibraryException">With the kind <see cref="LibraryErrorKind.NotFound"/>: no such work, no cover, or the file is gone.</exception>
     public FileLocation ResolveCover(string id)
@@ -534,6 +692,71 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         catch (IndexException e)
         {
             throw new LibraryException(e.Message);
+        }
+    }
+
+    /// <summary>
+    /// Works that probably are one book (F-DUP-3): nearly the same text, or very similar vectors. For manual review only; pairs marked
+    /// as not duplicates (F-DUP-6) are left out.
+    /// </summary>
+    public ProbablePairsResult FindProbableDuplicates()
+    {
+        try
+        {
+            var found = Shelf.Semantic.ProbableDuplicates.Find(root, settings.Grouping);
+            return new ProbablePairsResult(
+                found.Pairs.Count,
+                found.Note,
+                [.. found.Pairs.Select(p => new ProbablePair(p.Hamming, p.Cosine is { } c ? Math.Round(c, 4) : null, Entry(p.A), Entry(p.B)))]);
+        }
+        catch (Exception e) when (e is IndexException or Shelf.Semantic.VectorStoreException)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        static ProbableEntry Entry(ProbableWork work) => new(work.Id.ToString(), work.Title, [.. work.Authors], work.Folder);
+    }
+
+    /// <summary>Marks two works as not duplicates (F-DUP-6) if they are a probable pair now. Nothing moves.</summary>
+    public DuplicateOutcome IgnoreProbableDuplicates(string a, string b)
+    {
+        if (!Ulid.TryParse(a, out var first) || !Ulid.TryParse(b, out var second))
+        {
+            throw new LibraryException("a and b must be the IDs of two works (26 characters each)");
+        }
+
+        if (first == second)
+        {
+            throw new LibraryException("a and b must be two different works");
+        }
+
+        // An ID that names no work is a 404.
+        Find(a);
+        Find(b);
+        lock (_writeGate)
+        {
+            try
+            {
+                // The pair is looked up again now: the library may have changed since the list was shown.
+                var pair = Shelf.Semantic.ProbableDuplicates.Find(root, settings.Grouping).Pairs
+                    .FirstOrDefault(p => (p.A.Id == first && p.B.Id == second) || (p.A.Id == second && p.B.Id == first))
+                    ?? throw new LibraryException("These two works are not probable duplicates (any more)", LibraryErrorKind.Conflict);
+                var session = LibraryDuplicates.Begin(root);
+                try
+                {
+                    session.MarkNotDuplicates(pair);
+                }
+                finally
+                {
+                    session.Finish();
+                }
+
+                return new DuplicateOutcome(0, []);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException or Shelf.Semantic.VectorStoreException)
+            {
+                throw new LibraryException(e.Message);
+            }
         }
     }
 
@@ -707,7 +930,7 @@ public sealed class LibraryService(string root, ShelfSettings settings, Semantic
         {
             var full = LibraryEditor.FilePath(root, work, entry.Name);
             var info = new FileInfo(full);
-            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name)));
+            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name), entry.Progress is { } progress ? Position(progress) : null));
             if (withToc && toc.Count == 0 && info.Exists)
             {
                 toc.AddRange(TocExtractor.Read(full).Select(t => new TocItem(t.Title, t.Level, t.Locator)));

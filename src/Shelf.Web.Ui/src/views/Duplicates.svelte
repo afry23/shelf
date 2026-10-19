@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { duplicateAction, duplicates, type DuplicateFile, type DuplicateList } from '../api';
-  import { bytes, plural } from '../format';
+  import { duplicateAction, duplicates, ignoreProbable, probableDuplicates, type DuplicateFile, type DuplicateList, type ProbableList, type ProbablePair } from '../api';
+  import { authorLine, bytes, plural } from '../format';
   import { refreshDuplicateCount } from '../stores.svelte';
 
   let list = $state<DuplicateList | null>(null);
+  // Works that probably are one book: for a look, never for the trash. Without any, the section stays away.
+  let probable = $state<ProbableList | null>(null);
   let error = $state<string | null>(null);
   let message = $state<string | null>(null);
   // The action that waits for a second click: the files of this run are not touched before.
@@ -12,6 +14,7 @@
   async function load(): Promise<void> {
     try {
       list = await duplicates();
+      probable = await probableDuplicates().catch(() => null);
       error = null;
       void refreshDuplicateCount();
     } catch (e) {
@@ -39,6 +42,22 @@
     }
   }
 
+  async function notDuplicates(pair: ProbablePair): Promise<void> {
+    try {
+      await ignoreProbable(pair.a.id, pair.b.id);
+      message = 'Marked as not duplicates.';
+      error = null;
+      await load();
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
+
+  const reason = (pair: ProbablePair) =>
+    [pair.hamming !== null && `Same text (distance ${pair.hamming})`, pair.cosine !== null && `Similar meaning (${pair.cosine.toFixed(2)})`]
+      .filter(Boolean)
+      .join(', ');
+
   const ask = (fileId: string, action: 'keep' | 'trash') => (pending = { fileId, action });
   const asks = (file: DuplicateFile, action: 'keep' | 'trash') => pending?.fileId === file.id && pending.action === action;
 </script>
@@ -54,12 +73,12 @@
   {#if error}<p role="alert">{error}</p>{/if}
 
   {#if list}
-    {#if list.total === 0}
+    {#if list.total === 0 && !probable?.total}
       <section class="empty">
         <h2>No duplicates</h2>
         <p class="muted">Every file in the library is a book of its own.</p>
       </section>
-    {:else}
+    {:else if list.total > 0}
       <p class="muted count" role="status">{plural(list.total, 'group')} of duplicates</p>
       {#each list.groups as group, index (group.files[0].id)}
         <section class="group" aria-labelledby={`group-${index}`}>
@@ -69,8 +88,8 @@
           </p>
           <div class="cards">
             {#each group.files as file, position (file.id)}
-              <article aria-label={file.name} data-suggested={position === group.keep}>
-                <h3>{file.title}</h3>
+              <article aria-label={file.name} data-suggested={position === group.keep} data-nav>
+                <h3><a href={`/works/${file.workId}`}>{file.title}</a></h3>
                 <p class="path">{file.path}</p>
                 <dl>
                   <dt>Size</dt><dd>{bytes(file.sizeBytes)}</dd>
@@ -96,6 +115,27 @@
           <p><button type="button" class="button" onclick={() => run('ignore', group.files[0].id)}>These are not duplicates</button></p>
         </section>
       {/each}
+    {/if}
+    {#if probable?.total}
+      <section class="group" aria-labelledby="probable-heading">
+        <h2 id="probable-heading">Probable duplicates</h2>
+        <p class="muted" role="status">{plural(probable.total, 'pair')} of works that probably are one book. Nothing here is removed: have a look and say when they are not.</p>
+        {#each probable.pairs as pair (pair.a.id + pair.b.id)}
+          <div class="pair">
+            <p class="reason">{reason(pair)}</p>
+            <div class="cards">
+              {#each [pair.a, pair.b] as work (work.id)}
+                <article aria-label={work.title} data-nav>
+                  <h3><a href={`/works/${work.id}`}>{work.title}</a></h3>
+                  {#if work.authors.length}<p class="muted">{authorLine(work.authors)}</p>{/if}
+                  <p class="path">{work.folder}</p>
+                </article>
+              {/each}
+            </div>
+            <p><button type="button" class="button" onclick={() => notDuplicates(pair)}>Not a duplicate</button></p>
+          </div>
+        {/each}
+      </section>
     {/if}
   {:else if !error}
     <p class="muted">Loading…</p>
@@ -182,6 +222,17 @@
     color: var(--accent);
     font-size: 0.875rem;
     font-weight: 600;
+  }
+
+  .pair {
+    padding: 0.5rem 0 0.75rem;
+  }
+
+  .reason {
+    color: var(--accent);
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
   }
 
   .actions {

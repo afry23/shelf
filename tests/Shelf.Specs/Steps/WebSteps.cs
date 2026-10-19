@@ -46,6 +46,15 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Given("the web server is running on the library {string}")]
     public void GivenTheWebServerIsRunning(string library) => Start(library, string.Empty);
 
+    /// <summary>The MCP server over HTTP is the same host process with another command; the requests and the checks of the web steps apply to it.</summary>
+    [Given("the MCP HTTP server is running on the library {string}")]
+    [When("the MCP HTTP server is running on the library {string}")]
+    public void GivenTheMcpHttpServerIsRunning(string library) => Start(library, string.Empty, "mcp", "--http");
+
+    [Given("the MCP HTTP server is running on the library {string} with the arguments {string}")]
+    [When("the MCP HTTP server is running on the library {string} with the arguments {string}")]
+    public void GivenTheMcpHttpServerIsRunningWith(string library, string arguments) => Start(library, arguments, "mcp", "--http");
+
     [Given("the web server is running on the library {string} with the arguments {string}")]
     [When("the web server is running on the library {string} with the arguments {string}")]
     public void GivenTheWebServerIsRunningWith(string library, string arguments) => Start(library, arguments);
@@ -68,6 +77,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     [Then("the server wrote nothing to standard output")]
     public void ThenTheServerWroteNothing() => Assert.Equal(string.Empty, _stdout.ToString());
+
+    [Then("the standard error of the server contains {string}")]
+    public void ThenTheServerErrorContains(string text) => Assert.Contains(text, _stderr.ToString(), StringComparison.Ordinal);
 
     [Then("the standard error of the server does not contain {string}")]
     public void ThenTheServerErrorDoesNotContain(string text) => Assert.DoesNotContain(text, _stderr.ToString(), StringComparison.Ordinal);
@@ -92,6 +104,10 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Given("I send {string} with the JSON:")]
     [When("I send {string} with the JSON:")]
     public void WhenISendWithTheJson(string request, string body) => Send(request, header: null, withCookie: false, body);
+
+    [Given("I send {string} with the header {string} and the JSON:")]
+    [When("I send {string} with the header {string} and the JSON:")]
+    public void WhenISendWithTheHeaderAndTheJson(string request, string header, string body) => Send(request, header, withCookie: false, body);
 
     [When("I request {string} with the cookie")]
     public void WhenIRequestWithTheCookie(string request) => Send(request, header: null, withCookie: true);
@@ -123,6 +139,11 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response header {string} is the size of the file {string}")]
     public void ThenTheHeaderIsTheSizeOfTheFile(string name, string path) =>
         Assert.Equal(File(path).Length.ToString(CultureInfo.InvariantCulture), Header(name));
+
+    /// <summary>Keeps a value of the last answer for the next request, as <c>{entry}</c> (the ID of a review entry).</summary>
+    [Given("I note the JSON field {string} of the response as the entry")]
+    [When("I note the JSON field {string} of the response as the entry")]
+    public void WhenINoteTheEntry(string path) => _entry = Field(path)!.GetValue<string>();
 
     [Given("I look up the ID of the work {string}")]
     public void GivenILookUpTheIdOfTheWork(string title)
@@ -223,6 +244,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the JSON array {string} of the response has {int} entries")]
     public void ThenTheArrayHasEntries(string path, int count) => Assert.Equal(count, Field(path)!.AsArray().Count);
 
+    [Then("the JSON array {string} of the response includes {string}")]
+    public void ThenTheArrayIncludes(string path, string text) => Assert.Contains(text, Field(path)!.AsArray().Select(n => n!.GetValue<string>()));
+
+    [Then("the JSON array {string} of the response does not include {string}")]
+    public void ThenTheArrayDoesNotInclude(string path, string text) => Assert.DoesNotContain(text, Field(path)!.AsArray().Select(n => n!.GetValue<string>()));
+
     [Then("the JSON document has the path {string} with the method {string}")]
     public void ThenTheDocumentHasThePath(string path, string method) => Assert.NotNull(Json()["paths"]![path]![method]);
 
@@ -238,13 +265,15 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _response?.Dispose();
     }
 
-    private void Start(string library, string arguments)
+    private void Start(string library, string arguments, string command = "serve", params string[] fixedArguments)
     {
         Stop();
         _stdout.Clear();
         _stderr.Clear();
         _stop = new CancellationTokenSource();
-        var args = new List<string> { "serve", "--library", Path.Combine(workspace.WorkingDirectory, library) };
+        var args = new List<string> { command };
+        args.AddRange(fixedArguments);
+        args.AddRange(["--library", Path.Combine(workspace.WorkingDirectory, library)]);
         var extra = ArgumentSplitter.Split(arguments);
         if (!extra.Contains("--port"))
         {
@@ -303,9 +332,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _server = null;
     }
 
+    private string _entry = string.Empty;
+
     private void Send(string request, string? header, bool withCookie, string? body = null)
     {
         request = request.Replace("{id}", _workId, StringComparison.Ordinal)
+            .Replace("{entry}", _entry, StringComparison.Ordinal)
             .Replace("{script}", _script, StringComparison.Ordinal)
             .Replace("{style}", _style, StringComparison.Ordinal);
         var space = request.IndexOf(' ', StringComparison.Ordinal);
@@ -327,6 +359,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
         if (body is not null)
         {
+            // The Streamable HTTP endpoint answers a request that does not accept both kinds of answer with 406.
+            if (request[(space + 1)..].StartsWith("/mcp", StringComparison.Ordinal))
+            {
+                message.Headers.TryAddWithoutValidation("Accept", "application/json, text/event-stream");
+            }
+
             var type = message.Method == HttpMethod.Patch ? "application/merge-patch+json" : "application/json";
             message.Content = new StringContent(body, Encoding.UTF8, type);
         }

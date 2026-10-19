@@ -63,6 +63,14 @@ public sealed record SearchResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SearchItem[] Results);
 
+/// <summary>The works most like the work <paramref name="Id"/> (<c>GET /works/{id}/similar</c>), best first; <paramref name="Note"/> says when the embeddings are missing.</summary>
+public sealed record SimilarResponse(
+    string Id,
+    string Title,
+    int Total,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    SearchItem[] Results);
+
 /// <summary>The body of <c>PUT /works/{id}/tags</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record TagsRequest(JsonNode? Tags);
 
@@ -72,7 +80,11 @@ public sealed record WorkFile(
     string Name,
     string Format,
     long SizeBytes,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress);
+
+/// <summary>The body of <c>PUT /files/{id}/progress</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
+public sealed record ProgressRequest(JsonNode? Locator);
 
 /// <summary>A work as the work view shows it: the metadata, the tags, the files with their IDs and the table of contents.</summary>
 public sealed record WorkDetail(
@@ -93,6 +105,7 @@ public sealed record WorkDetail(
     string ReadStatus,
     bool HasCover,
     WorkFile[] Files,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadFile,
     TocItem[] Toc);
 
 /// <param name="Completeness">How many of the 8 metadata fields the file has; only for different files of one work (null for identical files).</param>
@@ -114,3 +127,15 @@ public sealed record DuplicateList(int Total, DuplicateGroupItem[] Groups);
 
 /// <summary>The body of a duplicate action. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record FileRequest(JsonNode? FileId);
+
+/// <summary>The body of the action on a probable pair: the IDs of the two works. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record PairRequest(JsonNode? A, JsonNode? B);
+
+/// <summary>The body of <c>POST /tags/rename</c> and <c>/tags/merge</c>: the tag, and the name it gets (<c>to</c>) or the tag it goes into (<c>into</c>).</summary>
+public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into);
+
+/// <summary>The body of <c>POST /review/{id}/accept</c>: the work to merge into; without it the best candidate of the entry.</summary>
+public sealed record AcceptRequest(JsonNode? Into);
+
+/// <summary>The body of <c>POST /organize</c>: the pattern that was previewed; without it the configured one.</summary>
+public sealed record OrganizeRequest(JsonNode? Pattern);

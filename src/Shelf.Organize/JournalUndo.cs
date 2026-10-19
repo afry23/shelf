@@ -10,6 +10,30 @@ public sealed record UndoResult(string Journal, string Label, int Reverted, IRea
 /// <summary>Reverts the last undoable run (F-ORG-6) and refuses to overwrite or to move a file that changed since.</summary>
 public static class JournalUndo
 {
+    /// <summary>The label of the run that <see cref="Undo"/> would revert now (<c>organize</c>, <c>tag rename</c>, ...), or <c>null</c>.</summary>
+    /// <exception cref="JournalException"/>
+    public static string? NextLabel(string root)
+    {
+        root = FileJournal.Normalize(root);
+        JournalRecovery.Recover(root);
+        var directory = LibraryPaths.JournalDirectory(root);
+        if (!Directory.Exists(directory))
+        {
+            return null;
+        }
+
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json").Order(StringComparer.Ordinal).Reverse())
+        {
+            var data = JournalFormat.Parse(path);
+            if (data.Undoable && data.State == JournalState.Finished && data.Ops.Any(o => o.Status == JournalOpStatus.Done))
+            {
+                return data.Label;
+            }
+        }
+
+        return null;
+    }
+
     /// <returns><c>null</c> if there is nothing to undo.</returns>
     /// <exception cref="JournalException"/>
     public static UndoResult? Undo(string root)

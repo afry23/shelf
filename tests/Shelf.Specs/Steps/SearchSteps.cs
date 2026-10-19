@@ -83,6 +83,10 @@ public sealed partial class SearchSteps(CliSteps cli, ConfigSteps workspace)
     public void ThenTheJsonHasTheStringContaining(string path, string text) =>
         Assert.Contains(text, Navigate(path).GetString()!, StringComparison.Ordinal);
 
+    [Then("the JSON of standard output has the boolean {string} equal to {string}")]
+    public void ThenTheJsonHasTheBoolean(string path, string expected) =>
+        Assert.Equal(bool.Parse(expected), Navigate(path).GetBoolean());
+
     [Then("the JSON of standard output has no property {string}")]
     public void ThenTheJsonHasNoProperty(string name) =>
         Assert.False(JsonDocument.Parse(cli.StandardOutput).RootElement.TryGetProperty(name, out _), $"Unexpected property {name}");

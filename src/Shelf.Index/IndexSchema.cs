@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 
@@ -75,7 +75,7 @@ internal static class IndexSchema
             text TEXT NOT NULL,
             UNIQUE(file_id, ordinal))
         """,
-        $"CREATE VIRTUAL TABLE works_fts USING fts5(title, subtitle, authors, description, tags, tokenize='{Tokenizer}')",
+        $"CREATE VIRTUAL TABLE works_fts USING fts5(title, subtitle, authors, description, tags, stems_en, stems_de, tokenize='{Tokenizer}')",
         $"CREATE VIRTUAL TABLE chunks_fts USING fts5(text, content='chunks', content_rowid='id', tokenize='{Tokenizer}')",
         """
         CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN

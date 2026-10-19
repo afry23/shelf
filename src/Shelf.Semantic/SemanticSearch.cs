@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Numerics.Tensors;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Shelf.Core.Model;
+using Shelf.Index;
 
 namespace Shelf.Semantic;
 
@@ -66,6 +68,92 @@ public static class SemanticSearch
         }
 
         return [.. near.Where(h => bySeq.ContainsKey(h.Id)).Select(h => new SemanticHit(bySeq[h.Id], Similarity(h.Distance), null))];
+    }
+
+    /// <summary>
+    /// The works nearest to the work with the ID <paramref name="workId"/> (F-SEM-6), best first, without the work itself; null if
+    /// the work has no vector (yet). The vector of the work is used as it is stored: no model is needed.
+    /// </summary>
+    public static List<SemanticHit>? SimilarWorks(SqliteConnection connection, VectorStore store, string workId, int limit)
+    {
+        using var find = connection.CreateCommand();
+        find.CommandText = "SELECT seq FROM works WHERE id = $id";
+        find.Parameters.AddWithValue("$id", workId);
+        if (find.ExecuteScalar() is not long seq || store.Get(VectorKind.Work, seq) is not { } vector)
+        {
+            return null;
+        }
+
+        // One more than asked for: the work itself is the nearest vector.
+        var near = store.Nearest(VectorKind.Work, vector, limit + 1).Where(h => h.Id != seq).Take(limit).ToList();
+        if (near.Count == 0)
+        {
+            return [];
+        }
+
+        var bySeq = LoadWorks(connection, "seq", near.Select(h => (object)h.Id)).ToDictionary(w => w.Seq, w => w.Work);
+        return [.. near.Where(h => bySeq.ContainsKey(h.Id)).Select(h => new SemanticHit(bySeq[h.Id], Similarity(h.Distance), null))];
+    }
+
+    /// <summary>
+    /// Every pair of works whose vectors have a cosine similarity of at least <paramref name="minimum"/> (F-DUP-3). All pairs are
+    /// compared in memory, so the cost grows with the square of the number of works.
+    /// </summary>
+    public static List<WorkSimilarity> SimilarPairs(SqliteConnection connection, VectorStore store, double minimum)
+    {
+        var vectors = store.All(VectorKind.Work);
+        var ids = new Dictionary<long, string>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT seq, id FROM works";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                ids[reader.GetInt64(0)] = reader.GetString(1);
+            }
+        }
+
+        var known = vectors.Where(v => ids.ContainsKey(v.Id)).ToList();
+        foreach (var (_, vector) in known)
+        {
+            var length = Math.Sqrt(TensorPrimitives.Dot<float>(vector, vector));
+            if (length > 0)
+            {
+                TensorPrimitives.Divide(vector, (float)length, vector);
+            }
+        }
+
+        var pairs = new List<WorkSimilarity>();
+        for (var i = 0; i < known.Count; i++)
+        {
+            for (var j = i + 1; j < known.Count; j++)
+            {
+                var cosine = TensorPrimitives.Dot<float>(known[i].Vector, known[j].Vector);
+                if (cosine >= minimum)
+                {
+                    pairs.Add(new WorkSimilarity(Ulid.Parse(ids[known[i].Id]), Ulid.Parse(ids[known[j].Id]), cosine));
+                }
+            }
+        }
+
+        return pairs;
+    }
+
+    /// <summary>
+    /// What to tell about a search for similar works, or null: the work has no vector, or the index is incomplete.
+    /// <paramref name="hits"/> is the result of <see cref="SimilarWorks"/>.
+    /// </summary>
+    public static string? SimilarNote(List<SemanticHit>? hits, VectorStore? store, SemanticCoverage coverage, string command = "shelf reindex --embeddings")
+    {
+        var empty = store is null || (store.Count(VectorKind.Work) == 0 && store.Count(VectorKind.Chunk) == 0);
+        if (hits is not null)
+        {
+            return coverage.Note(empty, command);
+        }
+
+        return empty
+            ? coverage.Note(true, command) ?? $"no embeddings yet; run: {command}"
+            : $"this work has no embedding yet; run: {command}";
     }
 
     /// <summary>

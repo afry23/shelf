@@ -148,6 +148,22 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the browser address does not contain {string}")]
     public void ThenAddressDoesNotContain(string text) => Assert.True(Poll(() => !Page.Url.Contains(text, StringComparison.Ordinal)), $"The address is {Page.Url}");
 
+    [When("I press the key {string}")]
+    [Given("I press the key {string}")]
+    public void WhenIPressTheKey(string key) => Page.Keyboard.PressAsync(key).GetAwaiter().GetResult();
+
+    [Then("the focus is on the item {string}")]
+    public void ThenFocusOnItem(string text) =>
+        Assert.True(
+            Poll(() => Page.EvaluateAsync<string>("() => (document.activeElement && document.activeElement.hasAttribute('data-nav')) ? document.activeElement.innerText : ''").GetAwaiter().GetResult().Contains(text, StringComparison.Ordinal)),
+            $"The focus is not on an item with '{text}'. {Dump()}");
+
+    [Then("the focus is in the search field")]
+    public void ThenFocusInSearch() =>
+        Assert.True(
+            Poll(() => Page.EvaluateAsync<bool>("() => document.activeElement?.getAttribute('aria-label') === 'Search your library'").GetAwaiter().GetResult()),
+            $"The search field has no focus. {Dump()}");
+
     [Then("the link {string} points to an address containing {string}")]
     public void ThenLinkPoints(string name, string text) =>
         Expect(Page.GetByRole(AriaRole.Link, new() { Name = name }).First, e => e.ToHaveAttributeAsync("href", new Regex(Regex.Escape(text))));

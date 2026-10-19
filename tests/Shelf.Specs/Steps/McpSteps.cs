@@ -17,7 +17,7 @@ namespace Shelf.Specs.Steps;
 /// over two pipes; the process scenarios start <c>shelf mcp</c> for real and read its raw standard output.
 /// </summary>
 [Binding]
-public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps workspace) : IDisposable
+public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps workspace, WebSteps web) : IDisposable
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
@@ -73,6 +73,21 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
         _server = Task.Run(() => ShelfApp.Run(["mcp", "--library", Library(library)], new StringWriter(), new StringWriter(), cli));
 
         _client = McpClient.CreateAsync(new StreamClientTransport(_toServer, _fromServer)).WaitAsync(Timeout).GetAwaiter().GetResult();
+        _tools = _client.ListToolsAsync().AsTask().WaitAsync(Timeout).GetAwaiter().GetResult();
+    }
+
+    /// <summary>The same server, started with <c>--http</c>; the SDK's client talks to it over Streamable HTTP.</summary>
+    [Given("the MCP server is running over HTTP on the library {string}")]
+    public void GivenTheServerIsRunningOverHttp(string library)
+    {
+        Stop();
+        web.GivenTheMcpHttpServerIsRunning(library);
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(web.BaseAddress, "mcp"),
+            TransportMode = HttpTransportMode.StreamableHttp,
+        });
+        _client = McpClient.CreateAsync(transport).WaitAsync(Timeout).GetAwaiter().GetResult();
         _tools = _client.ListToolsAsync().AsTask().WaitAsync(Timeout).GetAwaiter().GetResult();
     }
 

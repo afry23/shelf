@@ -181,7 +181,7 @@
         {#if view === 'grid'}
           <ul class="shelf" aria-label="Books">
             {#each list.items as book (book.id)}
-              <li>
+              <li data-nav>
                 <a class="book" href={`/works/${book.id}`}>
                   <span class="plank"><Cover id={book.id} title={book.title} authors={book.authors} hasCover={book.hasCover} /></span>
                   <span class="caption">
@@ -195,7 +195,7 @@
         {:else}
           <ul class="rows" aria-label="Books">
             {#each list.items as book (book.id)}
-              <li>
+              <li data-nav>
                 <a class="row" href={`/works/${book.id}`}>
                   <span class="thumb"><Cover id={book.id} title={book.title} authors={book.authors} hasCover={book.hasCover} /></span>
                   <span class="what">

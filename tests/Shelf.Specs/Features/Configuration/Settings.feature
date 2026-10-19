@@ -10,6 +10,9 @@ Feature: Settings from the global and the per-library config
     And the setting "grouping.review" is "0.5"
     And the setting "grouping.max_hamming" is "5"
     And the setting "grouping.auto_hamming" is "3"
+    And the setting "grouping.probable_hamming" is "3"
+    And the setting "grouping.probable_cosine" is "0.95"
+    And the setting "reader.preferred_format" is "epub"
     And there are no warnings
 
   Scenario Outline: The library config overrides the global config, which overrides the default
@@ -29,6 +32,8 @@ Feature: Settings from the global and the per-library config
       | grouping.max_hamming = 6   | grouping.max_hamming = 8   | grouping.max_hamming | 8        |
       | grouping.auto_hamming = 2  | # nothing                  | grouping.auto_hamming | 2       |
       | grouping.auto_hamming = 1  | grouping.auto_hamming = 4  | grouping.auto_hamming | 4       |
+      | grouping.probable_hamming = 1 | grouping.probable_hamming = 2 | grouping.probable_hamming | 2 |
+      | grouping.probable_cosine = 0.9 | # nothing                | grouping.probable_cosine | 0.9   |
       | # nothing                  | # nothing                  | semantic.model       | multilingual-e5-small |
       | semantic.model = 'a'       | # nothing                  | semantic.model       | a        |
       | semantic.model = 'a'       | semantic.model = 'b'       | semantic.model       | b        |
@@ -38,6 +43,8 @@ Feature: Settings from the global and the per-library config
       | # nothing                  | # nothing                  | mcp.read_only        | false    |
       | mcp.read_only = true       | # nothing                  | mcp.read_only        | true     |
       | mcp.read_only = true       | mcp.read_only = false      | mcp.read_only        | false    |
+      | reader.preferred_format = 'pdf' | # nothing             | reader.preferred_format | pdf   |
+      | reader.preferred_format = 'pdf' | reader.preferred_format = 'EPUB' | reader.preferred_format | epub |
       | grouping.auto_merge = 1    | # nothing                  | grouping.auto_merge  | 1        |
 
   Scenario Outline: Invalid threshold values are rejected with the key and the file
@@ -54,6 +61,8 @@ Feature: Settings from the global and the per-library config
       | grouping.auto_hamming = -1 | library.toml: grouping.auto_hamming: must be between 0 and 64 |
       | grouping.max_hamming = 2   | library.toml: grouping.auto_hamming: must not exceed grouping.max_hamming |
       | grouping.max_hamming = 65 | library.toml: grouping.max_hamming: must be between 0 and 64 |
+      | grouping.probable_hamming = 65 | library.toml: grouping.probable_hamming: must be between 0 and 64 |
+      | grouping.probable_cosine = 1.5 | library.toml: grouping.probable_cosine: must be between 0 and 1 |
       | grouping.max_hamming = -1 | library.toml: grouping.max_hamming: must be between 0 and 64 |
       | grouping.max_hamming = 2.5 | library.toml: grouping.max_hamming: expected integer, found float |
       | grouping.auto_merge = 'high' | library.toml: grouping.auto_merge: expected float, found string |
@@ -63,6 +72,8 @@ Feature: Settings from the global and the per-library config
       | mcp.max_chars = 1000001   | library.toml: mcp.max_chars: must be between 1 and 1000000 |
       | mcp.max_chars = 'many'    | library.toml: mcp.max_chars: expected integer, found string |
       | mcp.read_only = 'yes'     | library.toml: mcp.read_only: expected boolean, found string |
+      | reader.preferred_format = 'mobi' | library.toml: reader.preferred_format: must be epub or pdf |
+      | reader.preferred_format = 3 | library.toml: reader.preferred_format: expected string, found integer |
 
   Scenario Outline: Unknown keys produce a warning and are otherwise ignored
     Given the <layer> config contains the line "<line>"

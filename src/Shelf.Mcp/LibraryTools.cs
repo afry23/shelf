@@ -39,6 +39,12 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10) =>
         Run(() => service.SemanticSearch(query, level, hybrid, limit));
 
+    [Description("The works most like a given work, best first (without the work itself), by the meaning of title, description and tags. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete.")]
+    public SimilarBooksResult SimilarBooks(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("Largest number of works, 1 to 100 (default 10)")] int limit = 10) =>
+        Run(() => service.SimilarBooks(id, limit));
+
     [Description("Add tags to a work. A tag is free text; '/' makes a hierarchy such as 'architektur/ddd'. Tags the work has are left as they are. The change can be undone with 'shelf undo'.")]
     public TagChange AddTags(
         [Description("The ID of a work, or the start of it")] string id,
@@ -58,6 +64,10 @@ internal sealed class LibraryTools(LibraryService service)
     [Description("Duplicate files in the library: identical files (same content) and different files of one work in the same format. Read-only; nothing is deleted.")]
     public DuplicatesResult FindDuplicates() =>
         Run(() => service.FindDuplicates());
+
+    [Description("Works that probably are one book although they are separate works: nearly the same text (a small 'hamming' distance of the text fingerprints), or very similar vectors ('cosine'). For a person to check; read-only, nothing is deleted or marked.")]
+    public ProbablePairsResult FindProbableDuplicates() =>
+        Run(() => service.FindProbableDuplicates());
 
     [Description("A dry run of 'shelf organize': which files would move to which folders and names. Nothing is moved.")]
     public OrganizationProposal ProposeOrganization(
