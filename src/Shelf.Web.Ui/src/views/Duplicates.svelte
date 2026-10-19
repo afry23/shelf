@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { duplicateAction, duplicates, ignoreProbable, probableDuplicates, type DuplicateFile, type DuplicateList, type ProbableList, type ProbablePair } from '../api';
+  import { duplicateAction, duplicates, ignoreProbable, probableDuplicates, splitFile, type DuplicateFile, type DuplicateList, type ProbableList, type ProbablePair } from '../api';
   import { authorLine, bytes, plural } from '../format';
   import { refreshDuplicateCount } from '../stores.svelte';
 
@@ -8,8 +8,10 @@
   let probable = $state<ProbableList | null>(null);
   let error = $state<string | null>(null);
   let message = $state<string | null>(null);
+  // The work a file was split off into, so that the message can lead there to correct its title.
+  let splitWork = $state<string | null>(null);
   // The action that waits for a second click: the files of this run are not touched before.
-  let pending = $state<{ fileId: string; action: 'keep' | 'trash' } | null>(null);
+  let pending = $state<{ fileId: string; action: 'keep' | 'trash' | 'split' } | null>(null);
 
   async function load(): Promise<void> {
     try {
@@ -28,6 +30,7 @@
 
   async function run(action: 'keep' | 'trash' | 'ignore', fileId: string): Promise<void> {
     pending = null;
+    splitWork = null;
     try {
       const outcome = await duplicateAction(action, fileId);
       message =
@@ -35,6 +38,20 @@
           ? 'Marked as not duplicates.'
           : `Moved ${plural(outcome.trashed, 'file')} to the trash.` +
             (outcome.worksRemoved.length ? ` ${plural(outcome.worksRemoved.length, 'work')} ${outcome.worksRemoved.length === 1 ? 'was' : 'were'} removed.` : '');
+      error = null;
+      await load();
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
+
+  async function split(file: DuplicateFile): Promise<void> {
+    pending = null;
+    splitWork = null;
+    try {
+      const outcome = await splitFile(file.id);
+      message = `Split ${outcome.file} off into a work of its own.`;
+      splitWork = outcome.newWork;
       error = null;
       await load();
     } catch (e) {
@@ -58,8 +75,8 @@
       .filter(Boolean)
       .join(', ');
 
-  const ask = (fileId: string, action: 'keep' | 'trash') => (pending = { fileId, action });
-  const asks = (file: DuplicateFile, action: 'keep' | 'trash') => pending?.fileId === file.id && pending.action === action;
+  const ask = (fileId: string, action: 'keep' | 'trash' | 'split') => (pending = { fileId, action });
+  const asks = (file: DuplicateFile, action: 'keep' | 'trash' | 'split') => pending?.fileId === file.id && pending.action === action;
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (pending = null)} />
@@ -68,7 +85,14 @@
   <h1>Duplicates</h1>
 
   {#if message}
-    <p class="done" role="status">{message}{#if !message.startsWith('Marked')} Undo with <code>shelf undo</code>.{/if}</p>
+    <p class="done" role="status">
+      {message}
+      {#if splitWork}
+        This cannot be undone. <a href={`/works/${splitWork}`}>Open the new work</a> to correct its title.
+      {:else if !message.startsWith('Marked')}
+        Undo with <code>shelf undo</code>.
+      {/if}
+    </p>
   {/if}
   {#if error}<p role="alert">{error}</p>{/if}
 
@@ -104,9 +128,15 @@
                   {:else if asks(file, 'trash')}
                     <button type="button" class="button danger" onclick={() => run('trash', file.id)}>Confirm</button>
                     <button type="button" class="button" onclick={() => (pending = null)}>Cancel</button>
+                  {:else if asks(file, 'split')}
+                    <button type="button" class="button danger" onclick={() => split(file)}>Confirm</button>
+                    <button type="button" class="button" onclick={() => (pending = null)}>Cancel</button>
                   {:else}
                     <button type="button" class={['button', position === group.keep && 'primary']} onclick={() => ask(file.id, 'keep')}>Keep this file</button>
                     <button type="button" class="button" onclick={() => ask(file.id, 'trash')}>Move to trash</button>
+                    {#if group.kind === 'same-format'}
+                      <button type="button" class="button" onclick={() => ask(file.id, 'split')}>Split into own work</button>
+                    {/if}
                   {/if}
                 </div>
               </article>

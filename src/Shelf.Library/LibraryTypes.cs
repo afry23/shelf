@@ -93,6 +93,9 @@ public sealed record TagSetResult(string Id, string[] Tags, int Added, int Remov
 /// <summary>What a duplicate action did: files moved to the trash, and works that were left without a file and went along.</summary>
 public sealed record DuplicateOutcome(int Trashed, string[] WorksRemoved);
 
+/// <summary>A file that was split off its work: the work it came from, the work it became, its name and the folder of the new work (relative to the library).</summary>
+public sealed record SplitOutcome(string Work, string NewWork, string File, string Folder);
+
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
 
 public sealed record TagNode(string Name, string Path, int Works, int Direct, TagNode[] Children);

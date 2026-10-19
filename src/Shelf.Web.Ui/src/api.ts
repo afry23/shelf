@@ -194,6 +194,13 @@ export interface DuplicateOutcome {
   worksRemoved: string[];
 }
 
+export interface SplitOutcome {
+  work: string;
+  newWork: string;
+  file: string;
+  folder: string;
+}
+
 export interface TagNode {
   name: string;
   path: string;
@@ -387,6 +394,8 @@ export const ignoreProbable = (a: string, b: string) => request<DuplicateOutcome
 
 export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: string) =>
   request<DuplicateOutcome>('POST', `/duplicates/${action}`, { fileId });
+
+export const splitFile = (fileId: string) => request<SplitOutcome>('POST', `/files/${encodeURIComponent(fileId)}/split`);
 
 export const coverUrl = (id: string) => `/api/v1/works/${encodeURIComponent(id)}/cover`;
 

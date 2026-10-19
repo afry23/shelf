@@ -412,6 +412,12 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Given("I click the {string} button of the file card {string}")]
     public void WhenCardButton(string button, string file) => Card(file).GetByRole(AriaRole.Button, new() { Name = button, Exact = true }).ClickAsync().GetAwaiter().GetResult();
 
+    [Then("the file card {string} has a {string} button")]
+    public void ThenCardHasButton(string file, string button) => Assert.True(Wait(Card(file).GetByRole(AriaRole.Button, new() { Name = button, Exact = true })), $"'{file}' has no '{button}' button. {Dump()}");
+
+    [Then("the file card {string} has no {string} button")]
+    public void ThenCardHasNoButton(string file, string button) => Assert.True(Gone(Card(file).GetByRole(AriaRole.Button, new() { Name = button, Exact = true })), $"'{file}' has a '{button}' button. {Dump()}");
+
     [Then("the file card {string} asks to confirm")]
     public void ThenAsksToConfirm(string file) => Assert.True(Wait(Card(file).GetByRole(AriaRole.Button, new() { Name = "Confirm" })), $"'{file}' does not ask. {Dump()}");
 
