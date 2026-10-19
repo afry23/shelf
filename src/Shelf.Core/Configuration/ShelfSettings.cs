@@ -34,6 +34,9 @@ public sealed record McpSettings(int MaxChars, bool ReadOnly = false)
     public const int DefaultMaxChars = 20_000;
     public const int LargestMaxChars = 1_000_000;
 
+    /// <summary>The port of <c>shelf mcp --http</c>, next to the 8420 of the web server.</summary>
+    public const int DefaultHttpPort = 8421;
+
     public static McpSettings Default { get; } = new(DefaultMaxChars);
 }
 

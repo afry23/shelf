@@ -47,19 +47,40 @@ public static class LibraryMcpServer
         ArgumentNullException.ThrowIfNull(models);
         ArgumentNullException.ThrowIfNull(embedderFactory);
 
-        using var semantic = new SemanticBackend(models, embedderFactory);
+        using var library = Open(root, settings, version, models, embedderFactory);
+        var transport = new StreamServerTransport(input, output, "shelf", loggerFactory);
+        await using var server = McpServer.Create(transport, library.Options, loggerFactory);
+        await server.RunAsync(cancellation).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The tools and resources of a library, for a transport that the caller runs (Streamable HTTP, PRD 7.2). The library
+    /// service and the embedder live as long as the returned object.
+    /// </summary>
+    public static OpenLibrary Open(string root, ShelfSettings settings, string version, ModelCatalog models, Func<ModelFolder, IEmbedder> embedderFactory)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(root);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(models);
+        ArgumentNullException.ThrowIfNull(embedderFactory);
+
+        var semantic = new SemanticBackend(models, embedderFactory);
         var tools = new LibraryTools(new LibraryService(root, settings, semantic));
-        var options = new McpServerOptions
+        return new OpenLibrary(semantic, new McpServerOptions
         {
             ServerInfo = new Implementation { Name = "shelf", Version = version },
             ServerInstructions = settings.Mcp.ReadOnly ? ReadOnlyInstructions : Instructions,
             ToolCollection = Tools(tools, settings.Mcp.ReadOnly),
             ResourceCollection = Resources(tools),
-        };
+        });
+    }
 
-        var transport = new StreamServerTransport(input, output, "shelf", loggerFactory);
-        await using var server = McpServer.Create(transport, options, loggerFactory);
-        await server.RunAsync(cancellation).ConfigureAwait(false);
+    /// <summary>The server options of an open library; disposing releases the embedder.</summary>
+    public sealed class OpenLibrary(IDisposable semantic, McpServerOptions options) : IDisposable
+    {
+        public McpServerOptions Options { get; } = options;
+
+        public void Dispose() => semantic.Dispose();
     }
 
     internal static McpServerPrimitiveCollection<McpServerTool> Tools(LibraryTools tools, bool readOnly)

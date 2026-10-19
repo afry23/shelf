@@ -97,13 +97,13 @@ Feature: Access to the web server
     Then the response status is 401
 
   Scenario: The token from the config is used
-    Given the global config contains the line "web.token = \"from-config\""
+    Given the global config file contains the line "web.token = 'from-config'"
     And the web server is running on the library "library"
     When I request "GET /api/v1/status" with the header "Authorization: Bearer from-config"
     Then the response status is 200
 
   Scenario: The token of the command line wins over the config
-    Given the global config contains the line "web.token = \"from-config\""
+    Given the global config file contains the line "web.token = 'from-config'"
     And the web server is running on the library "library" with the arguments "--token from-cli"
     When I request "GET /api/v1/status" with the header "Authorization: Bearer from-config"
     Then the response status is 401

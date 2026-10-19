@@ -205,6 +205,41 @@ code=0
 grep -q 'requires --token' bind-err.txt
 [ ! -s bind-out.txt ]
 
+echo "== M5: MCP over Streamable HTTP (tools, token, loopback host, clean stdout)"
+mcp_http_start() {
+  env -i PATH=/usr/bin:/bin HOME="$PWD" "$BIN" mcp --http --library library --port 0 "$@" > mcp-http-out.txt 2> mcp-http-err.txt &
+  MCP_PID=$!
+  for _ in $(seq 1 100); do grep -q 'Listening on' mcp-http-err.txt && break; sleep 0.1; done
+  grep -q 'Listening on' mcp-http-err.txt
+  MCP_URL="$(sed -n 's#^Listening on \(http://[^ ]*\).*#\1#p' mcp-http-err.txt | head -n 1)"
+  case "$MCP_URL" in */mcp) ;; *) echo "unexpected MCP address: $MCP_URL"; exit 1;; esac
+}
+mcp_http_stop() {
+  kill -TERM "$MCP_PID"
+  wait "$MCP_PID" # exit code 0: an orderly stop on SIGTERM
+  [ ! -s mcp-http-out.txt ]
+}
+mcp_post() { # the header (or X-None), then the body
+  curl -s -o mcp-http.txt -w '%{http_code}' -X POST "$MCP_URL" -H "$1" -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' -d "$2"
+}
+LIST='{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+mcp_http_start
+[ "$(mcp_post 'X-None: 1' "$LIST")" = 200 ]
+for tool in search_books get_book read_passage list_tags add_tags propose_organization; do
+  grep -q "\"name\":\"$tool\"" mcp-http.txt
+done
+[ "$(mcp_post 'X-None: 1' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_books","arguments":{"query":"event"}}}')" = 200 ]
+grep -q 'Event Streams in Practice' mcp-http.txt
+[ "$(mcp_post 'Host: evil.example' "$LIST")" = 421 ]
+mcp_http_stop
+
+mcp_http_start --token s3cret
+[ "$(mcp_post 'X-None: 1' "$LIST")" = 401 ]
+[ "$(mcp_post 'Authorization: Bearer wrong' "$LIST")" = 401 ]
+[ "$(mcp_post 'Authorization: Bearer s3cret' "$LIST")" = 200 ]
+mcp_http_stop
+
 if [ -n "${SHELF_E5_DIR:-}" ]; then
   echo "== M3: model, embeddings, semantic search"
   "$BIN" model install "$SHELF_E5_DIR" --library library | grep -q 'multilingual-e5-small'
