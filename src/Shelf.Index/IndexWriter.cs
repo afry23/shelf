@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Shelf.Core.Grouping;
 using Shelf.Core.Model;
 using Shelf.Core.Review;
+using Shelf.Core.Search;
 using Shelf.Extraction;
 
 namespace Shelf.Index;
@@ -289,14 +290,36 @@ internal sealed class IndexWriter : IDisposable
         }
 
         var fts = _insertFts ??= Prepare(
-            "INSERT INTO works_fts(rowid, title, subtitle, authors, description, tags) VALUES ($seq, $title, $subtitle, $authors, $description, $tags)");
+            "INSERT INTO works_fts(rowid, title, subtitle, authors, description, tags, stems_en, stems_de) VALUES ($seq, $title, $subtitle, $authors, $description, $tags, $stemsEn, $stemsDe)");
         Bind(fts, "$seq", seq);
         Bind(fts, "$title", s.Title);
         Bind(fts, "$subtitle", s.Subtitle);
         Bind(fts, "$authors", string.Join(' ', s.Authors));
         Bind(fts, "$description", s.Description);
         Bind(fts, "$tags", string.Join(' ', s.Tags));
+
+        // Stems of the words of title, subtitle, description and tags, in the column of the language of the work
+        // (F-SRC-6); names of authors are not stemmed.
+        var stemmer = Stemmer.For(s.Language);
+        var stems = stemmer is null
+            ? null
+            : string.Join(' ', new[] { s.Title, s.Subtitle, s.Description, string.Join(' ', s.Tags) }.SelectMany(Stemmer.Words).SelectMany(w => StemsOf(w, stemmer)));
+        Bind(fts, "$stemsEn", stemmer == Stemmer.English ? stems : null);
+        Bind(fts, "$stemsDe", stemmer == Stemmer.German ? stems : null);
         NonQuery(fts);
+    }
+
+    // The stem and the stem of the stem: Snowball German turns "systeme" into "system" but "system" into "syst",
+    // and a search for either must find both.
+    private static IEnumerable<string> StemsOf(string word, string stemmer)
+    {
+        var stem = Stemmer.Stem(word, stemmer);
+        yield return stem;
+        var again = Stemmer.Stem(stem, stemmer);
+        if (again != stem)
+        {
+            yield return again;
+        }
     }
 
     private void InsertIgnore(string x, string y, string kind, string owner)

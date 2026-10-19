@@ -55,10 +55,20 @@ internal static class SearchCommand
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(context.Root));
             var hits = LibrarySearch.Search(connection, query, parseResult.GetValue(limit));
+            var fuzzy = false;
+            if (hits.Count == 0)
+            {
+                hits = LibrarySearch.SearchFuzzy(connection, query, parseResult.GetValue(limit));
+                fuzzy = hits.Count > 0;
+                if (fuzzy)
+                {
+                    stderr.WriteLine("No exact match, showing similar titles and authors.");
+                }
+            }
 
             if (parseResult.GetValue(json))
             {
-                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, text, hits)));
+                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, text, hits, fuzzy)));
             }
             else if (hits.Count == 0)
             {
@@ -93,10 +103,15 @@ internal static class SearchCommand
         }
     }
 
-    private static void WriteJson(System.Text.Json.Utf8JsonWriter writer, string query, List<SearchHit> hits)
+    private static void WriteJson(System.Text.Json.Utf8JsonWriter writer, string query, List<SearchHit> hits, bool fuzzy)
     {
         writer.WriteStartObject();
         JsonOutput.Property(writer, "query", query);
+        if (fuzzy)
+        {
+            writer.WriteBoolean("fuzzy", true);
+        }
+
         JsonOutput.Property(writer, "total", hits.Count);
         writer.WriteStartArray("results");
         foreach (var hit in hits)
