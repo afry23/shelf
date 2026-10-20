@@ -408,8 +408,23 @@
 
   .side {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     justify-items: start;
+  }
+
+  .control {
+    width: 100%;
+  }
+
+  .control :global(.segmented) {
+    display: flex;
+  }
+
+  .control :global(.segmented button) {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 0.25rem;
   }
 
   .cover-box {
@@ -618,11 +633,12 @@
 
     .side {
       grid-template-columns: 9rem minmax(0, 1fr);
+      grid-template-rows: repeat(4, max-content) 1fr;
       align-items: start;
     }
 
     .cover-box {
-      grid-row: span 3;
+      grid-row: span 5;
     }
 
     .edit {
