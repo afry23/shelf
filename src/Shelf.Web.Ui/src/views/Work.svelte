@@ -309,6 +309,7 @@
             {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
             {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
             {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
+            <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
           </dl>
           <p><button type="button" class="button" onclick={startEditing}>Edit details</button></p>
         {/if}
@@ -511,6 +512,12 @@
 
   .facts dd {
     margin: 0;
+  }
+
+  .facts .work-id {
+    font-family: ui-monospace, monospace;
+    overflow-wrap: anywhere;
+    user-select: all;
   }
 
   section h2 {
