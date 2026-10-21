@@ -49,18 +49,29 @@ internal static class PdfExtractor
         string? textIsbn = null;
         if (withText)
         {
+            var pageWords = new List<(int Number, List<string> Words)>();
             for (var number = 1; number <= pages; number++)
             {
-                var text = string.Join(' ', document.GetPage(number).GetWords().Select(w => w.Text));
-                if (string.IsNullOrWhiteSpace(text))
+                var words = document.GetPage(number).GetWords().Select(w => w.Text).ToList();
+                if (words.Count == 0 || string.IsNullOrWhiteSpace(string.Join(' ', words)))
                 {
                     continue;
                 }
 
-                segments.Add(new TextSegment(Locators.PdfPage(number), text));
                 if (textIsbn is null && (number <= IsbnHeadPages || number > pages - IsbnTailPages))
                 {
-                    textIsbn = Isbn.Find(text);
+                    textIsbn = Isbn.Find(string.Join(' ', words));
+                }
+
+                pageWords.Add((number, words));
+            }
+
+            RunningHeads.Strip(pageWords);
+            foreach (var (number, words) in pageWords)
+            {
+                if (words.Count > 0)
+                {
+                    segments.Add(new TextSegment(Locators.PdfPage(number), string.Join(' ', words)));
                 }
             }
         }

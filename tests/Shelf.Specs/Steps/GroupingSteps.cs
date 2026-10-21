@@ -26,6 +26,7 @@ public sealed class GroupingSteps
 
     private readonly List<(string Label, WorkSignature Signature, ulong? Fingerprint)> _works = [];
     private readonly Dictionary<string, HashSet<string>> _notDuplicates = [];
+    private readonly Dictionary<string, List<string>> _formats = [];
     private readonly StringWriter _configText = new();
     private WorkMatcher? _matcher;
     private IncomingFile? _incoming;
@@ -111,6 +112,18 @@ public sealed class GroupingSteps
     public void GivenTheTextIsTheFirstWordsFollowedBy(string name, int first, string source, int more, int seed) =>
         _texts[name] = [.. _texts[source].Take(first), .. Words(more, seed)];
 
+    [Given("the text {string} is {int} words from the seed {int} followed by the text {string} without its first {int} words")]
+    public void GivenTheTextIsWordsFollowedByTheRest(string name, int words, int seed, string source, int skipped) =>
+        _texts[name] = [.. Words(words, seed), .. _texts[source].Skip(skipped)];
+
+    [Given("the text {string} is the text {string} with a page number after every {int} words")]
+    public void GivenTheTextHasPageNumbers(string name, string source, int every) =>
+        _texts[name] = [.. _texts[source].SelectMany((w, i) => (i + 1) % every == 0 ? new[] { w, ((i + 1) / every).ToString(CultureInfo.InvariantCulture) } : [w])];
+
+    [Given("the text {string} is the text {string} with every {int}th word split by a hyphen at a line end")]
+    public void GivenTheTextHasHyphenatedWords(string name, string source, int nth) =>
+        _texts[name] = [.. _texts[source].Select((w, i) => (i + 1) % nth == 0 && w.Length > 5 ? w[..3] + "-\n" + w[3..] : w)];
+
     [Given("the text {string} is the text {string} cut into segments of {int} words")]
     public void GivenTheTextCutIntoSegments(string name, string source, int size)
     {
@@ -184,6 +197,10 @@ public sealed class GroupingSteps
         set.Add(file);
     }
 
+    [Given("the work {string} has files of the formats {string}")]
+    public void GivenTheWorkHasFilesOfTheFormats(string work, string formats) =>
+        _formats[work] = [.. formats.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
+
     [Given("the configuration contains the line {string}")]
     public void GivenTheConfigurationContainsTheLine(string line) => _configText.WriteLine(line);
 
@@ -200,7 +217,7 @@ public sealed class GroupingSteps
     {
         Assert.Equal(GroupingAction.CreateNewWork, _decision!.Action);
         _works.Add((label, _incoming!.Signature, _incoming.Fingerprint));
-        _matcher!.Add(new WorkCandidate(IdOf(label), _incoming.Signature, _incoming.Fingerprint is { } f ? [f] : []));
+        _matcher!.Add(new WorkCandidate(IdOf(label), _incoming.Signature, _incoming.Fingerprint is { } f ? [f] : [], formats: [_incoming.Format]));
     }
 
     [Then("the decision is {string} with the confidence {double}")]
@@ -230,7 +247,8 @@ public sealed class GroupingSteps
         _incoming = new IncomingFile(
             name,
             WorkSignature.Create(title, Split(authors), year.Length == 0 ? null : int.Parse(year, CultureInfo.InvariantCulture), isbn.Length == 0 ? null : isbn),
-            print);
+            print,
+            Path.GetExtension(name).TrimStart('.').ToLowerInvariant());
         _decision = _matcher.Decide(_incoming);
         if (_decision.Action == GroupingAction.MergeIntoExisting && print is { } p)
         {
@@ -248,7 +266,8 @@ public sealed class GroupingSteps
                 IdOf(w.Label),
                 w.Signature,
                 w.Fingerprint is { } f ? [f] : [],
-                _notDuplicates.GetValueOrDefault(w.Label))));
+                _notDuplicates.GetValueOrDefault(w.Label),
+                _formats.GetValueOrDefault(w.Label))));
     }
 
     private static Ulid IdOf(string label) =>

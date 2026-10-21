@@ -28,7 +28,7 @@ public sealed class SimHashTests
     [Fact]
     public void Words_after_the_maximum_are_ignored()
     {
-        var head = Text(SimHash.MaxWords);
+        var head = Text(SimHash.FrontMatterWords + SimHash.MaxWords);
 
         Assert.Equal(SimHash.Compute([head]), SimHash.Compute([head + " extra words that do not count at all"]));
     }

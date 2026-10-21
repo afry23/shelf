@@ -99,6 +99,13 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         File.WriteAllBytes(PathOf(name), SampleBooks.Pdf(title, author, isbn13: null, seed));
     }
 
+    [Given("a sample PDF {string} with the title {string}, the author {string}, the ISBN {string} and the text seed {int}")]
+    public void GivenASamplePdfWithIsbn(string name, string title, string author, string isbn, int seed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathOf(name))!);
+        File.WriteAllBytes(PathOf(name), SampleBooks.Pdf(title, author, isbn, seed));
+    }
+
     [Given("a sample EPUB {string} with the title {string}, the authors {string} and the text seed {int}")]
     public void GivenASampleEpub(string name, string title, string authors, int seed)
     {

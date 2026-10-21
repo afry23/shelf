@@ -58,7 +58,7 @@ Method: a library of 1000 works / 1500 files (`generate --works 1000 --files 150
 | + `max_hamming` 5, German edition notes | **1002** | **0** | 2 |
 
 - **Fingerprint:** with single words the files of different works are within 3 bits for thousands of pairs (same language and field: same words). With word triples different works are at least 6 bits apart, the files of one work at most 5; the first 5000 words, each triple once.
-- **Guards** (beyond the PRD table): a title + author match is capped at 0.6 if both files have an ISBN-13 and they differ (another edition), or both have a fingerprint above `max_hamming` (another text). Equal ISBNs are not questioned.
+- **Guards** (beyond the PRD table): a title + author match is capped at 0.6 if both files have an ISBN-13 and they differ (another edition), or both have a fingerprint above `max_hamming` (another text). Equal ISBNs are not questioned. Later change: both guards are skipped in the title and author stage for a file of a format that the work does not have yet (PDF and EPUB of one book share neither ISBN nor exact text). The fingerprint skips the first 1500 words, drops page numbers and joins words split at line ends; `PdfExtractor` removes running heads (`RunningHeads`). `IndexSchema.Version` 4: run `shelf reindex` to recompute the fingerprints.
 - **Defaults:** `max_hamming` 10 → **5**; `auto_hamming` stays 3. At 5 the files of one work still match and the edition pairs of the generator (6 and 8 bits) are caught. The PRD table is updated.
 - **Edition notes** the generator uses and the normalizer now knows: `(Deutsche Ausgabe)`, `, Neuausgabe`, `(3. überarbeitete Auflage)`.
 - **Review entries** name at most five candidates; before, one entry listed hundreds (`review.json` 60 MB).
