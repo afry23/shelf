@@ -76,7 +76,7 @@ Feature: Deciding which work a file belongs to
       | grouping.auto_hamming = 1   | Something Else Entirely | Someone Else     |      | W1~2        | new work, review W1 | 0.6        |
       | grouping.auto_hamming = 5   | Something Else Entirely | Someone Else     |      | W1~5        | merge into W1       | 0.9        |
 
-  Scenario Outline: A file of a format the work does not have yet ignores a differing ISBN if the text is alike
+  Scenario Outline: A file of a format the work does not have yet ignores a differing ISBN and text
     Given the work "W1" has files of the formats "<work formats>"
     When a file named "<name>" arrives with the title "The Hobbit", the authors "J. R. R. Tolkien", the year "<year>", the ISBN "<isbn13>" and the fingerprint "<fingerprint>"
     Then the decision is "<decision>" with the confidence <confidence>
@@ -84,11 +84,11 @@ Feature: Deciding which work a file belongs to
     Examples:
       | work formats | name            | year | isbn13        | fingerprint | decision            | confidence |
       | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~3        | merge into W1       | 0.95       |
-      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~4        | new work, review W1 | 0.6        |
-      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 |             | new work, review W1 | 0.6        |
-      | epub         | The Hobbit.pdf  |      | 9780306406157 | W1~2        | merge into W1       | 0.95       |
-      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~6        | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~6        | merge into W1       | 0.95       |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 |             | merge into W1       | 0.95       |
+      | epub         | The Hobbit.pdf  |      | 9780306406157 | W1~20       | merge into W1       | 0.95       |
       | epub         | The Hobbit.epub | 1937 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.epub | 1937 | 9780306406157 | W1~6        | new work, review W1 | 0.6        |
       | epub, pdf    | The Hobbit.pdf  | 1937 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
       | epub         | The Hobbit.pdf  | 1951 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
 

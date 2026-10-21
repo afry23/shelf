@@ -46,9 +46,9 @@ Feature: Importing files into the library
     And the table "files" of the index has 2 rows
     And the review queue of "library" has 0 entries
 
-  Scenario: An EPUB and a PDF with different ISBNs become one work
+  Scenario: An EPUB and a PDF with different ISBNs and different text become one work
     Given a sample EPUB "incoming/Jane Doe - Quiet Systems.epub" with the title "Quiet Systems", the authors "Jane Doe", the ISBN "9780306406157" and the text seed 21
-    And a sample PDF "incoming/Quiet Systems.pdf" with the title "Quiet Systems", the author "Jane Doe", the ISBN "9781402894626" and the text seed 21
+    And a sample PDF "incoming/Quiet Systems.pdf" with the title "Quiet Systems", the author "Jane Doe", the ISBN "9781402894626" and the text seed 22
     When I run shelf with arguments "import incoming --library library"
     Then the exit code is 0
     And standard output contains "other format"

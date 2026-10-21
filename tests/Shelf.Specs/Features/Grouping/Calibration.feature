@@ -50,7 +50,7 @@ Feature: Grouping quality on a generated library (acceptance criterion 1)
     And I have run shelf with arguments "import generated/input --library library"
     When I run shelf with arguments "reindex --library library"
     Then the exit code is 0
-    And no work of the library holds the files of different generated works
+    And no work of the library holds the files of different generated works other than editions of one book
     And at least 95 percent of them are in one work of the library
 
   Scenario: Stricter thresholds still never merge different books

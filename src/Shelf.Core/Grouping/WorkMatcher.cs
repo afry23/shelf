@@ -62,9 +62,10 @@ public sealed record GroupingDecision(GroupingAction Action, Ulid? WorkId, doubl
 /// Two guards go beyond the table of the PRD, because a wrong merge is worse than a question: a title and author
 /// match is never sure if both files carry an ISBN-13 and the two differ (another edition), or if both have a text
 /// fingerprint and the texts are clearly different (distance above <c>max_hamming</c>). Such a match is capped at
-/// the confidence of "year differs" and goes to review. Equal ISBNs are not questioned. The ISBN guard is skipped in
-/// the title and author stage if the work has no file of the format of the new one (EPUB next to PDF) and the texts
-/// are within <c>auto_hamming</c>, because print and e-book carry different ISBNs. The text guard and the fingerprint stage keep their guards.
+/// the confidence of "year differs" and goes to review. Equal ISBNs are not questioned. Both guards are skipped in
+/// the title and author stage if the work has no file of the format of the new one (EPUB next to PDF), because
+/// print and e-book carry different ISBNs and the text of a PDF differs from the EPUB (measured on real books). The
+/// fingerprint stage keeps its guards.
 /// </remarks>
 public sealed class WorkMatcher
 {
@@ -191,14 +192,16 @@ public sealed class WorkMatcher
             var otherYear = signature.Year is { } a && candidate.Signature.Year is { } b && a != b;
             var signals = new List<string> { otherYear ? OtherYearSignal : "title and author match" };
             var confidence = otherYear ? TitleAuthorOtherYearConfidence : TitleAuthorConfidence;
-            // A PDF and an EPUB of one book rarely share the ISBN (print vs. e-book); the text must still be alike.
-            var otherFormat = IsNewFormat(candidate, file) && TextIsAlike(candidate, file);
-            if (otherFormat)
+            // A PDF and an EPUB of one book share neither the ISBN (print vs. e-book) nor the exact text: title,
+            // author and a year that does not contradict decide.
+            if (IsNewFormat(candidate, file))
             {
                 signals.Add(OtherFormatSignal);
             }
-
-            ApplyGuards(candidate, file, signals, ref confidence, ignoreIsbn: otherFormat);
+            else
+            {
+                ApplyGuards(candidate, file, signals, ref confidence);
+            }
 
             matches.Add(new GroupingMatch(candidate.Id, confidence, signals));
         }
@@ -237,10 +240,10 @@ public sealed class WorkMatcher
     }
 
     /// <summary>Caps the confidence at "review" when the ISBNs differ or the texts are clearly different.</summary>
-    private void ApplyGuards(WorkCandidate candidate, IncomingFile file, List<string> signals, ref double confidence, bool ignoreIsbn = false)
+    private void ApplyGuards(WorkCandidate candidate, IncomingFile file, List<string> signals, ref double confidence)
     {
         var cap = TitleAuthorOtherYearConfidence;
-        if (!ignoreIsbn && file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
+        if (file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
         {
             signals.Add(IsbnDiffersSignal);
             confidence = Math.Min(confidence, cap);
@@ -258,12 +261,6 @@ public sealed class WorkMatcher
     /// <summary>The work has files of known formats, and none of them has the format of the new file.</summary>
     private static bool IsNewFormat(WorkCandidate candidate, IncomingFile file) =>
         file.Format.Length > 0 && candidate.Formats.Count > 0 && !candidate.Formats.Contains(file.Format);
-
-    /// <summary>Both sides have a fingerprint and the closest pair is at most <c>auto_hamming</c> bits apart.</summary>
-    private bool TextIsAlike(WorkCandidate candidate, IncomingFile file) =>
-        file.Fingerprint is { } fingerprint
-        && candidate.Fingerprints.Count > 0
-        && candidate.Fingerprints.Min(f => SimHash.Distance(f, fingerprint)) <= _settings.AutoHamming;
 
     private static IEnumerable<WorkCandidate> Allowed(IEnumerable<WorkCandidate> candidates, IncomingFile file) =>
         candidates.Where(c => !c.NotDuplicateFileNames.Contains(file.FileName));
