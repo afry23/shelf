@@ -169,6 +169,21 @@ Feature: The library and its works over HTTP
     And the JSON field "items[0].tags[1]" of the response is "devops"
     And the JSON field "items[0].readStatus" of the response is "read"
 
+  Scenario: A work with an EPUB and a PDF is listed once with both formats
+    Given a sample PDF "library/Ibryam/Kubernetes Patterns/kp.pdf" with the title "Kubernetes Patterns", the author "Bilgin Ibryam" and the pages:
+      | text                                                                 |
+      | The sidecar container extends the main container of the pod.         |
+    And the sidecar "library/Ibryam/Kubernetes Patterns/book.json" is replaced by:
+      """
+      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "authors": ["Bilgin Ibryam"], "language": "en", "year": 2019, "files": [{ "name": "kp.epub" }, { "name": "kp.pdf" }] }
+      """
+    And I have run shelf with arguments "reindex --library library"
+    When I request "GET /api/v1/works?q=author%3Aibryam"
+    Then the JSON field "total" of the response is 1
+    And the JSON array "items" of the response has 1 entries
+    And the JSON field "items[0].formats[0]" of the response is "epub"
+    And the JSON field "items[0].formats[1]" of the response is "pdf"
+
   Scenario: A field without a value is null, not left out
     When I request "GET /api/v1/works?q=lang%3Ade"
     Then the JSON field "items[0].subtitle" of the response is null

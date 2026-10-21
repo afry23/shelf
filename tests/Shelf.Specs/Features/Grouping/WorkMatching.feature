@@ -75,3 +75,24 @@ Feature: Deciding which work a file belongs to
       | grouping.max_hamming = 6    | Something Else Entirely | Someone Else     |      | W1~6        | new work, review W1 | 0.6        |
       | grouping.auto_hamming = 1   | Something Else Entirely | Someone Else     |      | W1~2        | new work, review W1 | 0.6        |
       | grouping.auto_hamming = 5   | Something Else Entirely | Someone Else     |      | W1~5        | merge into W1       | 0.9        |
+
+  Scenario Outline: A file of a format the work does not have yet ignores a differing ISBN if the text is alike
+    Given the work "W1" has files of the formats "<work formats>"
+    When a file named "<name>" arrives with the title "The Hobbit", the authors "J. R. R. Tolkien", the year "<year>", the ISBN "<isbn13>" and the fingerprint "<fingerprint>"
+    Then the decision is "<decision>" with the confidence <confidence>
+
+    Examples:
+      | work formats | name            | year | isbn13        | fingerprint | decision            | confidence |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~3        | merge into W1       | 0.95       |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~4        | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 |             | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.pdf  |      | 9780306406157 | W1~2        | merge into W1       | 0.95       |
+      | epub         | The Hobbit.pdf  | 1937 | 9780306406157 | W1~6        | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.epub | 1937 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
+      | epub, pdf    | The Hobbit.pdf  | 1937 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
+      | epub         | The Hobbit.pdf  | 1951 | 9780306406157 | W1~3        | new work, review W1 | 0.6        |
+
+  Scenario: The text alone does not merge a file of another format when the ISBNs differ
+    Given the work "W1" has files of the formats "epub"
+    When a file named "Other Title.pdf" arrives with the title "Something Else Entirely", the authors "Someone Else", the year "", the ISBN "9780306406157" and the fingerprint "W1~2"
+    Then the decision is "new work, review W1" with the confidence 0.6

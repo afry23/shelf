@@ -16,7 +16,24 @@ Feature: Grouping quality on a generated library (acceptance criterion 1)
     Then the exit code is 0
     And the generated library has 100 works with an EPUB and a PDF
     And at least 95 percent of them are in one work of the library
-    And no work of the library holds the files of different generated works
+    And no work of the library holds the files of different generated works other than editions of one book
+    And the library has at most <maxWorks> works
+
+    Examples:
+      | works | files | seed | maxWorks |
+      | 389   | 500   | 1    | 393      |
+      | 389   | 500   | 2    | 393      |
+      | 389   | 500   | 3    | 393      |
+      | 389   | 500   | 42   | 393      |
+
+  Scenario Outline: PDFs in print layout (running header, page numbers, hyphenation) are grouped as well
+    Given an empty working directory
+    And I have run shelf with arguments "init library"
+    And a generated library of <works> works and <files> files with the seed <seed> and the PDFs in print layout
+    When I run shelf with arguments "import generated/input --library library"
+    Then the exit code is 0
+    And at least 95 percent of them are in one work of the library
+    And no work of the library holds the files of different generated works other than editions of one book
     And the library has at most <maxWorks> works
 
     Examples:

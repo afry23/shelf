@@ -6,8 +6,9 @@ namespace Shelf.Core.Grouping;
 /// <summary>
 /// A 64 bit fingerprint of the running text of a file (F-GRP-1, step 3): the same book as EPUB and as PDF gets
 /// fingerprints a few bits apart, different books far apart. Built from the distinct runs of three consecutive
-/// words in the first 5000 words, each counted once. Case, accents and punctuation do not matter. Short texts
-/// (a scan, a leaflet) have no fingerprint.
+/// words of the first 5000 words after the front matter, each counted once. Case, accents and punctuation do not
+/// matter, nor do page numbers (words of digits only) and words split by a hyphen at the end of a line. Short
+/// texts (a scan, a leaflet) have no fingerprint.
 /// </summary>
 /// <remarks>
 /// Why word triples and not single words: books of one language and field share most of their words, so the
@@ -20,6 +21,12 @@ namespace Shelf.Core.Grouping;
 public static class SimHash
 {
     public const int MaxWords = 5000;
+
+    /// <summary>
+    /// Title page, imprint, contents and preface differ between the formats of one book. The first words are
+    /// skipped if the text is long enough to keep <see cref="MinWords"/> words after them; shorter texts count from the start.
+    /// </summary>
+    public const int FrontMatterWords = 1500;
     public const int MinWords = 200;
     public const int ShingleSize = 3;
 
@@ -35,7 +42,7 @@ public static class SimHash
             foreach (var word in Words(segment))
             {
                 words.Add(word);
-                if (words.Count == MaxWords)
+                if (words.Count == FrontMatterWords + MaxWords)
                 {
                     return Fingerprint(words);
                 }
@@ -51,6 +58,9 @@ public static class SimHash
         {
             return null;
         }
+
+        var skipped = words.Count >= FrontMatterWords + MinWords ? FrontMatterWords : 0;
+        words = words.GetRange(skipped, Math.Min(MaxWords, words.Count - skipped));
 
         // Each distinct triple votes once: a running header repeated on every page must not outweigh the text.
         var shingles = new HashSet<ulong>();
@@ -80,14 +90,27 @@ public static class SimHash
         return result;
     }
 
-    /// <summary>Words of a text: runs of letters and digits, folded.</summary>
+    /// <summary>
+    /// Words of a text: runs of letters and digits, folded. A run of digits only is a page number or a figure and is
+    /// dropped. A hyphen directly after a letter and followed by white space is a line-end hyphenation: the word goes on.
+    /// </summary>
     private static IEnumerable<string> Words(string text)
     {
         var word = new StringBuilder();
-        foreach (var c in text)
+        var hasLetter = false;
+        var hyphenated = false;
+        for (var i = 0; i < text.Length; i++)
         {
+            var c = text[i];
+            if (hyphenated && char.IsWhiteSpace(c))
+            {
+                continue;
+            }
+
             if (char.IsLetterOrDigit(c))
             {
+                hyphenated = false;
+                hasLetter |= char.IsLetter(c);
                 if (c < 128)
                 {
                     word.Append(char.ToLowerInvariant(c));
@@ -99,12 +122,24 @@ public static class SimHash
             }
             else if (word.Length > 0)
             {
-                yield return word.ToString();
+                if (c == '-' && hasLetter && i + 1 < text.Length && char.IsWhiteSpace(text[i + 1]))
+                {
+                    hyphenated = true;
+                    continue;
+                }
+
+                hyphenated = false;
+                if (hasLetter)
+                {
+                    yield return word.ToString();
+                }
+
                 word.Clear();
+                hasLetter = false;
             }
         }
 
-        if (word.Length > 0)
+        if (word.Length > 0 && hasLetter)
         {
             yield return word.ToString();
         }

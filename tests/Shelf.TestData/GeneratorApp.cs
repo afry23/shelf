@@ -63,8 +63,9 @@ public static class GeneratorApp
         var wordsMin = new Option<string?>("--words-min") { Description = "Minimum words per work (default 3000)" };
         var wordsMax = new Option<string?>("--words-max") { Description = "Maximum words per work (default 8000)" };
         var deflate = new Option<bool>("--deflate") { Description = "Deflate ZIP entries (output is then not byte-stable across platforms)" };
+        var printLayout = new Option<bool>("--print-layout") { Description = "Give the PDFs a running header, page numbers and hyphenated words, as a print layout does" };
         var plan = new Option<bool>("--plan") { Description = "Print the planned summary as JSON and write nothing" };
-        foreach (var option in new Option[] { output, preset, works, files, seed, wordsMin, wordsMax, deflate, plan })
+        foreach (var option in new Option[] { output, preset, works, files, seed, wordsMin, wordsMax, deflate, printLayout, plan })
         {
             command.Options.Add(option);
         }
@@ -93,7 +94,7 @@ public static class GeneratorApp
 
             var stopwatch = Stopwatch.StartNew();
             var result = LibraryGenerator.Generate(
-                new GeneratorOptions(worksCount, filesCount, seedValue, minValue, maxValue, parseResult.GetValue(deflate)),
+                new GeneratorOptions(worksCount, filesCount, seedValue, minValue, maxValue, parseResult.GetValue(deflate), PrintLayout: parseResult.GetValue(printLayout)),
                 outDirectory);
             stopwatch.Stop();
             stdout.WriteLine(string.Create(CultureInfo.InvariantCulture,

@@ -31,6 +31,19 @@ public sealed class CalibrationSteps(ConfigSteps workspace)
         _truth = GroundTruth.Load(Path.Combine(workspace.WorkingDirectory, Generated, "ground-truth.json"));
     }
 
+    [Given("a generated library of {int} works and {int} files with the seed {int} and the PDFs in print layout")]
+    public void GivenAGeneratedLibraryInPrintLayout(int works, int files, int seed)
+    {
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = GeneratorApp.Run(
+            ["generate", "--works", works.ToString(System.Globalization.CultureInfo.InvariantCulture), "--files", files.ToString(System.Globalization.CultureInfo.InvariantCulture), "--seed", seed.ToString(System.Globalization.CultureInfo.InvariantCulture), "--print-layout", "--out", Path.Combine(workspace.WorkingDirectory, Generated)],
+            output,
+            error);
+        Assert.True(code == 0, error.ToString());
+        _truth = GroundTruth.Load(Path.Combine(workspace.WorkingDirectory, Generated, "ground-truth.json"));
+    }
+
     [Then("the generated library has {int} works with an EPUB and a PDF")]
     public void ThenTheGeneratedLibraryHasPairs(int expected) => Assert.Equal(expected, Pairs().Count);
 
@@ -52,6 +65,24 @@ public sealed class CalibrationSteps(ConfigSteps workspace)
         var wrong = LibraryWorks()
             .GroupBy(kv => kv.Value)
             .Where(g => g.Select(kv => truthOfSha[kv.Key]).Distinct(StringComparer.Ordinal).Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        Assert.True(wrong.Count == 0, $"{wrong.Count} works hold files of different generated works: {string.Join(", ", wrong.Take(5))}");
+    }
+
+    [Then("no work of the library holds the files of different generated works other than editions of one book")]
+    public void ThenNoWorkHoldsDifferentWorksOtherThanEditions()
+    {
+        var truth = Truth();
+        var truthOfSha = truth.Files.GroupBy(f => f.Sha256).ToDictionary(g => g.Key, g => g.First().Work, StringComparer.Ordinal);
+        var editions = truth.Relations.Where(r => r.Kind == "edition").Select(r => (r.A, r.B)).ToHashSet();
+        var wrong = LibraryWorks()
+            .GroupBy(kv => kv.Value)
+            .Where(g =>
+            {
+                var generated = g.Select(kv => truthOfSha[kv.Key]).Distinct(StringComparer.Ordinal).ToList();
+                return generated.Count > 1 && generated.Any(a => generated.Any(b => a != b && !editions.Contains((a, b)) && !editions.Contains((b, a))));
+            })
             .Select(g => g.Key)
             .ToList();
         Assert.True(wrong.Count == 0, $"{wrong.Count} works hold files of different generated works: {string.Join(", ", wrong.Take(5))}");

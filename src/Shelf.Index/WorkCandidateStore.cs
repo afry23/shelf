@@ -31,6 +31,23 @@ public static class WorkCandidateStore
             }
         }
 
+        var formats = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT DISTINCT work_id, format FROM files";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var work = reader.GetString(0);
+                if (!formats.TryGetValue(work, out var list))
+                {
+                    formats[work] = list = [];
+                }
+
+                list.Add(reader.GetString(1));
+            }
+        }
+
         // "Not a duplicate" markings of files: the work holding one file must not take a new file named like the other.
         var notDuplicates = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
@@ -77,7 +94,7 @@ public static class WorkCandidateStore
                     AuthorNames.SurnameKeys(authors),
                     reader.IsDBNull(3) ? null : reader.GetInt32(3),
                     reader.IsDBNull(4) ? null : reader.GetString(4));
-                candidates.Add(new WorkCandidate(Ulid.Parse(id), signature, fingerprints.GetValueOrDefault(id), notDuplicates.GetValueOrDefault(id)));
+                candidates.Add(new WorkCandidate(Ulid.Parse(id), signature, fingerprints.GetValueOrDefault(id), notDuplicates.GetValueOrDefault(id), formats.GetValueOrDefault(id)));
             }
         }
 

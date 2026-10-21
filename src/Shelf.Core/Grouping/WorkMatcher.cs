@@ -10,13 +10,14 @@ public sealed record WorkSignature(string? TitleNorm, IReadOnlyList<string> Surn
         new(string.IsNullOrWhiteSpace(title) ? null : TitleNormalizer.Normalize(title), AuthorNames.SurnameKeys(authors), year, isbn13);
 }
 
-/// <summary>A file that wants a work.</summary>
-public sealed record IncomingFile(string FileName, WorkSignature Signature, ulong? Fingerprint);
+/// <summary>A file that wants a work. <paramref name="Format"/> is the lower-case extension without the dot (epub, pdf).</summary>
+public sealed record IncomingFile(string FileName, WorkSignature Signature, ulong? Fingerprint, string Format = "");
 
 /// <summary>A work that files can be merged into.</summary>
-public sealed class WorkCandidate(Ulid id, WorkSignature signature, IEnumerable<ulong>? fingerprints = null, IEnumerable<string>? notDuplicateFileNames = null)
+public sealed class WorkCandidate(Ulid id, WorkSignature signature, IEnumerable<ulong>? fingerprints = null, IEnumerable<string>? notDuplicateFileNames = null, IEnumerable<string>? formats = null)
 {
     private readonly List<ulong> _fingerprints = [.. fingerprints ?? []];
+    private readonly HashSet<string> _formats = new(formats ?? [], StringComparer.OrdinalIgnoreCase);
 
     public Ulid Id { get; } = id;
 
@@ -27,7 +28,12 @@ public sealed class WorkCandidate(Ulid id, WorkSignature signature, IEnumerable<
     /// <summary>File names that the user marked as "not a duplicate" of this work (from <c>notDuplicates.files</c>).</summary>
     public IReadOnlySet<string> NotDuplicateFileNames { get; } = new HashSet<string>(notDuplicateFileNames ?? [], StringComparer.Ordinal);
 
+    /// <summary>The formats of the files of the work (epub, pdf). Empty if they are not known.</summary>
+    public IReadOnlySet<string> Formats => _formats;
+
     internal void AddFingerprint(ulong fingerprint) => _fingerprints.Add(fingerprint);
+
+    internal void AddFormat(string format) => _formats.Add(format);
 }
 
 public enum GroupingAction
@@ -56,7 +62,9 @@ public sealed record GroupingDecision(GroupingAction Action, Ulid? WorkId, doubl
 /// Two guards go beyond the table of the PRD, because a wrong merge is worse than a question: a title and author
 /// match is never sure if both files carry an ISBN-13 and the two differ (another edition), or if both have a text
 /// fingerprint and the texts are clearly different (distance above <c>max_hamming</c>). Such a match is capped at
-/// the confidence of "year differs" and goes to review. Equal ISBNs are not questioned.
+/// the confidence of "year differs" and goes to review. Equal ISBNs are not questioned. The ISBN guard is skipped in
+/// the title and author stage if the work has no file of the format of the new one (EPUB next to PDF) and the texts
+/// are within <c>auto_hamming</c>, because print and e-book carry different ISBNs. The text guard and the fingerprint stage keep their guards.
 /// </remarks>
 public sealed class WorkMatcher
 {
@@ -65,6 +73,7 @@ public sealed class WorkMatcher
     public const double TitleAuthorOtherYearConfidence = 0.6;
     public const string OtherYearSignal = "title and author match, year differs";
     public const string IsbnDiffersSignal = "ISBN differs";
+    public const string OtherFormatSignal = "title and author match, other format";
     public const double FingerprintNearConfidence = 0.9;
     public const double FingerprintFarConfidence = 0.6;
 
@@ -105,6 +114,10 @@ public sealed class WorkMatcher
     /// <summary>Remembers the fingerprint of a file that was merged into a work, for the files that follow.</summary>
     public void AddFingerprint(Ulid workId, ulong fingerprint) =>
         _candidates.First(c => c.Id == workId).AddFingerprint(fingerprint);
+
+    /// <summary>Remembers the format of a file that was merged into a work, for the files that follow.</summary>
+    public void AddFormat(Ulid workId, string format) =>
+        _candidates.First(c => c.Id == workId).AddFormat(format);
 
     public GroupingDecision Decide(IncomingFile file)
     {
@@ -178,7 +191,15 @@ public sealed class WorkMatcher
             var otherYear = signature.Year is { } a && candidate.Signature.Year is { } b && a != b;
             var signals = new List<string> { otherYear ? OtherYearSignal : "title and author match" };
             var confidence = otherYear ? TitleAuthorOtherYearConfidence : TitleAuthorConfidence;
-            ApplyGuards(candidate, file, signals, ref confidence);
+            // A PDF and an EPUB of one book rarely share the ISBN (print vs. e-book); the text must still be alike.
+            var otherFormat = IsNewFormat(candidate, file) && TextIsAlike(candidate, file);
+            if (otherFormat)
+            {
+                signals.Add(OtherFormatSignal);
+            }
+
+            ApplyGuards(candidate, file, signals, ref confidence, ignoreIsbn: otherFormat);
+
             matches.Add(new GroupingMatch(candidate.Id, confidence, signals));
         }
 
@@ -216,10 +237,10 @@ public sealed class WorkMatcher
     }
 
     /// <summary>Caps the confidence at "review" when the ISBNs differ or the texts are clearly different.</summary>
-    private void ApplyGuards(WorkCandidate candidate, IncomingFile file, List<string> signals, ref double confidence)
+    private void ApplyGuards(WorkCandidate candidate, IncomingFile file, List<string> signals, ref double confidence, bool ignoreIsbn = false)
     {
         var cap = TitleAuthorOtherYearConfidence;
-        if (file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
+        if (!ignoreIsbn && file.Signature.Isbn13 is { } a && candidate.Signature.Isbn13 is { } b && a != b)
         {
             signals.Add(IsbnDiffersSignal);
             confidence = Math.Min(confidence, cap);
@@ -233,6 +254,16 @@ public sealed class WorkMatcher
             confidence = Math.Min(confidence, cap);
         }
     }
+
+    /// <summary>The work has files of known formats, and none of them has the format of the new file.</summary>
+    private static bool IsNewFormat(WorkCandidate candidate, IncomingFile file) =>
+        file.Format.Length > 0 && candidate.Formats.Count > 0 && !candidate.Formats.Contains(file.Format);
+
+    /// <summary>Both sides have a fingerprint and the closest pair is at most <c>auto_hamming</c> bits apart.</summary>
+    private bool TextIsAlike(WorkCandidate candidate, IncomingFile file) =>
+        file.Fingerprint is { } fingerprint
+        && candidate.Fingerprints.Count > 0
+        && candidate.Fingerprints.Min(f => SimHash.Distance(f, fingerprint)) <= _settings.AutoHamming;
 
     private static IEnumerable<WorkCandidate> Allowed(IEnumerable<WorkCandidate> candidates, IncomingFile file) =>
         candidates.Where(c => !c.NotDuplicateFileNames.Contains(file.FileName));

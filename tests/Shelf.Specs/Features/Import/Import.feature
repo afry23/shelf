@@ -46,6 +46,17 @@ Feature: Importing files into the library
     And the table "files" of the index has 2 rows
     And the review queue of "library" has 0 entries
 
+  Scenario: An EPUB and a PDF with different ISBNs become one work
+    Given a sample EPUB "incoming/Jane Doe - Quiet Systems.epub" with the title "Quiet Systems", the authors "Jane Doe", the ISBN "9780306406157" and the text seed 21
+    And a sample PDF "incoming/Quiet Systems.pdf" with the title "Quiet Systems", the author "Jane Doe", the ISBN "9781402894626" and the text seed 21
+    When I run shelf with arguments "import incoming --library library"
+    Then the exit code is 0
+    And standard output contains "other format"
+    And standard output contains "Imported 2 files: 1 new work, 1 added to an existing work"
+    And the table "works" of the index has 1 rows
+    And the table "files" of the index has 2 rows
+    And the review queue of "library" has 0 entries
+
   Scenario: Files without metadata are grouped by the title and author of their names and reported as weak
     Given the folder "incoming" contains the fixtures "derived/Jane Doe - Quiet Systems (2004).epub, derived/Jane Doe - Quiet Systems (2004).pdf"
     When I run shelf with arguments "import incoming --library library"
