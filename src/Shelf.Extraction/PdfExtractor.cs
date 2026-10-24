@@ -19,6 +19,19 @@ internal static class PdfExtractor
     private const int IsbnHeadPages = 5;
     private const int IsbnTailPages = 3;
 
+    // An outline that cannot be read only means that no page is recognised by its section title.
+    private static List<TocEntry> OutlineOf(PdfDocument document)
+    {
+        try
+        {
+            return TocExtractor.ReadPdf(document);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return [];
+        }
+    }
+
     public static ExtractedBook Read(string path, bool withText)
     {
         using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = true });
@@ -67,11 +80,12 @@ internal static class PdfExtractor
             }
 
             RunningHeads.Strip(pageWords);
+            var kinds = ContentClassifier.PdfPageKinds(OutlineOf(document), pages);
             foreach (var (number, words) in pageWords)
             {
                 if (words.Count > 0)
                 {
-                    segments.Add(new TextSegment(Locators.PdfPage(number), string.Join(' ', words)));
+                    segments.Add(new TextSegment(Locators.PdfPage(number), string.Join(' ', words), kinds.GetValueOrDefault(number)));
                 }
             }
         }

@@ -58,6 +58,18 @@ public static class SampleBooks
             Document = new TextDocument([.. chapters.Select(c => new Chapter(c.Title, [c.Text]))]),
         });
 
+    /// <summary>An EPUB 3 like the one with chapters, each chapter carrying an <c>epub:type</c> (null: none) on its body.</summary>
+    public static byte[] Epub(string? title, IReadOnlyList<string> authors, IReadOnlyList<(string Title, string? Type, string Text)> chapters) =>
+        EpubWriter.Write(new EpubSpec
+        {
+            Version = 3,
+            Title = title,
+            Authors = [.. authors.Select(a => new EpubAuthor(a, a))],
+            Language = "en",
+            IdentitySeed = $"sample-typed-chapters-{title}",
+            Document = new TextDocument([.. chapters.Select(c => new Chapter(c.Title, [c.Text], c.Type))]),
+        });
+
     /// <summary>A PDF with exactly the given pages (the text of each is wrapped into lines) and no title page.</summary>
     public static byte[] Pdf(string? title, string? author, IReadOnlyList<string> pages) =>
         PdfWriter.Write(new PdfSpec

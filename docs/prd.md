@@ -219,6 +219,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-SEM-6 | "Similar books" for a given work. | S |
 | F-SEM-7 | Indexing runs in the background, can be interrupted, and resumes where it left off. Progress is displayed. | M |
 | F-SEM-8 | The model is replaceable. Changing the model triggers a re-indexing of the embeddings. | S |
+| F-SEM-9 | Text that is no prose is not embedded: table of contents, front matter (preface, foreword, acknowledgments, copyright), index, bibliography, glossary and source code. It stays in the full-text index. | S |
 
 ### 6.8 Duplicate Detection
 

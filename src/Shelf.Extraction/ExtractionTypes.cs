@@ -91,8 +91,8 @@ public sealed record BookMetadata
     public double? SeriesIndex { get; init; }
 }
 
-/// <summary>A piece of text with its location: <c>page=N</c> or a chapter CFI (<see cref="Shelf.Core.Model.Locators"/>).</summary>
-public sealed record TextSegment(string Locator, string Text);
+/// <summary>A piece of text with its location: <c>page=N</c> or a chapter CFI (<see cref="Shelf.Core.Model.Locators"/>), and what kind of text it is.</summary>
+public sealed record TextSegment(string Locator, string Text, ContentKind Kind = ContentKind.Body);
 
 /// <summary>The result of reading one file.</summary>
 /// <param name="Metadata">What the file says about the book.</param>

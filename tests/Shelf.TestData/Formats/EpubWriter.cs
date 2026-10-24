@@ -258,7 +258,7 @@ internal static class EpubWriter
         var language = spec.Language is null ? string.Empty : $" lang=\"{Xml.Escape(spec.Language)}\" xml:lang=\"{Xml.Escape(spec.Language)}\"";
         if (spec.Version == 3)
         {
-            b.Append("<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"").Append(language).Append(">\n");
+            b.Append("<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"").Append(chapter.EpubType is null ? string.Empty : " xmlns:epub=\"http://www.idpf.org/2007/ops\"").Append(language).Append(">\n");
         }
         else
         {
@@ -266,7 +266,8 @@ internal static class EpubWriter
             b.Append("<html xmlns=\"http://www.w3.org/1999/xhtml\"").Append(language).Append(">\n");
         }
 
-        b.Append("<head>\n<meta charset=\"utf-8\"/>\n<title>").Append(Xml.Escape(chapter.Title)).Append("</title>\n</head>\n<body>\n");
+        b.Append("<head>\n<meta charset=\"utf-8\"/>\n<title>").Append(Xml.Escape(chapter.Title)).Append("</title>\n</head>\n");
+        b.Append(chapter.EpubType is not null && spec.Version == 3 ? $"<body epub:type=\"{Xml.Escape(chapter.EpubType)}\">\n" : "<body>\n");
         b.Append("<h1>").Append(Xml.Escape(chapter.Title)).Append("</h1>\n");
         foreach (var paragraph in chapter.Paragraphs)
         {

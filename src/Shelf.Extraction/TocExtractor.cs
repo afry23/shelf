@@ -67,6 +67,12 @@ public static class TocExtractor
     private static List<TocEntry> ReadPdf(string path)
     {
         using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = true });
+        return ReadPdf(document);
+    }
+
+    /// <summary>The outline of an open PDF; empty if it has none or it cannot be read.</summary>
+    internal static List<TocEntry> ReadPdf(PdfDocument document)
+    {
         var entries = new List<TocEntry>();
         if (document.TryGetBookmarks(out var bookmarks))
         {

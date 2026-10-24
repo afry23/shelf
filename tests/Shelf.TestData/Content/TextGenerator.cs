@@ -3,7 +3,8 @@ using Shelf.TestData.Random;
 
 namespace Shelf.TestData.Content;
 
-internal sealed record Chapter(string Title, IReadOnlyList<string> Paragraphs);
+/// <summary>A chapter; <paramref name="EpubType"/> is written as <c>epub:type</c> on the body of an EPUB 3 chapter.</summary>
+internal sealed record Chapter(string Title, IReadOnlyList<string> Paragraphs, string? EpubType = null);
 
 internal sealed record TextDocument(IReadOnlyList<Chapter> Chapters)
 {
