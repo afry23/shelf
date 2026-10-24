@@ -115,6 +115,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-IMP-5 | Cover extraction: the cover image for EPUB, a rendering of the first page for PDF. Stored as `cover.<ext>` in the work folder in the original image format of the source (no transcoding); for EPUB this is the format of the embedded cover, the PDF rendering is a JPEG (quality 85) of page 1 with the longest edge at 600 px, `cover.jpg` (decided 2026-10-17, ADR 0010). | S |
 | F-IMP-6 | Optional online enrichment via Open Library or Google Books by ISBN. **Off** by default, only on explicit command. | C |
 | F-IMP-7 | Uncertain detections end up in a review queue (`shelf review`) instead of being filed incorrectly. The queue is persisted in `.shelf/review.json` and survives `shelf reindex`. | S |
+| F-IMP-8 | `shelf import --from rclone:<remote>:<path>` fetches the EPUB and PDF files of a cloud folder (Google Drive, Dropbox, OneDrive, …) with the user's own `rclone` into a temporary folder and imports them like local files. Only on explicit command; `--move` is not allowed with `--from`. shelf holds no cloud credentials, they stay in the rclone config. | C |
 
 ### 6.3 Grouping Multiple Formats into One Work
 
@@ -241,6 +242,7 @@ Goal: cold start to first output < 150 ms (Native AOT, see chapter 9).
 ```
 shelf init <root>                         Create library
 shelf import <path> [--move] [--dry-run]  Import files
+shelf import --from rclone:<spec> [--dry-run]  Import files from a cloud folder via rclone
 shelf scan                                Incremental scan
 shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
 shelf search <query> [--limit] [--json]   Metadata/full-text search
@@ -372,7 +374,7 @@ Reference: 10,000 works, approx. 15,000 files, Apple M-series or a current x64 l
 ### 9.4 Privacy
 
 - No telemetry.
-- Network access only for the model download and the optional, explicitly triggered online metadata lookup.
+- Network access only for the model download, the optional, explicitly triggered online metadata lookup, and the explicitly triggered `rclone` call of `shelf import --from` (shelf itself opens no connection for it).
 
 ## 10. Architecture
 

@@ -99,6 +99,8 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
             });
         }
 
+        cliEnvironment = cliEnvironment.WithRemoteFetcher(environment.Remote);
+
         cliEnvironment = cliEnvironment.WithCancellation(environment.Interrupt.Token);
 
         // Scenarios never start a real application.

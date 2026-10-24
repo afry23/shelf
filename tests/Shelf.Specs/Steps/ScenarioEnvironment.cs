@@ -12,6 +12,9 @@ public sealed class ScenarioEnvironment
     /// <summary>The model catalog and downloader of "the model catalog ... has the files"; null runs use the real ones.</summary>
     public FakeModels? Models { get; set; }
 
+    /// <summary>What <c>import --from</c> fetches instead of running rclone.</summary>
+    public FakeRemote Remote { get; } = new();
+
     /// <summary>The embedder commands get instead of ONNX Runtime; null runs use the real one.</summary>
     public FakeEmbedder? Embedder { get; set; }
 
