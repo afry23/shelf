@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 4;
+    public const int Version = 5;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 
@@ -73,6 +73,7 @@ internal static class IndexSchema
             ordinal INTEGER NOT NULL,
             locator TEXT NOT NULL,
             text TEXT NOT NULL,
+            embed_skip TEXT,
             UNIQUE(file_id, ordinal))
         """,
         $"CREATE VIRTUAL TABLE works_fts USING fts5(title, subtitle, authors, description, tags, stems_en, stems_de, tokenize='{Tokenizer}')",

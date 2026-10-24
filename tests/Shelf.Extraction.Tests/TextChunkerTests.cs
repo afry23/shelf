@@ -11,6 +11,16 @@ public sealed class TextChunkerTests
         Assert.Equal([new TextChunk(0, "page=3", "a b c")], TextChunker.Chunk([new TextSegment("page=3", "a   b\n c")]));
 
     [Fact]
+    public void A_chunk_takes_the_kind_of_its_segment() =>
+        Assert.All(TextChunker.Chunk([new TextSegment("page=1", Words(700), ContentKind.Index)]), c => Assert.Equal(ContentKind.Index, c.Kind));
+
+    [Fact]
+    public void A_chunk_of_plain_text_is_judged_by_its_look() =>
+        Assert.Equal(
+            [ContentKind.Code],
+            TextChunker.Chunk([new TextSegment("page=1", "static int Sum(int[] xs) { var total = 0; for (var i = 0; i < xs.Length; i++) { total += xs[i]; } return total; }")]).Select(c => c.Kind));
+
+    [Fact]
     public void A_segment_of_up_to_600_words_stays_whole()
     {
         var chunks = TextChunker.Chunk([new TextSegment("page=1", Words(600))]);

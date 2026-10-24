@@ -46,6 +46,12 @@ public sealed class EmbeddingIndexSteps(ScenarioEnvironment environment, ConfigS
             $$"""{ "schema": 1, "id": "01J9Z3K0000000000000000099", "title": "{{title}}", "authors": ["Some Author"], "files": [{ "name": "{{Path.GetFileName(path)}}" }] }""");
     }
 
+    [Given("the work folder {string} holds a sidecar for the file {string}")]
+    public void GivenTheWorkFolderHoldsASidecar(string folder, string file) =>
+        File.WriteAllText(
+            Path.Combine(workspace.WorkingDirectory, folder, "book.json"),
+            $$"""{ "schema": 1, "id": "01J9Z3K0000000000000000077", "title": "Book", "authors": ["Some Author"], "files": [{ "name": "{{file}}" }] }""");
+
     [Then("the embedder was given the text containing {string}")]
     public void ThenTheEmbedderWasGivenTheTextContaining(string part) =>
         Assert.Contains(Embedder.Calls, c => c.Text.Contains(part, StringComparison.Ordinal));

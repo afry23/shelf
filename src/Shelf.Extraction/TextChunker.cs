@@ -1,7 +1,7 @@
 namespace Shelf.Extraction;
 
-/// <summary>A piece of text for the full-text index (and later for embeddings) with the location it came from.</summary>
-public sealed record TextChunk(int Ordinal, string Locator, string Text);
+/// <summary>A piece of text for the full-text index (and for embeddings, unless <paramref name="Kind"/> says it is no prose) with the location it came from.</summary>
+public sealed record TextChunk(int Ordinal, string Locator, string Text, ContentKind Kind = ContentKind.Body);
 
 /// <summary>
 /// Cuts the segments of a file (pages, chapters) into chunks of about 500 words. A chunk never crosses a
@@ -30,7 +30,8 @@ public static class TextChunker
             for (var from = 0; from < words.Length; from += size)
             {
                 var count = Math.Min(size, words.Length - from);
-                chunks.Add(new TextChunk(chunks.Count, segment.Locator, string.Join(' ', words, from, count)));
+                var text = string.Join(' ', words, from, count);
+                chunks.Add(new TextChunk(chunks.Count, segment.Locator, text, ContentClassifier.Classify(segment.Kind, text)));
             }
         }
 

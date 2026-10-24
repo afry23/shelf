@@ -197,13 +197,14 @@ internal sealed class IndexWriter : IDisposable
             ("$status", textStatus),
             ("$id", fileId));
 
-        var insert = _insertChunk ??= Prepare("INSERT INTO chunks(file_id, ordinal, locator, text) VALUES ($file, $ordinal, $locator, $text)");
+        var insert = _insertChunk ??= Prepare("INSERT INTO chunks(file_id, ordinal, locator, text, embed_skip) VALUES ($file, $ordinal, $locator, $text, $skip)");
         foreach (var chunk in chunks)
         {
             Bind(insert, "$file", fileId);
             Bind(insert, "$ordinal", chunk.Ordinal);
             Bind(insert, "$locator", chunk.Locator);
             Bind(insert, "$text", chunk.Text);
+            Bind(insert, "$skip", chunk.Kind == ContentKind.Body ? null : chunk.Kind.ToString().ToLowerInvariant());
             NonQuery(insert);
         }
     }

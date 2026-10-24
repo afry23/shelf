@@ -195,7 +195,7 @@ public static class EmbeddingIndexer
         var chunks = new List<(long Id, string Text)>();
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT id, text FROM chunks WHERE file_id = $f ORDER BY ordinal";
+            command.CommandText = "SELECT id, text FROM chunks WHERE file_id = $f AND embed_skip IS NULL ORDER BY ordinal";
             command.Parameters.AddWithValue("$f", file.Id);
             using var reader = command.ExecuteReader();
             while (reader.Read())

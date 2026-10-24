@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Text.RegularExpressions;
 using Shelf.Core.Model;
 using VersOne.Epub;
 using VersOne.Epub.Schema;
@@ -6,7 +8,7 @@ using VersOne.Epub.Schema;
 namespace Shelf.Extraction;
 
 /// <summary>EPUB metadata from the OPF package and text from the spine (VersOne.Epub with default, strict options; ADR 0005).</summary>
-internal static class EpubExtractor
+internal static partial class EpubExtractor
 {
     // ISBN scan range (ADR 0005, Q6): the first 3 and the last 2 spine items.
     private const int IsbnHeadItems = 3;
@@ -47,13 +49,14 @@ internal static class EpubExtractor
             var scanned = new List<string>();
             for (var i = 0; i < order.Count && i < spine.Count; i++)
             {
-                var text = XhtmlText.ToPlainText(await order[i].ReadContentAsync().ConfigureAwait(false));
+                var html = await order[i].ReadContentAsync().ConfigureAwait(false);
+                var text = XhtmlText.ToPlainText(html);
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     continue;
                 }
 
-                segments.Add(new TextSegment(Locators.EpubChapter(i, spine[i].IdRef), text));
+                segments.Add(new TextSegment(Locators.EpubChapter(i, spine[i].IdRef), text, KindOf(html)));
                 if (i < IsbnHeadItems || i >= order.Count - IsbnTailItems)
                 {
                     scanned.Add(text);
@@ -79,6 +82,29 @@ internal static class EpubExtractor
         };
         return new ExtractedBook(metadata, null, segments);
     }
+
+    /// <summary>What a chapter is by its <c>epub:type</c> on body or section, or else by its first heading.</summary>
+    private static ContentKind KindOf(string html)
+    {
+        var type = EpubTypeAttribute().Match(html);
+        var kind = type.Success ? ContentClassifier.FromEpubType(type.Groups[1].Value) : ContentKind.Body;
+        if (kind != ContentKind.Body)
+        {
+            return kind;
+        }
+
+        var heading = FirstHeading().Match(html);
+        return heading.Success ? ContentClassifier.FromTitle(WebUtility.HtmlDecode(Tags().Replace(heading.Groups[1].Value, string.Empty))) : ContentKind.Body;
+    }
+
+    [GeneratedRegex(@"<(?:body|section)\b[^>]*?\bepub:type\s*=\s*[""']([^""']*)[""']", RegexOptions.IgnoreCase)]
+    private static partial Regex EpubTypeAttribute();
+
+    [GeneratedRegex(@"<h[1-3]\b[^>]*>(.*?)</h[1-3]>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex FirstHeading();
+
+    [GeneratedRegex(@"<[^>]*>")]
+    private static partial Regex Tags();
 
     /// <summary>EPUB 3 collections (<c>belongs-to-collection</c> with <c>group-position</c>) or calibre's <c>calibre:series</c>.</summary>
     private static (string? Series, double? Index) ReadSeries(EpubMetadata meta)

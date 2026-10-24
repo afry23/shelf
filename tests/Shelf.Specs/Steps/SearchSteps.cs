@@ -27,6 +27,14 @@ public sealed partial class SearchSteps(CliSteps cli, ConfigSteps workspace)
         File.WriteAllBytes(path, SampleBooks.Epub(title, authors.Split("; "), [.. chapters.Rows.Select(r => (r["title"], r["text"]))]));
     }
 
+    [Given("a sample EPUB {string} with the title {string}, the authors {string} and the typed chapters:")]
+    public void GivenASampleEpubWithTypedChapters(string name, string title, string authors, DataTable chapters)
+    {
+        var path = Path.Combine(workspace.WorkingDirectory, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, SampleBooks.Epub(title, authors.Split("; "), [.. chapters.Rows.Select(r => (r["title"], (string?)r["type"], r["text"]))]));
+    }
+
     [Given("a sample PDF {string} with the title {string}, the author {string} and the pages:")]
     public void GivenASamplePdfWithPages(string name, string title, string author, DataTable pages)
     {
