@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 

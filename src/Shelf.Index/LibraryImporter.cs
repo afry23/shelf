@@ -182,7 +182,7 @@ public static class LibraryImporter
             var metadata = analysis.Book!.Metadata;
             var signature = WorkSignature.Create(metadata.Title, metadata.Authors, metadata.Year, metadata.Isbn13);
             var name = Path.GetFileName(source);
-            var decision = matcher.Decide(new IncomingFile(name, signature, analysis.Fingerprint));
+            var decision = matcher.Decide(new IncomingFile(name, signature, analysis.Fingerprint, IndexWriter.FormatOf(name)));
 
             try
             {
@@ -247,6 +247,8 @@ public static class LibraryImporter
             {
                 matcher.AddFingerprint(workId, fingerprint);
             }
+
+            matcher.AddFormat(workId, IndexWriter.FormatOf(name));
 
             return new ImportItem(source, ImportAction.AddedToWork, destination, workId, title, match.Confidence, message, 0);
         }
@@ -348,7 +350,7 @@ public static class LibraryImporter
                 RemoveSourceIfMoving(source);
             }
 
-            matcher.Add(new WorkCandidate(id, signature, analysis.Fingerprint is { } f ? [f] : []));
+            matcher.Add(new WorkCandidate(id, signature, analysis.Fingerprint is { } f ? [f] : [], formats: [IndexWriter.FormatOf(name)]));
             _titlesThisRun[id] = metadata.Title!;
             _directoriesThisRun[id] = dir;
             return new ImportItem(source, ImportAction.NewWork, destination, id, metadata.Title, decision.Confidence, message, entries.Count);

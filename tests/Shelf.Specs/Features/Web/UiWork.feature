@@ -38,6 +38,8 @@ Feature: A book and its details
     Then the page shows the text "Kubernetes Patterns"
     And the page shows the text "Reusable Elements"
     And the page shows the text "Bilgin Ibryam"
+    And the page shows the text "Work ID"
+    And the page shows the text "01J9Z3K0000000000000000001"
     And the page shows the text "2019"
     And the page shows the text "Design patterns for containers"
     And the page shows the text "cloud/kubernetes"

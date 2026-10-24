@@ -15,7 +15,8 @@ public sealed record GeneratorOptions(
     int WordsMin = 3000,
     int WordsMax = 8000,
     bool Deflate = false,
-    int MaxDegreeOfParallelism = -1);
+    int MaxDegreeOfParallelism = -1,
+    bool PrintLayout = false);
 
 public sealed record GenerationResult(int Works, int Files, long TotalBytes, string OutputDirectory);
 
@@ -99,7 +100,7 @@ public static class LibraryGenerator
             }
             else
             {
-                bytes = RenderPdf(work, file, document, i, out var pages);
+                bytes = RenderPdf(work, file, document, i, options.PrintLayout, out var pages);
                 file.PageCount = pages;
             }
 
@@ -132,7 +133,7 @@ public static class LibraryGenerator
         });
     }
 
-    private static byte[] RenderPdf(WorkSpec work, FileSpec file, TextDocument document, int position, out int pageCount)
+    private static byte[] RenderPdf(WorkSpec work, FileSpec file, TextDocument document, int position, bool printLayout, out int pageCount)
     {
         var lines = new List<string> { work.Title, "by " + string.Join(", ", work.Authors.Select(a => a.Display)), string.Empty };
         if (file.IsbnInText && work.Isbn13 is not null)
@@ -153,9 +154,26 @@ public static class LibraryGenerator
         }
 
         var pages = new List<IReadOnlyList<string>>();
-        for (var from = 0; from < lines.Count; from += PdfWriter.LinesPerPage)
+        if (printLayout)
         {
-            pages.Add(lines.GetRange(from, Math.Min(PdfWriter.LinesPerPage, lines.Count - from)));
+            // What a print layout adds to the running text: a running header and a page number on every page, and words
+            // that are hyphenated at the end of a line. The pages are two lines shorter for header and footer.
+            Hyphenate(lines);
+            var body = PdfWriter.LinesPerPage - 2;
+            for (var from = 0; from < lines.Count; from += body)
+            {
+                var page = new List<string> { work.Title };
+                page.AddRange(lines.GetRange(from, Math.Min(body, lines.Count - from)));
+                page.Add((pages.Count + 1).ToString(CultureInfo.InvariantCulture));
+                pages.Add(page);
+            }
+        }
+        else
+        {
+            for (var from = 0; from < lines.Count; from += PdfWriter.LinesPerPage)
+            {
+                pages.Add(lines.GetRange(from, Math.Min(PdfWriter.LinesPerPage, lines.Count - from)));
+            }
         }
 
         pageCount = pages.Count;
@@ -170,5 +188,21 @@ public static class LibraryGenerator
             HasXmp = file.PdfMode == PdfMetadataMode.InfoAndXmp,
             IdentitySeed = work.Key + "/" + position.ToString(CultureInfo.InvariantCulture),
         });
+    }
+
+    /// <summary>Hyphenates the last word of every seventh line (if it is long enough) and moves the rest to the next line, as a print layout does.</summary>
+    private static void Hyphenate(List<string> lines)
+    {
+        for (var i = 0; i + 1 < lines.Count; i += 7)
+        {
+            var line = lines[i];
+            var space = line.LastIndexOf(' ');
+            var last = space < 0 ? line : line[(space + 1)..];
+            if (last.Length > 7 && last.All(char.IsLetter) && lines[i + 1].Length > 0)
+            {
+                lines[i] = line[..(line.Length - last.Length + 4)] + "-";
+                lines[i + 1] = last[4..] + " " + lines[i + 1];
+            }
+        }
     }
 }
