@@ -12,23 +12,68 @@ internal static class ImportCommand
         var paths = new Argument<string[]>("path")
         {
             Description = "Files or folders to import; folders are searched recursively",
-            Arity = ArgumentArity.OneOrMore,
+            Arity = ArgumentArity.ZeroOrMore,
         };
+        var from = new Option<string?>("--from") { Description = "Fetch the books of a cloud folder with rclone first, e.g. rclone:gdrive:Books" };
         var move = new Option<bool>("--move") { Description = "Delete the source after the copy was verified" };
         var dryRun = new Option<bool>("--dry-run") { Description = "Show what would happen and change nothing" };
         var library = LibraryContext.CreateOption();
         var command = new Command("import", "Copy files into the library and group them into works");
         command.Arguments.Add(paths);
+        command.Options.Add(from);
         command.Options.Add(move);
         command.Options.Add(dryRun);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
+            var givenPaths = parseResult.GetValue(paths) ?? [];
+            var remote = parseResult.GetValue(from);
+            var usage = Usage(givenPaths.Length, remote, parseResult.GetValue(move));
+            if (usage is not null)
+            {
+                stderr.WriteLine($"error: {usage}");
+                return ExitCodes.Usage;
+            }
+
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var isDryRun = parseResult.GetValue(dryRun);
-            var sources = parseResult.GetRequiredValue(paths).Select(p => Path.GetFullPath(p, environment.WorkingDirectory)).ToList();
+            var sources = givenPaths.Select(p => Path.GetFullPath(p, environment.WorkingDirectory)).ToList();
 
-            var result = LibraryImporter.Import(context.Root, sources, new ImportOptions(parseResult.GetValue(move), isDryRun), context.Settings.Grouping);
+            // F-IMP-8: the remote files land in a temporary folder that always disappears again.
+            string? download = null;
+            ImportResult result;
+            try
+            {
+                if (remote is not null)
+                {
+                    var spec = remote["rclone:".Length..];
+                    download = Directory.CreateTempSubdirectory("shelf-import-").FullName;
+                    try
+                    {
+                        environment.RemoteFetcher.Fetch(spec, download, environment.Cancellation);
+                    }
+                    catch (RemoteFetchException e)
+                    {
+                        stderr.WriteLine($"error: {e.Message}");
+                        return e.ToolMissing ? ExitCodes.Usage : ExitCodes.Error;
+                    }
+
+                    sources.Add(download);
+                }
+
+                result = LibraryImporter.Import(context.Root, sources, new ImportOptions(parseResult.GetValue(move), isDryRun), context.Settings.Grouping);
+                if (download is not null)
+                {
+                    result = ShowRemote(result, download, remote!["rclone:".Length..]);
+                }
+            }
+            finally
+            {
+                if (download is not null)
+                {
+                    Directory.Delete(download, recursive: true);
+                }
+            }
 
             if (!isDryRun)
             {
@@ -60,6 +105,43 @@ internal static class ImportCommand
         });
         return command;
     }
+
+    /// <summary>Why the arguments cannot work, or null. Checked before rclone runs.</summary>
+    private static string? Usage(int pathCount, string? remote, bool move)
+    {
+        if (remote is null)
+        {
+            return pathCount == 0 ? "Required argument missing: give a path to import, or --from rclone:<remote>:<path>" : null;
+        }
+
+        if (pathCount > 0)
+        {
+            return "give either a path or --from, not both";
+        }
+
+        if (!remote.StartsWith("rclone:", StringComparison.Ordinal))
+        {
+            return "--from must start with rclone:, e.g. rclone:gdrive:Books";
+        }
+
+        if (!remote["rclone:".Length..].Contains(':', StringComparison.Ordinal) || remote.EndsWith(':'))
+        {
+            return "--from needs a remote and a path, e.g. rclone:gdrive:Books";
+        }
+
+        return move ? "--move cannot be used with --from" : null;
+    }
+
+    /// <summary>The temporary folder means nothing to the user: name the remote folder instead.</summary>
+    private static ImportResult ShowRemote(ImportResult result, string download, string remote) =>
+        result with
+        {
+            Items = [.. result.Items.Select(i => i with
+            {
+                Source = i.Source.Replace(download, remote, StringComparison.Ordinal),
+                Message = i.Message?.Replace(download, remote, StringComparison.Ordinal),
+            })],
+        };
 
     private sealed record Counts(int Imported, int NewWorks, int Added, int Duplicates, int Errors, int ReviewEntries)
     {
