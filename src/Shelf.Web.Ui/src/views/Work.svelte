@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, editWork, fileUrl, mergeWorks, setTags, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { ApiError, editWork, enrichApply, enrichPreview, fileUrl, mergeWorks, setTags, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -20,6 +20,8 @@
     missing = false;
     loadError = null;
     editing = false;
+    online = null;
+    onlineDone = null;
     loadWork(wanted)
       .then((result) => {
         if (current) {
@@ -169,6 +171,75 @@
       book = { ...(await loadWork(book.id)) };
     } catch (e) {
       actionError = (e as Error).message;
+    }
+  }
+
+  // ---- details from the internet ----
+
+  // Nothing is asked online until the button is clicked; the preview writes nothing, "Take over" does.
+  let online = $state<EnrichPreview | null>(null);
+  let onlineOverwrite = $state(false);
+  let onlinePick = $state<number | undefined>(undefined);
+  let onlineBusy = $state(false);
+  let onlineDone = $state<string | null>(null);
+
+  const fieldLabel = (field: string): string => (field === 'isbn' ? 'ISBN' : field);
+
+  async function loadOnline(): Promise<void> {
+    if (!book) {
+      return;
+    }
+    actionError = null;
+    onlineDone = null;
+    onlineBusy = true;
+    try {
+      online = await enrichPreview(book.id, { overwrite: onlineOverwrite, pick: onlinePick });
+    } catch (e) {
+      online = null;
+      actionError = (e as Error).message;
+    } finally {
+      onlineBusy = false;
+    }
+  }
+
+  function startOnline(): void {
+    onlineOverwrite = false;
+    onlinePick = undefined;
+    void loadOnline();
+  }
+
+  function chooseCandidate(number: number): void {
+    onlinePick = number;
+    void loadOnline();
+  }
+
+  function toggleOverwrite(): void {
+    onlineOverwrite = !onlineOverwrite;
+    void loadOnline();
+  }
+
+  function cancelOnline(): void {
+    online = null;
+    onlinePick = undefined;
+  }
+
+  async function takeOver(): Promise<void> {
+    if (!book) {
+      return;
+    }
+    actionError = null;
+    onlineBusy = true;
+    try {
+      const outcome = await enrichApply(book.id, { overwrite: onlineOverwrite, pick: onlinePick });
+      const fields = outcome.fields.length ? outcome.fields.map(fieldLabel).join(', ') : 'nothing to change';
+      onlineDone = `Updated: ${fields}${outcome.cover ? `. Cover saved as ${outcome.cover}` : ''}`;
+      online = null;
+      onlinePick = undefined;
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      actionError = (e as Error).message;
+    } finally {
+      onlineBusy = false;
     }
   }
 
@@ -366,6 +437,49 @@
           </dl>
           <p><button type="button" class="button" onclick={startEditing}>Edit details</button></p>
         {/if}
+
+        <section>
+          <h2>Details from the internet</h2>
+          {#if onlineDone}<p class="done" role="status">{onlineDone}</p>{/if}
+          {#if !online}
+            <button type="button" class="button" disabled={onlineBusy} onclick={startOnline}>Load details from the internet</button>
+          {:else if online.candidates.length}
+            <p>{online.candidates.length} books match. Which one is this?</p>
+            <ul class="similar" aria-label="Matching books">
+              {#each online.candidates as candidate (candidate.number)}
+                <li>
+                  <span>{candidate.title}</span>
+                  <span class="muted">{authorLine(candidate.authors)}{candidate.publisher ? `, ${candidate.publisher}` : ''}{candidate.year ? ` (${candidate.year})` : ''}</span>
+                  <button type="button" class="button" aria-label={`Use candidate ${candidate.number}`} onclick={() => chooseCandidate(candidate.number)}>Use this one</button>
+                </li>
+              {/each}
+            </ul>
+            <p><button type="button" class="button" onclick={cancelOnline}>Cancel</button></p>
+          {:else}
+            <p class="muted">Details from {online.source} (matched by {online.match})</p>
+            {#each online.warnings as warning (warning)}<p class="muted">{warning}</p>{/each}
+            {#if online.changes.length}
+              <dl class="facts">
+                {#each online.changes as change (change.field)}
+                  <dt>{fieldLabel(change.field)}</dt>
+                  <dd>{change.action === 'overwrite' ? `${change.before ?? ''} → ${change.after}` : change.after}</dd>
+                {/each}
+              </dl>
+            {:else}
+              <p>Nothing to add.</p>
+            {/if}
+            {#if online.kept.length}
+              <p class="muted">Kept: {online.kept.map((k) => `${fieldLabel(k.field)} ${k.current ?? ''} (online: ${k.online})`).join('; ')}</p>
+            {/if}
+            <p class="actions">
+              <button type="button" class="button" aria-pressed={onlineOverwrite} disabled={onlineBusy} onclick={toggleOverwrite}>Overwrite details that are already set</button>
+              {#if online.changes.length}
+                <button type="button" class="button primary" disabled={onlineBusy} onclick={takeOver}>Take over</button>
+              {/if}
+              <button type="button" class="button" onclick={cancelOnline}>Cancel</button>
+            </p>
+          {/if}
+        </section>
 
         <section>
           <h2>Tags</h2>

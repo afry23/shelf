@@ -70,6 +70,20 @@ internal static class Api
             .WithName("MergeWorks")
             .Produces<MergeOutcome>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/{id}/enrich", ([FromServices] LibraryHandle library, string id, [FromBody] EnrichRequest? body) =>
+                Run(WebJsonContext.Default.EnrichPreviewResult, () =>
+                    library.Service.EnrichPreview(RequireId(id), OptionalText(body?.Source, "source"), OptionalFlag(body?.Overwrite, "overwrite") ?? false, OptionalWhole(body?.Pick, "pick"), CancellationToken.None)))
+            .WithName("EnrichPreview")
+            .Accepts<EnrichRequest>("application/json")
+            .Produces<EnrichPreviewResult>(StatusCodes.Status200OK);
+
+        api.MapPost("/works/{id}/enrich/apply", ([FromServices] LibraryHandle library, string id, [FromBody] EnrichRequest? body) =>
+                Run(WebJsonContext.Default.EnrichApplyResult, () =>
+                    library.Service.EnrichApply(RequireId(id), OptionalText(body?.Source, "source"), OptionalFlag(body?.Overwrite, "overwrite") ?? false, OptionalWhole(body?.Pick, "pick"), OptionalFlag(body?.Cover, "cover") ?? true, CancellationToken.None)))
+            .WithName("EnrichApply")
+            .Accepts<EnrichRequest>("application/json")
+            .Produces<EnrichApplyResult>(StatusCodes.Status200OK);
+
         api.MapPost("/files/{id}/split", ([FromServices] LibraryHandle library, string id) =>
                 Run(WebJsonContext.Default.SplitOutcome, () => library.Service.SplitFile(id)))
             .WithName("SplitFile")
@@ -240,6 +254,21 @@ internal static class Api
         body.FileId is { } node && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id
             ? id
             : throw new LibraryException("fileId is required: the ID of a file, as in the files of a work");
+
+    private static string? OptionalText(JsonNode? node, string name) =>
+        node is null ? null
+        : node.GetValueKind() == System.Text.Json.JsonValueKind.String ? node.GetValue<string>()
+        : throw new LibraryException($"{name} must be text");
+
+    private static bool? OptionalFlag(JsonNode? node, string name) =>
+        node is null ? null
+        : node.GetValueKind() is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False ? node.GetValue<bool>()
+        : throw new LibraryException($"{name} must be true or false");
+
+    private static int? OptionalWhole(JsonNode? node, string name) =>
+        node is null ? null
+        : node.GetValueKind() == System.Text.Json.JsonValueKind.Number && node.AsValue().TryGetValue<int>(out var number) ? number
+        : throw new LibraryException($"{name} must be a whole number");
 
     private static string RequireWorkId(System.Text.Json.Nodes.JsonNode? node, string name) =>
         node is not null && node.GetValueKind() == System.Text.Json.JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } id

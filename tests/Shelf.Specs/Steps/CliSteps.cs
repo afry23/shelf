@@ -101,6 +101,9 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
         cliEnvironment = cliEnvironment.WithRemoteFetcher(environment.Remote);
 
+        // Scenarios never reach the internet: enrich asks the fake catalogs.
+        cliEnvironment = cliEnvironment.WithMetadataSources(environment.Online.Sources);
+
         cliEnvironment = cliEnvironment.WithCancellation(environment.Interrupt.Token);
 
         // Scenarios never start a real application.

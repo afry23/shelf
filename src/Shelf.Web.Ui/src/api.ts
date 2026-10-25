@@ -406,6 +406,58 @@ export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: str
 export const mergeWorks = (target: string, source: string) =>
   request<MergeOutcome>('POST', `/works/${encodeURIComponent(target)}/merge`, { from: source });
 
+export interface EnrichChange {
+  field: string;
+  action: 'fill' | 'overwrite';
+  before?: string;
+  after: string;
+}
+
+export interface EnrichKept {
+  field: string;
+  current?: string;
+  online: string;
+}
+
+export interface EnrichCandidate {
+  number: number;
+  title: string;
+  authors: string[];
+  publisher?: string;
+  year?: number;
+  isbn13?: string;
+}
+
+/** What the online sources know about a work. With several matching books only `candidates` is set. */
+export interface EnrichPreview {
+  id: string;
+  source?: string;
+  match?: string;
+  changes: EnrichChange[];
+  kept: EnrichKept[];
+  candidates: EnrichCandidate[];
+  warnings: string[];
+}
+
+export interface EnrichOutcome {
+  id: string;
+  source: string;
+  fields: string[];
+  cover?: string;
+  warnings: string[];
+}
+
+export interface EnrichOptions {
+  overwrite?: boolean;
+  pick?: number;
+}
+
+export const enrichPreview = (id: string, options: EnrichOptions = {}) =>
+  request<EnrichPreview>('POST', `/works/${encodeURIComponent(id)}/enrich`, options);
+
+export const enrichApply = (id: string, options: EnrichOptions = {}) =>
+  request<EnrichOutcome>('POST', `/works/${encodeURIComponent(id)}/enrich/apply`, options);
+
 export const splitFile =(fileId: string) => request<SplitOutcome>('POST', `/files/${encodeURIComponent(fileId)}/split`);
 
 export const coverUrl = (id: string) => `/api/v1/works/${encodeURIComponent(id)}/cover`;

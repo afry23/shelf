@@ -51,7 +51,7 @@ internal static class ServeCommand
             try
             {
                 WebHost
-                    .RunAsync(new WebOptions(context.Root, context.Settings, VersionInfo.Get(), address, chosenPort, chosenToken, environment.ModelCatalog, environment.EmbedderFactory), provider, environment.MinimumLogLevel, stderr, environment.Cancellation)
+                    .RunAsync(new WebOptions(context.Root, context.Settings, VersionInfo.Get(), address, chosenPort, chosenToken, environment.ModelCatalog, environment.EmbedderFactory, environment.MetadataSources), provider, environment.MinimumLogLevel, stderr, environment.Cancellation)
                     .GetAwaiter()
                     .GetResult();
             }

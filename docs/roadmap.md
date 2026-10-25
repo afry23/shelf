@@ -245,7 +245,6 @@ Could items and deferred decisions:
 | Item | PRD reference |
 |---|---|
 | Watch mode | F-LIB-8 |
-| Online metadata enrichment (Open Library, Google Books) | F-IMP-6 |
 | Import from cloud folders via rclone (Google Drive and others) | F-IMP-8 |
 | Tag suggestions based on semantic similarity | F-TAG-6 |
 | Bookmarks | F-RDR-6 |

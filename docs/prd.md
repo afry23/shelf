@@ -113,7 +113,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-IMP-3 | Fallback heuristic: if metadata is missing, it is parsed from the file name, e.g. `Author - Title (Year).pdf`. | M |
 | F-IMP-4 | ISBN detection via regex in the first and last pages of the text. | S |
 | F-IMP-5 | Cover extraction: the cover image for EPUB, a rendering of the first page for PDF. Stored as `cover.<ext>` in the work folder in the original image format of the source (no transcoding); for EPUB this is the format of the embedded cover, the PDF rendering is a JPEG (quality 85) of page 1 with the longest edge at 600 px, `cover.jpg` (decided 2026-10-17, ADR 0010). | S |
-| F-IMP-6 | Optional online enrichment via Open Library or Google Books by ISBN. **Off** by default, only on explicit command. | C |
+| F-IMP-6 | `shelf enrich <work>` looks a work up online: by ISBN, without one by title and author (only an exact normalized title with a shared author surname counts; several matches are listed for `--pick`). Open Library is asked first, Google Books if it knows nothing (`--source` limits it to one); the first answer wins, sources are not merged. A preview unless `--apply`; only empty fields are filled unless `--overwrite`. The cover is saved as `cover.<ext>` if the work has none (`--no-cover` skips it). **Off** by default, only on explicit command; no other command goes online. The work details of the web interface offer the same (preview, candidates, "Take over"; REST `POST /api/v1/works/{id}/enrich` and `…/enrich/apply`). | C |
 | F-IMP-7 | Uncertain detections end up in a review queue (`shelf review`) instead of being filed incorrectly. The queue is persisted in `.shelf/review.json` and survives `shelf reindex`. | S |
 | F-IMP-8 | `shelf import --from rclone:<remote>:<path>` fetches the EPUB and PDF files of a cloud folder (Google Drive, Dropbox, OneDrive, …) with the user's own `rclone` into a temporary folder and imports them like local files. Only on explicit command; `--move` is not allowed with `--from`. shelf holds no cloud credentials, they stay in the rclone config. | C |
 
@@ -250,6 +250,7 @@ shelf semantic <text> [--chunks] [--hybrid] [--json]  Semantic search (--hybrid:
 shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
+shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
@@ -319,7 +320,7 @@ Requirements for the MCP server:
 |---|---|---|
 | **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
-| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), "Read" and "Download" buttons | M |
+| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
 | **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for probable pairs also "merge the other into this one" (F-GRP-4); for different files of one book also "split into own work" (F-GRP-4) | M |
 | **Review** | Confirm or correct uncertain assignments | S |
@@ -374,7 +375,7 @@ Reference: 10,000 works, approx. 15,000 files, Apple M-series or a current x64 l
 ### 9.4 Privacy
 
 - No telemetry.
-- Network access only for the model download, the optional, explicitly triggered online metadata lookup, and the explicitly triggered `rclone` call of `shelf import --from` (shelf itself opens no connection for it).
+- Network access only for the model download, the optional, explicitly triggered online metadata lookup (`shelf enrich`: ISBN, title and author of one work go to Open Library and Google Books), and the explicitly triggered `rclone` call of `shelf import --from` (shelf itself opens no connection for it).
 
 ## 10. Architecture
 

@@ -18,7 +18,7 @@ namespace Shelf.Library;
 /// organization proposals over one library. Errors the caller can act on (unknown work, bad query, no text at a location)
 /// are <see cref="LibraryException"/>s. Only the tag methods change anything.
 /// </summary>
-public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic)
+public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic, IReadOnlyList<IMetadataSource>? metadataSources = null)
 {
     public const int DefaultMaxChars = 4_000;
     public const int MaxLimit = 100;

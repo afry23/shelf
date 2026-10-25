@@ -15,6 +15,9 @@ public sealed class ScenarioEnvironment
     /// <summary>What <c>import --from</c> fetches instead of running rclone.</summary>
     public FakeRemote Remote { get; } = new();
 
+    /// <summary>The online catalogs that <c>enrich</c> asks instead of the internet; both are empty until a scenario fills them.</summary>
+    public FakeOnline Online { get; } = new();
+
     /// <summary>The embedder commands get instead of ONNX Runtime; null runs use the real one.</summary>
     public FakeEmbedder? Embedder { get; set; }
 
