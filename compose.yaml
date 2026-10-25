@@ -1,0 +1,18 @@
+# docker compose up -d --build
+# Einmalig die Library anlegen:
+#   docker compose run --rm --entrypoint /app/shelf shelf init /library
+# Token in .env setzen: SHELF_TOKEN=...
+
+services:
+  shelf:
+    build: .
+    image: shelf:latest
+    restart: unless-stopped
+    ports:
+      # Nur lokal erreichbar; für Zugriff aus dem Netz "8080:8080" nehmen.
+      - "127.0.0.1:${SHELF_PORT:-8080}:8080"
+    environment:
+      SHELF_TOKEN: ${SHELF_TOKEN:?SHELF_TOKEN in .env setzen}
+    volumes:
+      # Bücher, index.db und Modelle. Ordner muss UID 10001 gehören (chown) oder named volume nehmen.
+      - ${SHELF_LIBRARY:-./library}:/library

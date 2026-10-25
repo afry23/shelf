@@ -1,0 +1,12 @@
+.git
+.github
+**/bin
+**/obj
+**/node_modules
+**/dist
+artifacts
+out
+TestResults
+vendor/sqlite-vec
+docs
+tests
