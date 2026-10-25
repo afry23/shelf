@@ -463,3 +463,56 @@ export const splitFile =(fileId: string) => request<SplitOutcome>('POST', `/file
 export const coverUrl = (id: string) => `/api/v1/works/${encodeURIComponent(id)}/cover`;
 
 export const fileUrl = (id: string, download = false) => `/api/v1/files/${encodeURIComponent(id)}${download ? '?download=true' : ''}`;
+
+// ---- highlights and notes (F-ANN-1 to F-ANN-4) ----
+
+export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
+
+/** A highlight (a marked passage, with a color) or a note for a whole file; both can carry a note in Markdown. */
+export interface Annotation {
+  id: string;
+  /** The ID of the file the annotation belongs to. */
+  file: string;
+  kind: 'highlight' | 'note';
+  locator: string | null;
+  quote: { exact: string; prefix: string | null; suffix: string | null } | null;
+  color: AnnotationColor | null;
+  note: string | null;
+  /** The marked areas of a highlight in a PDF: x, y, width, height, as fractions of the page. */
+  rects: number[][] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnotationDraft {
+  kind: 'highlight' | 'note';
+  locator?: string;
+  quote?: { exact: string; prefix?: string; suffix?: string };
+  color?: AnnotationColor;
+  note?: string;
+  rects?: number[][];
+}
+
+const fileAnnotationsPath = (fileId: string) => `/files/${encodeURIComponent(fileId)}/annotations`;
+
+export const fileAnnotations = (fileId: string) => request<Annotation[]>('GET', fileAnnotationsPath(fileId));
+
+export const workAnnotations = (workId: string) => request<Annotation[]>('GET', `/works/${encodeURIComponent(workId)}/annotations`);
+
+export const createAnnotation = (fileId: string, draft: AnnotationDraft) =>
+  request<Annotation>('POST', fileAnnotationsPath(fileId), draft);
+
+/** Only the note (null clears it) and the color can change. */
+export const updateAnnotation = (fileId: string, id: string, changes: { note?: string | null; color?: AnnotationColor }) =>
+  request<Annotation>('PATCH', `${fileAnnotationsPath(fileId)}/${encodeURIComponent(id)}`, changes, 'application/merge-patch+json');
+
+export const deleteAnnotation = async (fileId: string, id: string): Promise<void> => {
+  const response = await fetch(`/api/v1${fileAnnotationsPath(fileId)}/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as Problem | null;
+    throw new ApiError(problem?.detail ?? problem?.title ?? `HTTP ${response.status}`, response.status);
+  }
+};

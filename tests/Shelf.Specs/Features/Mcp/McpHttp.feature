@@ -41,9 +41,11 @@ Feature: The MCP server over Streamable HTTP
     Given the MCP server is running over HTTP on the library "library"
     Then the server offers exactly the tools:
       | tool                 |
+      | add_note             |
       | add_tags             |
       | find_duplicates      |
       | find_probable_duplicates |
+      | get_annotations      |
       | get_book             |
       | list_tags            |
       | propose_organization |
@@ -52,7 +54,7 @@ Feature: The MCP server over Streamable HTTP
       | search_books         |
       | semantic_search      |
       | similar_books        |
-    And every tool except "add_tags" and "remove_tags" is marked read-only
+    And every tool except "add_note", "add_tags" and "remove_tags" is marked read-only
     And no tool is marked destructive
     And the server offers the resource templates:
       | uri                   |
@@ -89,6 +91,7 @@ Feature: The MCP server over Streamable HTTP
       | tool                 |
       | find_duplicates      |
       | find_probable_duplicates |
+      | get_annotations      |
       | get_book             |
       | list_tags            |
       | propose_organization |

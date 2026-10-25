@@ -3,6 +3,8 @@
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
+  import { createAnnotations } from '../reader/annotations.svelte';
+  import NoteList from '../reader/NoteList.svelte';
 
   let { id }: { id: string } = $props();
 
@@ -38,6 +40,15 @@
       current = false;
     };
   });
+
+  // The highlights and notes of all files of the work (F-ANN-4); they are made in the reader, and can be edited here.
+  const notes = createAnnotations(() => ({ work: id }));
+
+  $effect(() => {
+    void notes.load();
+  });
+
+  const fileNames = $derived(Object.fromEntries((book?.files ?? []).map((f) => [f.id, f.name])));
 
   // The works most like this one. Without embeddings the list is empty and the section stays away: the view needs nothing else.
   let similarBooks = $state<SearchItem[]>([]);
@@ -496,6 +507,13 @@
             {#each suggestions as tag (tag)}<option value={tag}></option>{/each}
           </datalist>
         </section>
+
+        {#if notes.items.length}
+          <section>
+            <h2>Highlights and notes</h2>
+            <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
+          </section>
+        {/if}
 
         <section>
           <h2>Files</h2>

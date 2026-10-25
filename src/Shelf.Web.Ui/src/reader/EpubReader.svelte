@@ -1,8 +1,12 @@
 <script lang="ts">
   import 'foliate-js/view.js';
-  import { fileUrl, type WorkDetail, type WorkFile } from '../api';
+  import { Overlayer } from 'foliate-js/overlayer.js';
+  import { fileUrl, type Annotation, type AnnotationColor, type WorkDetail, type WorkFile } from '../api';
   import { replaceHash, router } from '../router.svelte';
+  import { colors, createAnnotations } from './annotations.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import NotesPanel from './NotesPanel.svelte';
+  import SelectionBar from './SelectionBar.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
 
@@ -43,6 +47,23 @@
   let searched = $state(false);
   let groups = $state<HitGroup[]>([]);
   let searchOpen = $state(false);
+
+  // Highlights and notes (F-ANN-1, F-ANN-2). `pending` is the passage that is selected in the book right now.
+  interface Pending {
+    doc: Document;
+    cfi: string;
+    text: string;
+    prefix?: string;
+    suffix?: string;
+  }
+  const annotations = createAnnotations(() => ({ file: file.id }));
+  let notesOpen = $state(false);
+  let pending = $state<Pending | null>(null);
+  let markerColor = $state<AnnotationColor>('yellow');
+  let selectedNote = $state<string | null>(null);
+  // The highlights that are drawn in the pages that are open (what `data-highlights` of the book reports).
+  const drawn = new Set<string>();
+  let drawnCount = $state(0);
 
   // Reflow, spacing and the colors of the page are set from here; the book's own colors give way (the theme is the reader's choice).
   function styles(): string {
@@ -109,8 +130,29 @@
         }
         first = false;
       });
+      element.addEventListener('load', (event: Event) => {
+        const { doc, index } = (event as CustomEvent<{ doc: Document; index: number }>).detail;
+        watchSelection(doc, index);
+      });
+      element.addEventListener('create-overlay', (event: Event) => void drawSection((event as CustomEvent<{ index: number }>).detail.index));
+      element.addEventListener('draw-annotation', (event: Event) => {
+        const { draw, annotation } = (event as CustomEvent<{ draw: (f: unknown, o: unknown) => void; annotation: { value: string; color: AnnotationColor } }>).detail;
+        draw(Overlayer.highlight, { color: colors[annotation.color] ?? colors.yellow });
+        drawn.add(annotation.value);
+        drawnCount = drawn.size;
+      });
+      element.addEventListener('show-annotation', (event: Event) => {
+        const value = (event as CustomEvent<{ value: string }>).detail.value;
+        const found = annotations.items.find((a) => a.locator === value);
+        if (found) {
+          selectedNote = found.id;
+          openNotes();
+        }
+      });
       element.renderer.setStyles(styles());
       contents = toEntries(element.book.toc ?? []);
+      // The highlights are known before the first page is drawn, so that it is drawn with them.
+      await annotations.load();
       await element.init({ lastLocation: resume ?? null, showTextStart: !resume });
       loading = false;
     })().catch((e: Error) => {
@@ -136,6 +178,89 @@
       go: () => void view?.goTo(node.href),
       items: toEntries(node.subitems ?? []),
     }));
+  }
+
+  /** The index of the section that holds a location; null for a location that does not resolve. */
+  async function sectionOf(cfi: string): Promise<number | null> {
+    try {
+      return (await Promise.resolve(view?.resolveCFI(cfi)))?.index ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function drawSection(index: number): Promise<void> {
+    for (const a of annotations.items) {
+      if (a.kind === 'highlight' && a.locator && (await sectionOf(a.locator)) === index) {
+        void view?.addAnnotation({ value: a.locator, color: a.color });
+      }
+    }
+  }
+
+  // A selection in a page of the book (made with the mouse or the keyboard) is kept until it is marked or the selection goes.
+  function watchSelection(doc: Document, index: number): void {
+    doc.addEventListener('selectionchange', () => {
+      const selection = doc.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !view) {
+        if (pending?.doc === doc) {
+          pending = null;
+        }
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const text = selection.toString().trim().slice(0, 20_000);
+      if (!text) {
+        return;
+      }
+      const start = range.startContainer;
+      const end = range.endContainer;
+      const prefix = start.nodeType === Node.TEXT_NODE ? (start.textContent ?? '').slice(Math.max(0, range.startOffset - 40), range.startOffset) : '';
+      const suffix = end.nodeType === Node.TEXT_NODE ? (end.textContent ?? '').slice(range.endOffset, range.endOffset + 40) : '';
+      pending = { doc, cfi: view.getCFI(index, range), text, prefix: prefix || undefined, suffix: suffix || undefined };
+    });
+  }
+
+  async function highlight(): Promise<void> {
+    const marked = pending;
+    if (!marked || !view) {
+      return;
+    }
+    pending = null;
+    marked.doc.getSelection()?.removeAllRanges();
+    const created = await annotations.add(file.id, {
+      kind: 'highlight',
+      locator: marked.cfi,
+      quote: { exact: marked.text, prefix: marked.prefix, suffix: marked.suffix },
+      color: markerColor,
+    });
+    if (created?.locator) {
+      await view?.addAnnotation({ value: created.locator, color: created.color });
+    }
+  }
+
+  function goTo(annotation: Annotation): void {
+    if (annotation.locator) {
+      void view?.goTo(annotation.locator);
+    }
+  }
+
+  function recolored(annotation: Annotation): void {
+    if (annotation.locator) {
+      void view?.addAnnotation({ value: annotation.locator, color: annotation.color });
+    }
+  }
+
+  function removed(annotation: Annotation): void {
+    if (annotation.locator) {
+      void view?.deleteAnnotation({ value: annotation.locator });
+      drawn.delete(annotation.locator);
+      drawnCount = drawn.size;
+    }
+  }
+
+  function openNotes(): void {
+    notesOpen = true;
+    contentsOpen = false;
   }
 
   async function search(): Promise<void> {
@@ -175,7 +300,7 @@
   const hits = $derived(groups.reduce((n, g) => n + g.subitems.length, 0));
   const found = $derived(hits === 1 ? '1 match' : `${hits} matches`);
 
-  const entries = $derived(searchOpen && !contentsOpen ? 'search' : contentsOpen ? 'contents' : 'none');
+  const entries = $derived(notesOpen ? 'notes' : searchOpen && !contentsOpen ? 'search' : contentsOpen ? 'contents' : 'none');
 </script>
 
 <ReaderFrame {book} background={themes[theme].background}>
@@ -209,12 +334,28 @@
     </span>
 
     {#if contents.length}
-      <button type="button" class="button" aria-expanded={contentsOpen} onclick={() => (contentsOpen = !contentsOpen)}>Contents</button>
+      <button
+        type="button"
+        class="button"
+        aria-expanded={contentsOpen}
+        onclick={() => {
+          contentsOpen = !contentsOpen;
+          notesOpen = false;
+        }}>Contents</button
+      >
+    {/if}
+
+    <button type="button" class="button" aria-expanded={notesOpen} disabled={loading} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
+
+    {#if pending}
+      <SelectionBar bind:color={markerColor} onhighlight={highlight} />
     {/if}
   {/snippet}
 
   {#snippet side()}
-    {#if entries === 'contents'}
+    {#if entries === 'notes'}
+      <NotesPanel store={annotations} fileId={file.id} go={goTo} onrecolor={recolored} onremove={removed} selected={selectedNote} />
+    {:else if entries === 'contents'}
       <aside class="side" aria-label="Contents"><Entries items={contents} /></aside>
     {:else if entries === 'search' && hits}
       <aside class="side" aria-label="Search results">
@@ -240,7 +381,7 @@
   {:else if loading}
     <p class="problem muted">Opening the book…</p>
   {/if}
-  <div class="host" bind:this={host} aria-label="Book" role="document"></div>
+  <div class="host" bind:this={host} aria-label="Book" role="document" data-highlights={drawnCount}></div>
 </ReaderFrame>
 
 <style>

@@ -136,6 +136,39 @@ public static class LibrarySearch
             }
         }
 
+        // The marked text and the notes of the annotations are passages too (F-ANN-5); their ids count down from -1 so that they
+        // stay apart from the ids of the chunks.
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"""
+                SELECT w.id, bm25(annotations_fts), -a.id, f.rel_path, f.format, a.locator, a.kind
+                FROM annotations_fts
+                JOIN annotations a ON a.id = annotations_fts.rowid
+                JOIN works w ON w.id = a.work_id
+                JOIN files f ON f.work_id = a.work_id AND substr(f.rel_path, -length(a.file_name)) = a.file_name
+                WHERE annotations_fts MATCH $match {filter.AndSql}
+                ORDER BY 2 LIMIT {MaxCandidates}
+                """;
+            command.Parameters.AddWithValue("$match", match);
+            filter.Bind(command);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var work = reader.GetString(0);
+                if (!content.TryGetValue(work, out var hits))
+                {
+                    content[work] = hits = [];
+                }
+
+                var locator = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
+                var where = reader.GetString(6) == "note" ? "note" : "highlight, " + Locators.Describe(locator);
+                hits.Add((
+                    reader.GetDouble(1),
+                    reader.GetInt64(2),
+                    new ContentHit(reader.GetString(3), reader.GetString(4), locator, where, string.Empty)));
+            }
+        }
+
         // bm25() is negative and smaller is better: the score turns that around and adds both parts.
         var top = metadata.Keys.Union(content.Keys)
             .Select(id =>
@@ -154,13 +187,28 @@ public static class LibrarySearch
         snippet.CommandText = "SELECT snippet(chunks_fts, 0, '[', ']', '…', 12) FROM chunks_fts WHERE chunks_fts MATCH $match AND rowid = $id";
         snippet.Parameters.AddWithValue("$match", match);
         var idParameter = snippet.Parameters.Add("$id", SqliteType.Integer);
+        using var noteSnippet = connection.CreateCommand();
+        noteSnippet.CommandText = "SELECT snippet(annotations_fts, -1, '[', ']', '…', 12) FROM annotations_fts WHERE annotations_fts MATCH $match AND rowid = $id";
+        noteSnippet.Parameters.AddWithValue("$match", match);
+        var noteIdParameter = noteSnippet.Parameters.Add("$id", SqliteType.Integer);
         return [.. top.Select(r => new Ranked(
             r.Id,
             r.Score,
             [.. r.Hits.Select(h =>
             {
-                idParameter.Value = h.ChunkId;
-                var text = (string?)snippet.ExecuteScalar() ?? string.Empty;
+                string? text;
+                if (h.ChunkId < 0)
+                {
+                    noteIdParameter.Value = -h.ChunkId;
+                    text = (string?)noteSnippet.ExecuteScalar();
+                }
+                else
+                {
+                    idParameter.Value = h.ChunkId;
+                    text = (string?)snippet.ExecuteScalar();
+                }
+
+                text ??= string.Empty;
                 return h.Hit with { Snippet = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)) };
             })]))];
     }

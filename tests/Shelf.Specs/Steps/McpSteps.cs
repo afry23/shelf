@@ -152,9 +152,17 @@ public sealed class McpSteps(ScenarioEnvironment environment, ConfigSteps worksp
     public void ThenEveryToolExceptIsReadOnly(string a, string b) =>
         Assert.All(_tools.Where(t => t.Name != a && t.Name != b), t => Assert.True(t.ProtocolTool.Annotations?.ReadOnlyHint == true, $"{t.Name} is not marked read-only"));
 
+    [Then("every tool except {string}, {string} and {string} is marked read-only")]
+    public void ThenEveryToolExceptThreeIsReadOnly(string a, string b, string c) =>
+        Assert.All(_tools.Where(t => t.Name != a && t.Name != b && t.Name != c), t => Assert.True(t.ProtocolTool.Annotations?.ReadOnlyHint == true, $"{t.Name} is not marked read-only"));
+
     [Then("no tool is marked destructive")]
     public void ThenNoToolIsDestructive() =>
         Assert.All(_tools, t => Assert.True(t.ProtocolTool.Annotations?.DestructiveHint != true, $"{t.Name} is marked destructive"));
+
+    [Then("the tool {string} is read-only")]
+    public void ThenTheToolIsReadOnly(string name) =>
+        Assert.True(_tools.Single(t => t.Name == name).ProtocolTool.Annotations?.ReadOnlyHint == true, $"{name} is not marked read-only");
 
     [Then("the tool {string} is not read-only and not destructive")]
     public void ThenTheToolIsNotReadOnlyAndNotDestructive(string name)

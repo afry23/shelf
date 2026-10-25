@@ -154,6 +154,11 @@ public static class LibraryOrganizer
         if (directoryChanges)
         {
             moves.Add(new Move(IndexWriter.JoinRelative(directory, SidecarStore.FileName), IndexWriter.JoinRelative(newDirectory, SidecarStore.FileName), IsFile: false));
+            if (File.Exists(Path.Combine(root, directory, AnnotationsFormat.FileName)))
+            {
+                moves.Add(new Move(IndexWriter.JoinRelative(directory, AnnotationsFormat.FileName), IndexWriter.JoinRelative(newDirectory, AnnotationsFormat.FileName), IsFile: false));
+            }
+
             if (sidecar.Cover is { } cover && File.Exists(Path.Combine(root, directory, cover)))
             {
                 moves.Add(new Move(IndexWriter.JoinRelative(directory, cover), IndexWriter.JoinRelative(newDirectory, cover), IsFile: false));
@@ -221,6 +226,7 @@ public static class LibraryOrganizer
             journal.Replace(sidecarPath, Encoding.UTF8.GetBytes(SidecarFormat.Serialize(Renamed(plan.Sidecar, plan.Renames))));
         }
 
+        RenameInAnnotations(root, journal, plan);
         foreach (var move in plan.Moves.Where(m => !m.IsFile))
         {
             LibraryEditor.Move(journal, LibraryPathsAbsolute(root, move.From), LibraryPathsAbsolute(root, move.To));
@@ -230,6 +236,34 @@ public static class LibraryOrganizer
         {
             LibraryEditor.RemoveFolderIfEmpty(root, Path.Combine(root, plan.OldDirectory));
         }
+    }
+
+    /// <summary>The annotations name their file; a renamed file keeps them (an annotations.json that cannot be read is left as it is).</summary>
+    private static void RenameInAnnotations(string root, FileJournal journal, WorkPlan plan)
+    {
+        if (!plan.Renames.Any(r => r.Key != r.Value))
+        {
+            return;
+        }
+
+        var path = LibraryPathsAbsolute(root, IndexWriter.JoinRelative(plan.OldDirectory, AnnotationsFormat.FileName));
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        AnnotationsSidecar annotations;
+        try
+        {
+            annotations = AnnotationsStore.Read(path);
+        }
+        catch (SidecarException)
+        {
+            return;
+        }
+
+        var renamed = annotations with { Annotations = [.. annotations.Annotations.Select(a => a with { File = plan.Renames.GetValueOrDefault(a.File, a.File) })] };
+        journal.Replace(path, Encoding.UTF8.GetBytes(AnnotationsFormat.Serialize(renamed)));
     }
 
     private static WorkSidecar Renamed(WorkSidecar sidecar, Dictionary<string, string> renames)

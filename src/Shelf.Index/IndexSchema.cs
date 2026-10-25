@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 5;
+    public const int Version = 6;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 
@@ -116,11 +116,43 @@ internal static class IndexSchema
             locator TEXT NOT NULL,
             updated_at TEXT NOT NULL)
         """,
+        """
+        CREATE TABLE annotations(
+            id INTEGER PRIMARY KEY,
+            uid TEXT NOT NULL UNIQUE,
+            work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            file_name TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            locator TEXT,
+            quote TEXT,
+            color TEXT,
+            note TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL)
+        """,
+        "CREATE INDEX annotations_work ON annotations(work_id)",
+        $"CREATE VIRTUAL TABLE annotations_fts USING fts5(quote, note, content='annotations', content_rowid='id', tokenize='{Tokenizer}')",
+        """
+        CREATE TRIGGER annotations_ai AFTER INSERT ON annotations BEGIN
+            INSERT INTO annotations_fts(rowid, quote, note) VALUES (new.id, new.quote, new.note);
+        END
+        """,
+        """
+        CREATE TRIGGER annotations_ad AFTER DELETE ON annotations BEGIN
+            INSERT INTO annotations_fts(annotations_fts, rowid, quote, note) VALUES ('delete', old.id, old.quote, old.note);
+        END
+        """,
+        """
+        CREATE TRIGGER annotations_au AFTER UPDATE OF quote, note ON annotations BEGIN
+            INSERT INTO annotations_fts(annotations_fts, rowid, quote, note) VALUES ('delete', old.id, old.quote, old.note);
+            INSERT INTO annotations_fts(rowid, quote, note) VALUES (new.id, new.quote, new.note);
+        END
+        """,
     ];
 
     /// <summary>Tables that hold data, in an order that is safe for deleting (children first).</summary>
     public static readonly string[] DataTablesChildrenFirst =
     [
-        "chunks", "reading_progress", "work_tags", "files", "tags", "works", "dupe_ignores", "review_queue",
+        "chunks", "annotations", "reading_progress", "work_tags", "files", "tags", "works", "dupe_ignores", "review_queue",
     ];
 }

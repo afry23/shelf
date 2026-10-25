@@ -28,7 +28,7 @@ public sealed record SemanticSettings(string Model)
 
 /// <summary>The MCP server (PRD 7.2).</summary>
 /// <param name="MaxChars">Hard maximum for <c>maxChars</c> of the tool <c>read_passage</c>.</param>
-/// <param name="ReadOnly">The tools that change something (<c>add_tags</c>, <c>remove_tags</c>) are not offered.</param>
+/// <param name="ReadOnly">The tools that change something (<c>add_tags</c>, <c>remove_tags</c>, <c>add_note</c>) are not offered.</param>
 public sealed record McpSettings(int MaxChars, bool ReadOnly = false)
 {
     public const int DefaultMaxChars = 20_000;

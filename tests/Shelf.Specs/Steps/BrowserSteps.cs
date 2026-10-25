@@ -263,6 +263,85 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the reader highlights {string}")]
     public void ThenReaderHighlights(string text) => Assert.True(Wait(Page.Locator(".textLayer .highlight", new() { HasText = text }).First), $"Nothing is highlighted. {Dump()}");
 
+    /// <summary>
+    /// Selects the first occurrence of the text in a page of the book, as a person with the mouse would: the selection lives in the
+    /// frame of the page, and the reader hears of it through <c>selectionchange</c>.
+    /// </summary>
+    [When("I select the text {string} in the book")]
+    [Given("I select the text {string} in the book")]
+    public void WhenISelectInBook(string text)
+    {
+        const string script = """
+            (text) => {
+              const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                const at = node.data.indexOf(text);
+                if (at >= 0) {
+                  const range = document.createRange();
+                  range.setStart(node, at);
+                  range.setEnd(node, at + text.length);
+                  const selection = getSelection();
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                  return true;
+                }
+              }
+              return false;
+            }
+            """;
+        Assert.True(Poll(() => Page.Frames.Where(f => f != Page.MainFrame).Any(f =>
+        {
+            try
+            {
+                return f.EvaluateAsync<bool>(script, text).GetAwaiter().GetResult();
+            }
+            catch (PlaywrightException)
+            {
+                return false;
+            }
+        })), $"'{text}' is not in a page of the book. {Dump()}");
+    }
+
+    /// <summary>Selects the first occurrence of the text in the text layer of a PDF page, as a person with the mouse would.</summary>
+    [When("I select the text {string} on the PDF page")]
+    [Given("I select the text {string} on the PDF page")]
+    public void WhenISelectOnPdf(string text)
+    {
+        const string script = """
+            (text) => {
+              const walker = document.createTreeWalker(document.querySelector('.pdfViewer'), NodeFilter.SHOW_TEXT);
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                const at = node.data.indexOf(text);
+                if (at >= 0 && node.parentElement.closest('.textLayer')) {
+                  const range = document.createRange();
+                  range.setStart(node, at);
+                  range.setEnd(node, at + text.length);
+                  const selection = getSelection();
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                  return true;
+                }
+              }
+              return false;
+            }
+            """;
+        Assert.True(Poll(() => Page.EvaluateAsync<bool>(script, text).GetAwaiter().GetResult()), $"'{text}' is not in the text layer of a page. {Dump()}");
+    }
+
+    [Then("the PDF page shows {int} highlight(s)")]
+    public void ThenPdfShowsHighlights(int count) =>
+        Assert.True(Poll(() => Page.Locator(".shelf-highlight").CountAsync().GetAwaiter().GetResult() == count), $"The pages do not show {count} highlights. {Dump()}");
+
+    [Then("the book shows {int} highlight(s)")]
+    public void ThenBookShowsHighlights(int count) =>
+        Expect(Page.Locator("[aria-label='Book']"), e => e.ToHaveAttributeAsync("data-highlights", count.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+    [Then("the rendered note shows {string} in bold")]
+    public void ThenRenderedNoteBold(string text) => Assert.True(Wait(Page.Locator("aside[aria-label='Notes'] strong", new() { HasText = text }).First), $"No bold '{text}' in the notes. {Dump()}");
+
+    [Then("the title of the page is not {string}")]
+    public void ThenTitleIsNot(string title) => Assert.NotEqual(title, Page.TitleAsync().GetAwaiter().GetResult());
+
     [Then("the browser reported no errors")]
     public void ThenNoErrors()
     {

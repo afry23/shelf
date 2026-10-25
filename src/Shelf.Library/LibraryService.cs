@@ -590,17 +590,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
     public ReadingPosition SaveProgress(string fileId, string locator)
     {
         var file = ResolveFile(fileId);
-        var problem = file.Format switch
-        {
-            "pdf" => PageLocator().IsMatch(locator)
-                ? null
-                : "locator of a PDF must be page=N, with N a page number from 1",
-            "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
-                ? null
-                : "locator of an EPUB must be an epubcfi(...)",
-            _ => $"files of the format {file.Format} have no reading position",
-        };
-        if (problem is not null)
+        if (LocatorProblem(file.Format, locator) is { } problem)
         {
             throw new LibraryException(problem);
         }
@@ -626,6 +616,279 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
             }
         }
     }
+
+    /// <summary>Why this location is none of a file of this format, or null.</summary>
+    private static string? LocatorProblem(string format, string locator) => format switch
+    {
+        "pdf" => PageLocator().IsMatch(locator)
+            ? null
+            : "locator of a PDF must be page=N, with N a page number from 1",
+        "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
+            ? null
+            : "locator of an EPUB must be an epubcfi(...)",
+        _ => $"files of the format {format} have no reading position",
+    };
+
+    // ---- annotations (F-ANN-1 to F-ANN-3) ----
+
+    private const int MaxQuoteLength = 20_000;
+    private const int MaxNoteLength = 200_000;
+
+    /// <summary>The highlights and notes of one file, oldest first.</summary>
+    /// <exception cref="LibraryException">NotFound: no such file.</exception>
+    public AnnotationView[] ListAnnotations(string fileId)
+    {
+        var file = ResolveFile(fileId);
+        var work = Find(file.Work.ToString());
+        return [.. ReadAnnotations(work).Where(a => a.File == file.Name).Select(a => View(work, a))];
+    }
+
+    /// <summary>The highlights and notes of all files of a work, oldest first.</summary>
+    /// <exception cref="LibraryException">NotFound: no such work.</exception>
+    public AnnotationView[] ListWorkAnnotations(string workId)
+    {
+        var work = Find(workId);
+        return [.. ReadAnnotations(work).Select(a => View(work, a))];
+    }
+
+    /// <summary>The highlights and notes of a work, with the work's title.</summary>
+    /// <exception cref="LibraryException">NotFound: no such work.</exception>
+    public AnnotationList GetAnnotations(string workId)
+    {
+        var work = Find(workId);
+        return new AnnotationList(work.Id.ToString(), work.Title, ListWorkAnnotations(workId));
+    }
+
+    /// <summary>Adds a note without a place in the text to a file of the work: the named file, else the only file of the work.</summary>
+    /// <exception cref="LibraryException">Invalid: the text is empty, or the work has several files and none is named. NotFound: no such work or file.</exception>
+    public AnnotationView AddNote(string workId, string text, string? file = null)
+    {
+        var work = Find(workId);
+        var files = ReadSidecar(work).Files;
+        if (file is null)
+        {
+            if (files.Count != 1)
+            {
+                throw new LibraryException($"'{work.Title}' has {files.Count} files; name one in file ({string.Join(", ", files.Select(f => f.Name))})");
+            }
+
+            file = files[0].Name;
+        }
+
+        return AddAnnotation(FileIds.Make(work.Id.ToString(), file), new AnnotationDraft("note", null, null, null, null, null, text));
+    }
+
+    /// <summary>Adds a highlight or a note to a file. A highlight needs a location that fits the format and the marked text.</summary>
+    /// <exception cref="LibraryException">Invalid: the draft is none of a highlight or a note. NotFound: no such file.</exception>
+    public AnnotationView AddAnnotation(string fileId, AnnotationDraft draft)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        var file = ResolveFile(fileId);
+        if (!AnnotationsFormat.TryParseKind(draft.Kind, out var kind))
+        {
+            throw new LibraryException("kind is required and must be highlight or note");
+        }
+
+        var note = string.IsNullOrWhiteSpace(draft.Note) ? null : draft.Note;
+        if (note is { Length: > MaxNoteLength })
+        {
+            throw new LibraryException($"note must have at most {MaxNoteLength} characters");
+        }
+
+        Annotation created;
+        var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        if (kind == AnnotationKind.Note)
+        {
+            if (draft.Locator is not null || draft.QuoteExact is not null || draft.Color is not null || draft.Rects is not null)
+            {
+                throw new LibraryException("a note has no locator, quote, color or rects; leave them out or make a highlight");
+            }
+
+            if (note is null)
+            {
+                throw new LibraryException("note is required: the text of the note");
+            }
+
+            created = new Annotation(Ulid.New(), file.Name, kind, null, null, null, note, now, now);
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(draft.Locator))
+            {
+                throw new LibraryException("locator is required for a highlight: the place in the file");
+            }
+
+            if (LocatorProblem(file.Format, draft.Locator) is { } problem)
+            {
+                throw new LibraryException(problem);
+            }
+
+            if (string.IsNullOrWhiteSpace(draft.QuoteExact) || draft.QuoteExact.Length > MaxQuoteLength)
+            {
+                throw new LibraryException($"quote.exact is required for a highlight: the marked text, at most {MaxQuoteLength} characters");
+            }
+
+            var color = draft.Color ?? AnnotationsSidecar.DefaultColor;
+            if (!AnnotationsSidecar.Colors.Contains(color))
+            {
+                throw new LibraryException($"color must be one of {string.Join(", ", AnnotationsSidecar.Colors)}");
+            }
+
+            created = new Annotation(
+                Ulid.New(), file.Name, kind, draft.Locator, new AnnotationQuote(draft.QuoteExact, draft.QuotePrefix, draft.QuoteSuffix), color, note, now, now,
+                Rects(draft.Rects));
+        }
+
+        var work = Find(file.Work.ToString());
+        lock (_writeGate)
+        {
+            try
+            {
+                LibraryAnnotations.Add(root, work, created);
+            }
+            catch (Exception e) when (e is SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+
+        return View(work, created);
+    }
+
+    /// <summary>Changes the note or the color of an annotation.</summary>
+    /// <exception cref="LibraryException">Invalid: the color or the note is none. NotFound: no such file or annotation.</exception>
+    public AnnotationView UpdateAnnotation(string fileId, string annotationId, AnnotationChanges changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        var file = ResolveFile(fileId);
+        var work = Find(file.Work.ToString());
+        var id = AnnotationId(annotationId);
+        string? note = null;
+        if (changes.NoteGiven)
+        {
+            note = string.IsNullOrWhiteSpace(changes.Note) ? null : changes.Note;
+            if (note is { Length: > MaxNoteLength })
+            {
+                throw new LibraryException($"note must have at most {MaxNoteLength} characters");
+            }
+        }
+
+        if (changes.ColorGiven && (changes.Color is null || !AnnotationsSidecar.Colors.Contains(changes.Color)))
+        {
+            throw new LibraryException($"color must be one of {string.Join(", ", AnnotationsSidecar.Colors)}");
+        }
+
+        Annotation? updated = null;
+        lock (_writeGate)
+        {
+            try
+            {
+                var existing = LibraryAnnotations.List(root, work).FirstOrDefault(a => a.Id == id && a.File == file.Name)
+                    ?? throw new LibraryException($"no annotation '{annotationId}' in '{file.Name}'", LibraryErrorKind.NotFound);
+                if (existing.Kind == AnnotationKind.Note && changes.NoteGiven && note is null)
+                {
+                    throw new LibraryException("note is required: a note without text is deleted instead");
+                }
+
+                if (existing.Kind == AnnotationKind.Note && changes.ColorGiven)
+                {
+                    throw new LibraryException("a note has no color");
+                }
+
+                var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                updated = existing with
+                {
+                    Note = changes.NoteGiven ? note : existing.Note,
+                    Color = changes.ColorGiven ? changes.Color : existing.Color,
+                    UpdatedAt = now,
+                };
+                LibraryAnnotations.Update(root, work, id, _ => updated);
+            }
+            catch (Exception e) when (e is SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+
+        return View(work, updated);
+    }
+
+    /// <summary>Deletes an annotation.</summary>
+    /// <exception cref="LibraryException">NotFound: no such file or annotation.</exception>
+    public void DeleteAnnotation(string fileId, string annotationId)
+    {
+        var file = ResolveFile(fileId);
+        var work = Find(file.Work.ToString());
+        var id = AnnotationId(annotationId);
+        lock (_writeGate)
+        {
+            try
+            {
+                if (!LibraryAnnotations.List(root, work).Any(a => a.Id == id && a.File == file.Name)
+                    || !LibraryAnnotations.Delete(root, work, id))
+                {
+                    throw new LibraryException($"no annotation '{annotationId}' in '{file.Name}'", LibraryErrorKind.NotFound);
+                }
+            }
+            catch (Exception e) when (e is SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    /// <summary>The areas of a highlight, or none; the format checks that they lie inside the page.</summary>
+    private static List<AnnotationRect>? Rects(double[][]? given)
+    {
+        if (given is null)
+        {
+            return null;
+        }
+
+        if (given.Length is < 1 or > AnnotationsFormat.MaxRects || given.Any(r => r is null || r.Length != 4 || r.Any(n => n is < 0 or > 1)))
+        {
+            throw new LibraryException($"rects must be 1 to {AnnotationsFormat.MaxRects} areas of four fractions each (x, y, width, height), from 0 to 1");
+        }
+
+        var rects = given.Select(r => new AnnotationRect(r[0], r[1], r[2], r[3])).ToList();
+        if (rects.Any(r => r.X + r.Width > 1.0001 || r.Y + r.Height > 1.0001))
+        {
+            throw new LibraryException("rects must lie inside the page: x + width and y + height can be at most 1");
+        }
+
+        return rects;
+    }
+
+    private static Ulid AnnotationId(string text) =>
+        Ulid.TryParse(text, out var id) ? id : throw new LibraryException($"no annotation '{text}'", LibraryErrorKind.NotFound);
+
+    private IReadOnlyList<Annotation> ReadAnnotations(LibraryWork work)
+    {
+        try
+        {
+            return LibraryAnnotations.List(root, work);
+        }
+        catch (SidecarException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
+    private static AnnotationView View(LibraryWork work, Annotation a) =>
+        new(
+            a.Id.ToString(),
+            FileIds.Make(work.Id.ToString(), a.File),
+            AnnotationsFormat.KindName(a.Kind),
+            a.Locator,
+            a.Quote is null ? null : new AnnotationQuoteView(a.Quote.Exact, a.Quote.Prefix, a.Quote.Suffix),
+            a.Color,
+            a.Note,
+            Time(a.CreatedAt),
+            Time(a.UpdatedAt),
+            a.Rects is null ? null : [.. a.Rects.Select(r => new[] { r.X, r.Y, r.Width, r.Height })]);
+
+    private static string Time(DateTimeOffset time) =>
+        time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
     private static ReadingPosition Position(FileProgress progress) =>
         new(progress.Locator, progress.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));

@@ -36,6 +36,7 @@ Feature: A read-only MCP server
   Scenario: By default the tag tools are offered
     Given the MCP server is running on the library "library"
     Then the server offers the tools "add_tags" and "remove_tags"
+    And the server offers the tools "add_note" and "get_annotations"
 
   Scenario Outline: With mcp.read_only they are not offered, in the library config or in the global config
     Given <where> contains the line "mcp.read_only = true"
@@ -44,6 +45,7 @@ Feature: A read-only MCP server
       | tool                 |
       | find_duplicates      |
       | find_probable_duplicates |
+      | get_annotations      |
       | get_book             |
       | list_tags            |
       | propose_organization |
@@ -69,6 +71,7 @@ Feature: A read-only MCP server
 
     Examples:
       | tool        |
+      | add_note    |
       | add_tags    |
       | remove_tags |
 
@@ -85,3 +88,4 @@ Feature: A read-only MCP server
     Given the config file of the library "library" contains the line "mcp.read_only = false"
     And the MCP server is running on the library "library"
     Then the server offers the tools "add_tags" and "remove_tags"
+    And the server offers the tools "add_note" and "get_annotations"

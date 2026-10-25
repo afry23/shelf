@@ -57,6 +57,17 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The tags to remove")] string[] tags) =>
         Run(() => service.RemoveTags(id, tags));
 
+    [Description("The highlights and notes that a person made in a work, each with the file, the location (pass it on to read_passage), the marked text, the color and the note in Markdown.")]
+    public AnnotationList GetAnnotations([Description("The ID of a work, or the start of it")] string id) =>
+        Run(() => service.GetAnnotations(id));
+
+    [Description("Add a note in Markdown to a file of a work. It has no place in the text and shows with the highlights of the work. A highlight cannot be added here: a person marks the text in the reader.")]
+    public AnnotationView AddNote(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The note, in Markdown")] string text,
+        [Description("The name of the file, if the work has more than one")] string? file = null) =>
+        Run(() => service.AddNote(id, text, file));
+
     [Description("The tags of the library as a tree, with the number of works under each.")]
     public TagTree ListTags() =>
         Run(() => service.ListTags());
