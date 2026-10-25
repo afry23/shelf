@@ -21,7 +21,7 @@ internal sealed class LibraryHandle(WebOptions options) : IDisposable
             lock (_gate)
             {
                 _semantic ??= new SemanticBackend(options.Models, options.EmbedderFactory);
-                return _service ??= new LibraryService(options.Root, options.Settings, _semantic);
+                return _service ??= new LibraryService(options.Root, options.Settings, _semantic, options.MetadataSources);
             }
         }
     }

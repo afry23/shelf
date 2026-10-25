@@ -180,3 +180,28 @@ public sealed record OrganizeOutcome(string Pattern, int Files, int Works, int U
 public sealed record UndoSkipped(string Path, string Reason);
 
 public sealed record UndoOutcome(string Label, int Reverted, UndoSkipped[] Skipped);
+
+/// <summary>A field that an online source would write into a work: <c>action</c> is <c>fill</c> or <c>overwrite</c>.</summary>
+public sealed record EnrichChange(string Field, string Action, string? Before, string After);
+
+/// <summary>A field the work already has with another value, and which therefore stays.</summary>
+public sealed record EnrichKept(string Field, string? Current, string Online);
+
+/// <summary>A book that matches the title and author of a work; <c>number</c> is what <c>pick</c> takes.</summary>
+public sealed record EnrichCandidate(int Number, string Title, string[] Authors, string? Publisher, int? Year, string? Isbn13);
+
+/// <summary>
+/// What an online source knows about a work. When several books match, <c>source</c> and <c>match</c> are absent, <c>candidates</c>
+/// lists them and nothing is proposed. <c>warnings</c> name the sources that failed before one answered.
+/// </summary>
+public sealed record EnrichPreviewResult(
+    string Id,
+    string? Source,
+    string? Match,
+    EnrichChange[] Changes,
+    EnrichKept[] Kept,
+    EnrichCandidate[] Candidates,
+    string[] Warnings);
+
+/// <summary>What <c>enrich/apply</c> wrote: the fields, the name of the cover file when one was saved, and the warnings.</summary>
+public sealed record EnrichApplyResult(string Id, string Source, string[] Fields, string? Cover, string[] Warnings);

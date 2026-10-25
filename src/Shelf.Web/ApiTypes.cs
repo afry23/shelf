@@ -134,6 +134,9 @@ public sealed record PairRequest(JsonNode? A, JsonNode? B);
 /// <summary>The body of <c>POST /works/{id}/merge</c>: the ID of the work that goes into the one in the path. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record MergeRequest(JsonNode? From);
 
+/// <summary>The body of <c>POST /works/{id}/enrich</c> and <c>/enrich/apply</c>; every field is optional. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record EnrichRequest(JsonNode? Source, JsonNode? Pick, JsonNode? Overwrite, JsonNode? Cover);
+
 /// <summary>The body of <c>POST /tags/rename</c> and <c>/tags/merge</c>: the tag, and the name it gets (<c>to</c>) or the tag it goes into (<c>into</c>).</summary>
 public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into);
 

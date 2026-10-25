@@ -301,6 +301,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
             shelf = shelf.WithEmbedder(folder => environment.EmbedderFor(Path.GetFileName(folder.Directory)));
         }
 
+        // The server never reaches the internet: enrich asks the fake catalogs.
+        shelf = shelf.WithMetadataSources(environment.Online.Sources);
+
         _server = Task.Run(() => ShelfApp.Run([.. args], _stdout, _stderr, shelf));
 
         var deadline = DateTime.UtcNow + Timeout;
