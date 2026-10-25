@@ -171,6 +171,28 @@ internal sealed class IndexWriter : IDisposable
         }
     }
 
+    /// <summary>Gives the work the annotations of its <c>annotations.json</c> in the index, and none other.</summary>
+    public void ReplaceAnnotations(string workId, IEnumerable<Annotation> annotations)
+    {
+        Execute("DELETE FROM annotations WHERE work_id = $w", ("$w", workId));
+        foreach (var a in annotations)
+        {
+            Execute(
+                "INSERT INTO annotations(uid, work_id, file_name, kind, locator, quote, color, note, created_at, updated_at) "
+                + "VALUES ($uid, $w, $f, $k, $l, $q, $c, $n, $cr, $up)",
+                ("$uid", a.Id.ToString()),
+                ("$w", workId),
+                ("$f", a.File),
+                ("$k", AnnotationsFormat.KindName(a.Kind)),
+                ("$l", a.Locator),
+                ("$q", a.Quote?.Exact),
+                ("$c", a.Color),
+                ("$n", a.Note),
+                ("$cr", Timestamp(a.CreatedAt.UtcDateTime)),
+                ("$up", Timestamp(a.UpdatedAt.UtcDateTime)));
+        }
+    }
+
     public void UpdateFilePath(long fileId, string relPath) =>
         Execute("UPDATE files SET rel_path = $p WHERE id = $id", ("$p", relPath), ("$id", fileId));
 

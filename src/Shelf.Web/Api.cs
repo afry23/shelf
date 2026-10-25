@@ -65,6 +65,36 @@ internal static class Api
             .WithName("SaveReadingProgress")
             .Produces<ReadingPosition>(StatusCodes.Status200OK);
 
+        api.MapGet("/files/{id}/annotations", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.AnnotationViewArray, () => library.Service.ListAnnotations(id)))
+            .WithName("ListFileAnnotations")
+            .Produces<AnnotationView[]>(StatusCodes.Status200OK);
+
+        api.MapGet("/works/{id}/annotations", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.AnnotationViewArray, () => library.Service.ListWorkAnnotations(RequireId(id))))
+            .WithName("ListWorkAnnotations")
+            .Produces<AnnotationView[]>(StatusCodes.Status200OK);
+
+        api.MapPost("/files/{id}/annotations", ([FromServices] LibraryHandle library, string id, [FromBody] AnnotationRequest body) =>
+                Run(WebJsonContext.Default.AnnotationView, () => library.Service.AddAnnotation(id, Draft(body)), StatusCodes.Status201Created))
+            .WithName("AddAnnotation")
+            .Produces<AnnotationView>(StatusCodes.Status201Created);
+
+        api.MapMethods("/files/{id}/annotations/{annotation}", ["PATCH"], ([FromServices] LibraryHandle library, string id, string annotation, [FromBody] JsonObject patch) =>
+                Run(WebJsonContext.Default.AnnotationView, () => library.Service.UpdateAnnotation(id, annotation, Changes(patch))))
+            .WithName("EditAnnotation")
+            .Accepts<JsonObject>("application/merge-patch+json", "application/json")
+            .Produces<AnnotationView>(StatusCodes.Status200OK);
+
+        api.MapDelete("/files/{id}/annotations/{annotation}", ([FromServices] LibraryHandle library, string id, string annotation) =>
+                Run(WebJsonContext.Default.AnnotationView, () =>
+                {
+                    library.Service.DeleteAnnotation(id, annotation);
+                    return null!;
+                }, StatusCodes.Status204NoContent))
+            .WithName("DeleteAnnotation")
+            .Produces(StatusCodes.Status204NoContent);
+
         api.MapPost("/works/{id}/merge", ([FromServices] LibraryHandle library, string id, [FromBody] MergeRequest body) =>
                 Run(WebJsonContext.Default.MergeOutcome, () => library.Service.MergeWorks(id, RequireWorkId(body.From, "from"))))
             .WithName("MergeWorks")
@@ -406,11 +436,80 @@ internal static class Api
         return int.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ? number : throw new LibraryException(message);
     }
 
-    private static IResult Run<T>(JsonTypeInfo<T> info, Func<T> call)
+    private static AnnotationDraft Draft(AnnotationRequest body)
+    {
+        string? exact = null, prefix = null, suffix = null;
+        if (body.Quote is not null)
+        {
+            if (body.Quote is not JsonObject quote)
+            {
+                throw new LibraryException("quote must be an object with the text in exact");
+            }
+
+            exact = OptionalText(quote["exact"], "quote.exact");
+            prefix = OptionalText(quote["prefix"], "quote.prefix");
+            suffix = OptionalText(quote["suffix"], "quote.suffix");
+        }
+
+        return new AnnotationDraft(
+            OptionalText(body.Kind, "kind"),
+            OptionalText(body.Locator, "locator"),
+            exact,
+            prefix,
+            suffix,
+            OptionalText(body.Color, "color"),
+            OptionalText(body.Note, "note"),
+            OptionalRects(body.Rects));
+    }
+
+    private static double[][]? OptionalRects(JsonNode? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        const string Message = "rects must be a list of areas, each four numbers: x, y, width, height (fractions of the page)";
+        if (node is not JsonArray array)
+        {
+            throw new LibraryException(Message);
+        }
+
+        return [.. array.Select(area =>
+        {
+            if (area is not JsonArray numbers || numbers.Count != 4 || numbers.Any(n => n is null || n.GetValueKind() != System.Text.Json.JsonValueKind.Number))
+            {
+                throw new LibraryException(Message);
+            }
+
+            return numbers.Select(n => n!.GetValue<double>()).ToArray();
+        })];
+    }
+
+    /// <summary>Only the note and the color can change; what a highlight marks and where it is stays.</summary>
+    private static AnnotationChanges Changes(JsonObject patch)
+    {
+        foreach (var (name, _) in patch)
+        {
+            if (name is not ("note" or "color"))
+            {
+                throw new LibraryException($"{name} cannot be changed; only note and color can");
+            }
+        }
+
+        var hasNote = patch.ContainsKey("note");
+        var hasColor = patch.ContainsKey("color");
+        return new AnnotationChanges(hasNote, OptionalText(patch["note"], "note"), hasColor, OptionalText(patch["color"], "color"));
+    }
+
+    private static IResult Run<T>(JsonTypeInfo<T> info, Func<T> call, int status = StatusCodes.Status200OK)
     {
         try
         {
-            return Results.Json(call(), info);
+            var result = call();
+            return status == StatusCodes.Status204NoContent
+                ? Results.NoContent()
+                : Results.Json(result, info, statusCode: status);
         }
         catch (LibraryException e)
         {

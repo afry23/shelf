@@ -63,6 +63,8 @@ public static class LibraryReindexer
                     writer.InsertFile(work.Sidecar.Id.ToString(), file.Entry.Name, file.RelPath, file.Size, file.Mtime, file.Entry.Progress);
                     fileCount++;
                 }
+
+                writer.ReplaceAnnotations(work.Sidecar.Id.ToString(), LibraryAnnotations.ReadForMirror(root, work.DirPath, problems));
             }
 
             writer.ReplaceReviewMirror(review);

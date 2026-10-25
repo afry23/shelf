@@ -170,14 +170,35 @@ public sealed class SidecarSteps(ConfigSteps workspace)
         Assert.Contains(text, File.ReadAllText(PathOf(name)), StringComparison.Ordinal);
 
     /// <summary>For a change that the browser sends after the page has moved on (the reading position, F-RDR-4).</summary>
+    [Then("the file {string} soon does not exist")]
+    public void ThenTheFileSoonDoesNotExist(string name)
+    {
+        var path = PathOf(name);
+        var limit = DateTime.UtcNow.AddSeconds(10);
+        while (File.Exists(path) && DateTime.UtcNow < limit)
+        {
+            Thread.Sleep(100);
+        }
+
+        Assert.False(File.Exists(path), $"Unexpected file {name}");
+    }
+
+    [Given("the file {string} soon contains {string}")]
     [Then("the file {string} soon contains {string}")]
     public void ThenTheFileSoonContains(string name, string text)
     {
         var path = PathOf(name);
         var limit = DateTime.UtcNow.AddSeconds(10);
-        string content;
-        while (!(content = File.ReadAllText(path)).Contains(text, StringComparison.Ordinal) && DateTime.UtcNow < limit)
+        var content = string.Empty;
+        while (DateTime.UtcNow < limit)
         {
+            // The file may not be there yet (a first annotation creates it).
+            content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+            if (content.Contains(text, StringComparison.Ordinal))
+            {
+                break;
+            }
+
             Thread.Sleep(100);
         }
 

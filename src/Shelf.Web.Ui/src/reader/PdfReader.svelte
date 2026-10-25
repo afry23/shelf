@@ -3,11 +3,14 @@
   import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
   import { EventBus, PDFFindController, PDFLinkService, PDFViewer } from 'pdfjs-dist/web/pdf_viewer.mjs';
   import 'pdfjs-dist/web/pdf_viewer.css';
-  import { fileUrl, type WorkDetail, type WorkFile } from '../api';
+  import { fileUrl, type Annotation, type AnnotationColor, type WorkDetail, type WorkFile } from '../api';
   import { replaceHash, router } from '../router.svelte';
+  import { colors, createAnnotations } from './annotations.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import NotesPanel from './NotesPanel.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
+  import SelectionBar from './SelectionBar.svelte';
 
   let { book, file }: { book: WorkDetail; file: WorkFile } = $props();
 
@@ -28,6 +31,19 @@
   let error = $state<string | null>(null);
   let outline = $state<Entry[]>([]);
   let outlineOpen = $state(false);
+
+  // Highlights and notes (F-ANN-1, F-ANN-2). A PDF page has no positions in its text that a location could name, so a highlight keeps
+  // the page and the areas that were marked, as fractions of the page.
+  interface Pending {
+    page: number;
+    text: string;
+    rects: number[][];
+  }
+  const annotations = createAnnotations(() => ({ file: file.id }));
+  let notesOpen = $state(false);
+  let pending = $state<Pending | null>(null);
+  let markerColor = $state<AnnotationColor>('yellow');
+  let selectedNote = $state<string | null>(null);
 
   let query = $state('');
   let matches = $state<{ current: number; total: number } | null>(null);
@@ -70,6 +86,7 @@
         progress.move(`page=${page}`);
       }
     });
+    eventBus.on('pagerendered', (event: { pageNumber: number }) => drawPage(event.pageNumber));
     eventBus.on('scalechanging', (event: { scale: number; presetValue?: string }) => {
       scaleLabel = event.presetValue === 'page-width' ? 'Fit width' : `Zoom ${Math.round(event.scale * 100)}%`;
     });
@@ -94,6 +111,7 @@
     });
     task.promise
       .then(async (pdf) => {
+        void annotations.load().then(drawAll);
         pdfViewer.setDocument(pdf);
         linkService.setDocument(pdf, null);
         const tree = await pdf.getOutline();
@@ -109,7 +127,32 @@
     });
     resizing.observe(container);
 
+    // A selection in the text layer of a page (made with the mouse or the keyboard) is kept until it is marked or goes.
+    const onSelection = () => {
+      const selection = getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        pending = null;
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const pageElement = (range.startContainer.parentElement ?? (range.startContainer as Element)).closest?.('.page') as HTMLElement | null;
+      if (!pageElement || !viewerElement?.contains(pageElement)) {
+        pending = null;
+        return;
+      }
+      const box = pageElement.getBoundingClientRect();
+      const text = selection.toString().replace(/\s+/g, ' ').trim().slice(0, 20_000);
+      const rects = [...range.getClientRects()]
+        // Only what lies on the page where the selection starts, and no boxes that are empty or as large as a whole line of the page.
+        .filter((r) => r.width > 1 && r.height > 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1 && r.left >= box.left - 1 && r.right <= box.right + 1)
+        .map((r) => [(r.left - box.left) / box.width, (r.top - box.top) / box.height, r.width / box.width, r.height / box.height].map((n) => Math.round(Math.min(Math.max(n, 0), 1) * 10_000) / 10_000));
+      const number = Number(pageElement.dataset.pageNumber);
+      pending = text && rects.length && number > 0 ? { page: number, text, rects: rects.slice(0, 200) } : null;
+    };
+    document.addEventListener('selectionchange', onSelection);
+
     return () => {
+      document.removeEventListener('selectionchange', onSelection);
       progress.close();
       resizing.disconnect();
       void task.destroy();
@@ -131,6 +174,70 @@
       },
       items: toEntries(node.items ?? []),
     }));
+  }
+
+  /** The highlights of a page, drawn as areas over it. A page that is drawn again by the viewer has lost them, so this runs after each render. */
+  function drawPage(number: number): void {
+    const div = viewer?.getPageView(number - 1)?.div as HTMLElement | undefined;
+    if (!div) {
+      return;
+    }
+    div.querySelectorAll(':scope > .shelf-marks').forEach((element) => element.remove());
+    const marks = annotations.items.filter((a) => a.kind === 'highlight' && a.rects && a.locator === `page=${number}`);
+    if (marks.length === 0) {
+      return;
+    }
+    const layer = document.createElement('div');
+    layer.className = 'shelf-marks';
+    for (const a of marks) {
+      const group = document.createElement('div');
+      group.className = 'shelf-highlight';
+      group.dataset.id = a.id;
+      for (const [x, y, w, h] of a.rects ?? []) {
+        const area = document.createElement('div');
+        area.style.cssText = `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%;background:${colors[a.color ?? 'yellow']}`;
+        group.append(area);
+      }
+      layer.append(group);
+    }
+    div.append(layer);
+  }
+
+  function drawAll(): void {
+    for (let n = 1; n <= pages; n++) {
+      drawPage(n);
+    }
+  }
+
+  async function highlight(): Promise<void> {
+    const marked = pending;
+    if (!marked) {
+      return;
+    }
+    pending = null;
+    getSelection()?.removeAllRanges();
+    const created = await annotations.add(file.id, {
+      kind: 'highlight',
+      locator: `page=${marked.page}`,
+      quote: { exact: marked.text },
+      color: markerColor,
+      rects: marked.rects,
+    });
+    if (created) {
+      drawAll();
+    }
+  }
+
+  function goTo(annotation: Annotation): void {
+    const wanted = /^page=(\d+)$/.exec(annotation.locator ?? '');
+    if (wanted && viewer) {
+      viewer.currentPageNumber = clamp(Number(wanted[1]));
+    }
+  }
+
+  function openNotes(): void {
+    notesOpen = true;
+    outlineOpen = false;
   }
 
   // An address that changes while the reader is open (a link to another place of the same file) moves the page.
@@ -204,12 +311,28 @@
     </span>
 
     {#if outline.length}
-      <button type="button" class="button" aria-expanded={outlineOpen} onclick={() => (outlineOpen = !outlineOpen)}>Contents</button>
+      <button
+        type="button"
+        class="button"
+        aria-expanded={outlineOpen}
+        onclick={() => {
+          outlineOpen = !outlineOpen;
+          notesOpen = false;
+        }}>Contents</button
+      >
+    {/if}
+
+    <button type="button" class="button" aria-expanded={notesOpen} disabled={pages === 0} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
+
+    {#if pending}
+      <SelectionBar bind:color={markerColor} onhighlight={highlight} />
     {/if}
   {/snippet}
 
   {#snippet side()}
-    {#if outlineOpen && outline.length}
+    {#if notesOpen}
+      <NotesPanel store={annotations} fileId={file.id} go={goTo} onrecolor={drawAll} onremove={drawAll} selected={selectedNote} />
+    {:else if outlineOpen && outline.length}
       <aside class="side" aria-label="Contents"><Entries items={outline} /></aside>
     {/if}
   {/snippet}
@@ -224,6 +347,20 @@
 </ReaderFrame>
 
 <style>
+  /* The areas of the highlights lie over the page and under the pointer: the text below stays selectable. */
+  .pages :global(.shelf-marks) {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    opacity: 0.45;
+  }
+
+  .pages :global(.shelf-marks .shelf-highlight div) {
+    position: absolute;
+    border-radius: 2px;
+  }
+
   .pages {
     position: absolute;
     inset: 0;

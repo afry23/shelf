@@ -57,7 +57,7 @@ Existing alternatives were evaluated and rejected. Reasons include unreadable ha
 - DRM removal
 - Multi-user operation with permission management
 - Cloud hosting or SaaS
-- Reader functions beyond reading, i.e. no annotations in v1 (see chapter 13)
+- Reader functions beyond reading and annotating (highlights, notes), e.g. dictionary lookup or text-to-speech
 - Sync of a library across multiple machines
 - OCR for scanned PDFs without a text layer (metadata only)
 
@@ -336,6 +336,12 @@ Requirements for the MCP server:
 | F-RDR-4 | Reading progress is saved per file in `book.json` and resumed on opening. Writes are debounced (e.g. at most every 30 s and on closing the reader). | S |
 | F-RDR-5 | If a work has multiple formats, the preferred format for the reader is configurable (default: EPUB). | S |
 | F-RDR-6 | Bookmarks. | C |
+| F-ANN-1 | In the reader a person selects text and creates a **highlight** with a color. Highlights are drawn again when the file is opened. EPUB first, PDF second. | S |
+| F-ANN-2 | A highlight or a whole file can carry a **note in Markdown**. A note without a place in the text (a note for the file) is possible. | S |
+| F-ANN-3 | Highlights and notes are stored in `annotations.json` next to `book.json` (source of truth, same atomic writes). The index mirrors them and `shelf reindex` restores the mirror. They move with the work on organize, merge and split. | S |
+| F-ANN-4 | The web UI lists the highlights and notes in the reader and on the work page. Notes are shown as rendered Markdown and are edited in the reader and on the work page. | S |
+| F-ANN-5 | Notes and highlighted text are searchable (full text); a hit links to the place in the reader. | S |
+| F-ANN-6 | CLI `shelf notes list/add/rm/export` and MCP tools `get_annotations` (always) and `add_note` (not with `mcp.read_only`). | S |
 
 ## 9. Non-Functional Requirements
 
@@ -454,6 +460,8 @@ vec_chunks (sqlite-vec: chunk_id, embedding)
 dupe_ignores(a_id, b_id)                      -- mirrored from book.json
 review_queue(id, kind, payload_json, created_at) -- mirrored from .shelf/review.json
 reading_progress(file_id, locator, updated_at) -- mirrored from book.json
+annotations(id, work_id, file_id, kind, locator, quote, color, note, created_at, updated_at) -- mirrored from annotations.json
+annotations_fts (FTS5: quote, note)
 ```
 
 ### 10.4 `book.json` (Sidecar)
@@ -521,7 +529,7 @@ reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 | Q2 | One binary or two? | **One binary** for CLI, MCP server, and web host. |
 | Q3 | Embedding model | Start with **multilingual-e5-small**. The model stays replaceable (F-SEM-8); bge-m3 can be evaluated later. |
 | Q4 | Work ID | **ULID**, generated once on import and stored in `book.json`. It never changes. |
-| Q5 | Annotations/highlights | **Later**, not in v1. A separate sidecar `annotations.json` remains the preferred direction. |
+| Q5 | Annotations/highlights | **Added after 1.0** (F-ANN-1 to F-ANN-6): a separate sidecar `annotations.json` per work, mirrored in the index; EPUB before PDF; notes in Markdown. See [ADR 0018](adr/0018-annotations.md). |
 | Q6 | Sync scenario | **No sync.** A library is used on one machine only. |
 | Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. |
 | Q1 | Frontend technology | **Svelte** (Svelte 5 + Vite + TypeScript, single-page application without SvelteKit), decided 2026-10-17 by the project owner. It replaces the earlier choice htmx + RazorSlices (RazorSlices: pre-1.0, single maintainer, Native AOT claim unverified). The server only provides JSON under `/api/v1`, files and the embedded static UI. The UI is built at build time and embedded as static assets (F-WEB-3); Node.js is needed for the build and for UI development, not at runtime. Razor Pages/MVC stay excluded (not Native AOT-compatible, Q2). |

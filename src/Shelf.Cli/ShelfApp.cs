@@ -71,6 +71,7 @@ public static class ShelfApp
         root.Subcommands.Add(OrganizeCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(UndoCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(TagCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(NotesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(DupesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(TrashCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ModelCommand.Create(json, stdout, stderr, environment));

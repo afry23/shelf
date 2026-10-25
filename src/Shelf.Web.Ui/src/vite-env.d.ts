@@ -7,3 +7,4 @@ declare module '*.mjs?url' {
   const url: string;
   export default url;
 }
+declare module 'foliate-js/overlayer.js';

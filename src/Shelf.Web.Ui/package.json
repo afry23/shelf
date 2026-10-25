@@ -13,7 +13,9 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "dompurify": "3.4.17",
     "foliate-js": "1.0.1",
+    "marked": "18.1.1",
     "pdfjs-dist": "6.4.299",
     "svelte": "5.57.2",
     "svelte-check": "4.7.7",

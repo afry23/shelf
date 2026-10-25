@@ -153,6 +153,7 @@ public static class LibraryEditor
         };
         SidecarStore.Write(targetPath, merged);
 
+        LibraryAnnotations.Carry(root, source, target, renames);
         File.Delete(sourcePath);
         var leftover = RemoveFolderIfEmpty(root, sourceDirectory) ? null : source.Directory;
 
@@ -220,6 +221,7 @@ public static class LibraryEditor
             NotDuplicates = new NotDuplicates([work.Id], []),
         };
         SidecarStore.Write(Path.Combine(folder, SidecarStore.FileName), created);
+        LibraryAnnotations.Carry(root, work, new LibraryWork(id, relativeFolder, title), new Dictionary<string, string> { [entry.Name] = name });
 
         SidecarStore.Write(path, sidecar with
         {

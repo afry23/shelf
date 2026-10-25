@@ -86,6 +86,9 @@ public sealed record WorkFile(
 /// <summary>The body of <c>PUT /files/{id}/progress</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record ProgressRequest(JsonNode? Locator);
 
+/// <summary>The body of <c>POST /files/{id}/annotations</c>. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record AnnotationRequest(JsonNode? Kind, JsonNode? Locator, JsonNode? Quote, JsonNode? Color, JsonNode? Note, JsonNode? Rects = null);
+
 /// <summary>A work as the work view shows it: the metadata, the tags, the files with their IDs and the table of contents.</summary>
 public sealed record WorkDetail(
     string Id,

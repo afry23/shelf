@@ -238,6 +238,21 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 - Acceptance criterion 7: all performance targets from 9.1 are met on the reference hardware.
 - All Must and Should requirements are implemented.
 
+### M6 – Annotations
+
+**Goal:** Highlights and Markdown notes while reading, in the web UI, the CLI and MCP.
+
+**Status:** implemented on `feat/annotations`; slice plan: [m6-annotations](slices/m6-annotations.md), decisions: [ADR 0018](adr/0018-annotations.md).
+
+| Area | Content | PRD |
+|---|---|---|
+| Storage | `annotations.json` per work, index mirror with full text, follows organize/merge/split | F-ANN-3 |
+| Web API | `/api/v1/files/{id}/annotations`, `/api/v1/works/{id}/annotations` | F-ANN-3 |
+| Reader | EPUB and PDF highlights, notes panel with Markdown, notes on the book page | F-ANN-1, F-ANN-2, F-ANN-4 |
+| Search, CLI, MCP | search hits, `shelf notes`, `get_annotations`, `add_note` | F-ANN-5, F-ANN-6 |
+
+**Exit criteria:** feature files exist for all F-ANN requirements, the complete BDD suite is green, `shelf reindex` restores the mirror from the files, the CSP is unchanged.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:
@@ -248,7 +263,6 @@ Could items and deferred decisions:
 | Import from cloud folders via rclone (Google Drive and others) | F-IMP-8 |
 | Tag suggestions based on semantic similarity | F-TAG-6 |
 | Bookmarks | F-RDR-6 |
-| Annotations/highlights in `annotations.json` | Q5 |
 | Evaluation of bge-m3 as an alternative embedding model | Q3 |
 | Distribution as `dotnet tool` | 9.2 |
 

@@ -25,6 +25,34 @@ public sealed record SearchBooksResult(string Query, int Total, BookSummary[] Re
 /// <param name="UpdatedAt">UTC, as <c>yyyy-MM-ddTHH:mm:ssZ</c>.</param>
 public sealed record ReadingPosition(string Locator, string UpdatedAt);
 
+/// <summary>The marked text of a highlight with some text before and after it.</summary>
+public sealed record AnnotationQuoteView(
+    string Exact,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Prefix,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Suffix);
+
+/// <summary>A highlight or a note of a file (F-ANN-1, F-ANN-2). <c>File</c> is the ID of the file (see <c>FileIds</c>); times are UTC, <c>yyyy-MM-ddTHH:mm:ssZ</c>.</summary>
+public sealed record AnnotationView(
+    string Id,
+    string File,
+    string Kind,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Locator,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] AnnotationQuoteView? Quote,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Color,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    string CreatedAt,
+    string UpdatedAt,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double[][]? Rects = null);
+
+/// <summary>The highlights and notes of a work.</summary>
+public sealed record AnnotationList(string Id, string Title, AnnotationView[] Annotations);
+
+/// <summary>What a person gives for a new annotation; the service checks it.</summary>
+public sealed record AnnotationDraft(string? Kind, string? Locator, string? QuoteExact, string? QuotePrefix, string? QuoteSuffix, string? Color, string? Note, double[][]? Rects = null);
+
+/// <summary>A change of the note or the color of an annotation; a field that was not given stays as it is (null clears the note).</summary>
+public sealed record AnnotationChanges(bool NoteGiven, string? Note, bool ColorGiven, string? Color);
+
 public sealed record BookFile(
     string Name,
     string Format,
