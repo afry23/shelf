@@ -858,6 +858,42 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>
+    /// Merges the work <paramref name="source"/> into <paramref name="target"/> (F-GRP-4), as <c>shelf merge</c> does: the files move over, the
+    /// target's metadata wins and the source fills its gaps. Like the CLI, this cannot be undone.
+    /// </summary>
+    /// <exception cref="LibraryException">NotFound: no such work. Conflict: both name the same work.</exception>
+    public MergeOutcome MergeWorks(string target, string source)
+    {
+        foreach (var id in new[] { target, source })
+        {
+            if (!WorkLookup.LooksLikeId(id))
+            {
+                throw new LibraryException($"'{id}' is not the ID of a work");
+            }
+        }
+
+        var into = Find(target);
+        var from = Find(source);
+        lock (_writeGate)
+        {
+            try
+            {
+                if (into.Id == from.Id)
+                {
+                    throw new LibraryException("cannot merge a work into itself", LibraryErrorKind.Conflict);
+                }
+
+                var result = LibraryEditor.Merge(root, into, from);
+                return new MergeOutcome(result.Target.ToString(), result.Source.ToString(), result.MovedFiles, result.LeftoverFolder);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
     // ---- resources ----
 
     /// <summary>Metadata of a work, without the table of contents (see <see cref="GetToc"/>).</summary>

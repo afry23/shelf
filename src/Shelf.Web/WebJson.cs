@@ -23,6 +23,8 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(SplitOutcome))]
 [JsonSerializable(typeof(ProbablePairsResult))]
 [JsonSerializable(typeof(PairRequest))]
+[JsonSerializable(typeof(MergeRequest))]
+[JsonSerializable(typeof(MergeOutcome))]
 [JsonSerializable(typeof(OrganizeRequest))]
 [JsonSerializable(typeof(OrganizePreview))]
 [JsonSerializable(typeof(OrganizeOutcome))]

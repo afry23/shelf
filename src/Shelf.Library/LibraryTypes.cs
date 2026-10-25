@@ -96,6 +96,9 @@ public sealed record DuplicateOutcome(int Trashed, string[] WorksRemoved);
 /// <summary>A file that was split off its work: the work it came from, the work it became, its name and the folder of the new work (relative to the library).</summary>
 public sealed record SplitOutcome(string Work, string NewWork, string File, string Folder);
 
+/// <summary>A merge of two works: the work that stays, the work that went into it, the files that moved and the folder of the merged work when it still holds files that shelf does not know.</summary>
+public sealed record MergeOutcome(string Id, string Merged, int MovedFiles, string? LeftoverFolder);
+
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);
 
 public sealed record TagNode(string Name, string Path, int Works, int Direct, TagNode[] Children);

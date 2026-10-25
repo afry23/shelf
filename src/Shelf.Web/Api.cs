@@ -65,6 +65,11 @@ internal static class Api
             .WithName("SaveReadingProgress")
             .Produces<ReadingPosition>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/{id}/merge", ([FromServices] LibraryHandle library, string id, [FromBody] MergeRequest body) =>
+                Run(WebJsonContext.Default.MergeOutcome, () => library.Service.MergeWorks(id, RequireWorkId(body.From, "from"))))
+            .WithName("MergeWorks")
+            .Produces<MergeOutcome>(StatusCodes.Status200OK);
+
         api.MapPost("/files/{id}/split", ([FromServices] LibraryHandle library, string id) =>
                 Run(WebJsonContext.Default.SplitOutcome, () => library.Service.SplitFile(id)))
             .WithName("SplitFile")

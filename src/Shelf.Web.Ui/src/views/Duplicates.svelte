@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { duplicateAction, duplicates, ignoreProbable, probableDuplicates, splitFile, type DuplicateFile, type DuplicateList, type ProbableList, type ProbablePair } from '../api';
+  import { duplicateAction, duplicates, ignoreProbable, mergeWorks, probableDuplicates, splitFile, type DuplicateFile, type DuplicateList, type ProbableList, type ProbablePair, type ProbableWork } from '../api';
   import { authorLine, bytes, plural } from '../format';
   import { refreshDuplicateCount } from '../stores.svelte';
 
@@ -31,6 +31,7 @@
   async function run(action: 'keep' | 'trash' | 'ignore', fileId: string): Promise<void> {
     pending = null;
     splitWork = null;
+    mergedWork = null;
     try {
       const outcome = await duplicateAction(action, fileId);
       message =
@@ -48,6 +49,7 @@
   async function split(file: DuplicateFile): Promise<void> {
     pending = null;
     splitWork = null;
+    mergedWork = null;
     try {
       const outcome = await splitFile(file.id);
       message = `Split ${outcome.file} off into a work of its own.`;
@@ -59,7 +61,29 @@
     }
   }
 
+  // The work of a probable pair that waits for a second click to take the other one in.
+  let pendingMerge = $state<string | null>(null);
+  // The work a merge left, so that the message can lead there.
+  let mergedWork = $state<string | null>(null);
+
+  async function merge(keep: ProbableWork, other: ProbableWork): Promise<void> {
+    pendingMerge = null;
+    splitWork = null;
+    mergedWork = null;
+    try {
+      const outcome = await mergeWorks(keep.id, other.id);
+      message = `Merged ${other.title} into ${keep.title}: ${plural(outcome.movedFiles, 'file')} moved.`;
+      mergedWork = outcome.id;
+      error = null;
+      await load();
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
+
   async function notDuplicates(pair: ProbablePair): Promise<void> {
+    splitWork = null;
+    mergedWork = null;
     try {
       await ignoreProbable(pair.a.id, pair.b.id);
       message = 'Marked as not duplicates.';
@@ -79,7 +103,7 @@
   const asks = (file: DuplicateFile, action: 'keep' | 'trash' | 'split') => pending?.fileId === file.id && pending.action === action;
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (pending = null)} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && ((pending = null), (pendingMerge = null))} />
 
 <div class="page">
   <h1>Duplicates</h1>
@@ -89,6 +113,8 @@
       {message}
       {#if splitWork}
         This cannot be undone. <a href={`/works/${splitWork}`}>Open the new work</a> to correct its title.
+      {:else if mergedWork}
+        This cannot be undone. <a href={`/works/${mergedWork}`}>Open the merged work</a>.
       {:else if !message.startsWith('Marked')}
         Undo with <code>shelf undo</code>.
       {/if}
@@ -159,6 +185,15 @@
                   <h3><a href={`/works/${work.id}`}>{work.title}</a></h3>
                   {#if work.authors.length}<p class="muted">{authorLine(work.authors)}</p>{/if}
                   <p class="path">{work.folder}</p>
+                  <div class="actions">
+                    {#if pendingMerge === work.id}
+                      <p class="muted">Merge the other work into this one? A merge cannot be undone with shelf undo.</p>
+                      <button type="button" class="button danger" onclick={() => merge(work, work.id === pair.a.id ? pair.b : pair.a)}>Confirm</button>
+                      <button type="button" class="button" onclick={() => (pendingMerge = null)}>Cancel</button>
+                    {:else}
+                      <button type="button" class="button" onclick={() => (pendingMerge = work.id)}>Merge the other into this one</button>
+                    {/if}
+                  </div>
                 </article>
               {/each}
             </div>
