@@ -201,6 +201,13 @@ export interface SplitOutcome {
   folder: string;
 }
 
+export interface MergeOutcome {
+  id: string;
+  merged: string;
+  movedFiles: number;
+  leftoverFolder?: string;
+}
+
 export interface TagNode {
   name: string;
   path: string;
@@ -395,7 +402,11 @@ export const ignoreProbable = (a: string, b: string) => request<DuplicateOutcome
 export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: string) =>
   request<DuplicateOutcome>('POST', `/duplicates/${action}`, { fileId });
 
-export const splitFile = (fileId: string) => request<SplitOutcome>('POST', `/files/${encodeURIComponent(fileId)}/split`);
+/** Merges the work `source` into `target`; the files of `source` move over and its folder goes. It cannot be undone. */
+export const mergeWorks = (target: string, source: string) =>
+  request<MergeOutcome>('POST', `/works/${encodeURIComponent(target)}/merge`, { from: source });
+
+export const splitFile =(fileId: string) => request<SplitOutcome>('POST', `/files/${encodeURIComponent(fileId)}/split`);
 
 export const coverUrl = (id: string) => `/api/v1/works/${encodeURIComponent(id)}/cover`;
 

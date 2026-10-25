@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, editWork, fileUrl, setTags, similar as loadSimilar, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail } from '../api';
+  import { ApiError, editWork, fileUrl, mergeWorks, setTags, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -116,6 +116,59 @@
     const name = newTag.trim();
     if (name) {
       void changeTags([...book.tags, name]);
+    }
+  }
+
+  // ---- merging another work into this one ----
+
+  let mergeQuery = $state('');
+  let mergeFound = $state<WorkItem[] | null>(null);
+  // The work that waits for a second click: nothing moves before.
+  let mergeCandidate = $state<WorkItem | null>(null);
+  let mergeDone = $state<string | null>(null);
+
+  $effect(() => {
+    const q = mergeQuery.trim();
+    const self = id;
+    mergeCandidate = null;
+    if (!q) {
+      mergeFound = null;
+      return;
+    }
+    let current = true;
+    const timer = setTimeout(() => {
+      findWorks({ q: `title:"${q.replaceAll('"', '')}"`, limit: 6 })
+        .then((list) => {
+          if (current) {
+            mergeFound = list.items.filter((w) => w.id !== self);
+          }
+        })
+        .catch(() => {
+          if (current) {
+            mergeFound = [];
+          }
+        });
+    }, 200);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  });
+
+  async function mergeIn(source: WorkItem): Promise<void> {
+    if (!book) {
+      return;
+    }
+    actionError = null;
+    try {
+      const outcome = await mergeWorks(book.id, source.id);
+      mergeDone = `Merged ${source.title} into this book: ${outcome.movedFiles} ${outcome.movedFiles === 1 ? 'file' : 'files'} moved. This cannot be undone.`;
+      mergeQuery = '';
+      mergeFound = null;
+      mergeCandidate = null;
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      actionError = (e as Error).message;
     }
   }
 
@@ -348,6 +401,33 @@
           </table>
         </section>
 
+        <section>
+          <h2>Merge another work</h2>
+          {#if mergeDone}<p class="done" role="status">{mergeDone}</p>{/if}
+          <input type="search" aria-label="Find a work to merge in" placeholder="Find a work to merge in" bind:value={mergeQuery} />
+          {#if mergeFound}
+            {#if mergeFound.length === 0}
+              <p class="muted">No other work found.</p>
+            {:else}
+              <ul class="similar" aria-label="Works to merge in">
+                {#each mergeFound as item (item.id)}
+                  <li>
+                    <a href={`/works/${item.id}`}>{item.title}</a>
+                    <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                    {#if mergeCandidate?.id === item.id}
+                      <p>Merge {item.title} into {book.title}? Its files move here and its folder goes. A merge cannot be undone with shelf undo.</p>
+                      <button type="button" class="button danger" onclick={() => mergeIn(item)}>Confirm</button>
+                      <button type="button" class="button" onclick={() => (mergeCandidate = null)}>Cancel</button>
+                    {:else}
+                      <button type="button" class="button" onclick={() => (mergeCandidate = item)}>Merge into this book</button>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          {/if}
+        </section>
+
         {#if similarBooks.length}
           <section>
             <h2>Similar books</h2>
@@ -386,6 +466,13 @@
 {/if}
 
 <style>
+  .done {
+    margin: 0.5rem 0;
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 0.6rem 0.85rem;
+  }
+
   .page {
     max-width: 62rem;
     margin: 0 auto;

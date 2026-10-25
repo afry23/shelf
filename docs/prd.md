@@ -124,7 +124,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-GRP-1 | On import, it is checked whether the file belongs to an existing work. The cascade stops at the first confident match: 1. same ISBN, 2. normalized title + author surname(s), 3. text fingerprint (SimHash over the first ~5,000 words of running text). | M |
 | F-GRP-2 | Title normalization: lowercase, Unicode normalization (NFKD), removal of diacritics, punctuation, articles (der/die/das/the/a/an), and additions such as "2nd Edition" or "(German Edition)". | M |
 | F-GRP-3 | Every grouping has a confidence score (0–1, see below). If it is below the auto-merge threshold, no automatic grouping takes place; a review entry is created instead. | M |
-| F-GRP-4 | Manual correction via `shelf merge <work-a> <work-b>` and `shelf split <work> <file>`. | M |
+| F-GRP-4 | Manual correction via `shelf merge <work-a> <work-b>` and `shelf split <work> <file>`; the web interface merges works too (probable pairs, work details). | M |
 | F-GRP-5 | Different **editions** are treated as different works but are marked as "related". | S |
 | F-GRP-6 | All thresholds are configurable in `config.toml`. The start values below are calibrated against acceptance criterion 1 before M1 is completed. | M |
 
@@ -297,7 +297,7 @@ Requirements for the MCP server:
 
 ### 7.3 Web API
 
-- REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, and duplicate review.
+- REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, and merging works.
 - Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs.
 - An OpenAPI specification is generated automatically.
 
@@ -319,9 +319,9 @@ Requirements for the MCP server:
 |---|---|---|
 | **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
-| **Work details** | Metadata (editable), formats, tags, similar books, "Read" and "Download" buttons | M |
+| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
-| **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for different files of one book also "split into own work" (F-GRP-4) | M |
+| **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for probable pairs also "merge the other into this one" (F-GRP-4); for different files of one book also "split into own work" (F-GRP-4) | M |
 | **Review** | Confirm or correct uncertain assignments | S |
 | **Organize** | Diff preview of the organization pattern, execute, undo | S |
 
