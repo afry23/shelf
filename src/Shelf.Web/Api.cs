@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc;
@@ -74,6 +75,21 @@ internal static class Api
                 Run(WebJsonContext.Default.AnnotationViewArray, () => library.Service.ListWorkAnnotations(RequireId(id))))
             .WithName("ListWorkAnnotations")
             .Produces<AnnotationView[]>(StatusCodes.Status200OK);
+
+        api.MapGet("/works/{id}/export.md", ([FromServices] LibraryHandle library, string id) =>
+            {
+                try
+                {
+                    var export = library.Service.ExportMarkdown(RequireId(id));
+                    return Results.File(Encoding.UTF8.GetBytes(export.Content), "text/markdown; charset=utf-8", export.FileName);
+                }
+                catch (LibraryException e)
+                {
+                    return Problem(e);
+                }
+            })
+            .WithName("ExportWork")
+            .Produces(StatusCodes.Status200OK, contentType: "text/markdown");
 
         api.MapPost("/files/{id}/annotations", ([FromServices] LibraryHandle library, string id, [FromBody] AnnotationRequest body) =>
                 Run(WebJsonContext.Default.AnnotationView, () => library.Service.AddAnnotation(id, Draft(body)), StatusCodes.Status201Created))

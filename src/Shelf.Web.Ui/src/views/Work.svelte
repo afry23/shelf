@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, editWork, enrichApply, enrichPreview, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { ApiError, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -539,6 +539,15 @@
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
           </section>
         {/if}
+
+        <section>
+          <h2>Export</h2>
+          {#if book.citeKey}
+            <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
+          {:else}
+            <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
+          {/if}
+        </section>
 
         <section>
           <h2>Files</h2>

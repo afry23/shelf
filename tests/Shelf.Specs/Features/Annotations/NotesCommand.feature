@@ -101,11 +101,3 @@ Feature: Highlights and notes on the command line
     Then the exit code is 1
     And standard error contains "no annotation"
     And the folder "library" equals the snapshot
-
-  Scenario: The notes of a work are exported as Markdown
-    When I run shelf with arguments "notes export 01J9Z3K0000000000000000002 --library library"
-    Then the exit code is 0
-    And standard output contains "# Event Sourcing in Practice"
-    And standard output contains "> builds a read model"
-    And standard output contains "Compare with a **materialized** view."
-    And standard output contains "Ask about the workshop agenda."

@@ -342,6 +342,7 @@ Requirements for the MCP server:
 | F-ANN-4 | The web UI lists the highlights and notes in the reader and on the work page. Notes are shown as rendered Markdown and are edited in the reader and on the work page. | S |
 | F-ANN-5 | Notes and highlighted text are searchable (full text); a hit links to the place in the reader. | S |
 | F-ANN-6 | CLI `shelf notes list/add/rm/export` and MCP tools `get_annotations` (always) and `add_note` (not with `mcp.read_only`). | S |
+| F-ANN-7 | A work can be exported as **one Markdown file** with its metadata (YAML front matter), highlights and notes. The file is named `<cite key>.md`; a work without a cite key is not exported. Available as `shelf notes export <work> [--out <folder>]` and as a download on the work page (`GET /api/v1/works/{id}/export.md`). | S |
 
 ## 9. Non-Functional Requirements
 

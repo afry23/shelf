@@ -150,39 +150,42 @@ internal static class NotesCommand
     private static Command Export(TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
         var work = WorkSupport.Argument();
+        var output = new Option<string?>("--out") { Description = "Write <cite key>.md into this folder instead of standard output" };
         var library = LibraryContext.CreateOption();
-        var command = new Command("export", "Write the highlights and notes of a work as Markdown");
+        var command = new Command("export", "Write the metadata, highlights and notes of a work as Markdown");
         command.Arguments.Add(work);
+        command.Options.Add(output);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var found = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(work));
             var sidecar = LibraryEditor.Read(context.Root, found);
-            stdout.WriteLine($"# {sidecar.Title}");
-            stdout.WriteLine();
-            stdout.WriteLine($"*{string.Join(", ", sidecar.Authors)}*");
-            foreach (var a in LibraryAnnotations.List(context.Root, found))
+            string name;
+            string text;
+            try
             {
-                stdout.WriteLine();
-                if (a.Quote is { } quote)
-                {
-                    foreach (var line in quote.Exact.ReplaceLineEndings("\n").Split('\n'))
-                    {
-                        stdout.WriteLine($"> {line}");
-                    }
-
-                    stdout.WriteLine();
-                }
-
-                stdout.WriteLine($"*{(a.Kind == AnnotationKind.Note ? "note" : $"highlight, {Locators.Describe(a.Locator ?? string.Empty)}")}, {a.File}*");
-                if (a.Note is { } note)
-                {
-                    stdout.WriteLine();
-                    stdout.WriteLine(note);
-                }
+                name = WorkExport.FileName(sidecar);
+                text = WorkExport.Render(sidecar, LibraryAnnotations.List(context.Root, found));
+            }
+            catch (InvalidOperationException e)
+            {
+                stderr.WriteLine($"error: {found.Title}: {e.Message}");
+                return ExitCodes.Error;
             }
 
+            if (parseResult.GetValue(output) is not { } folder)
+            {
+                stdout.Write(text);
+                return ExitCodes.Success;
+            }
+
+            var path = Path.Combine(Path.GetFullPath(folder, environment.WorkingDirectory), name);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var temporary = path + ".tmp";
+            File.WriteAllText(temporary, text, new System.Text.UTF8Encoding(false));
+            File.Move(temporary, path, overwrite: true);
+            stdout.WriteLine($"Wrote {path}");
             return ExitCodes.Success;
         });
         return command;

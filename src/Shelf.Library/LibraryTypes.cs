@@ -44,6 +44,9 @@ public sealed record AnnotationView(
     string UpdatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double[][]? Rects = null);
 
+/// <summary>A work as a Markdown file: the name (the cite key) and the text.</summary>
+public sealed record MarkdownExport(string FileName, string Content);
+
 /// <summary>The highlights and notes of a work.</summary>
 public sealed record AnnotationList(string Id, string Title, AnnotationView[] Annotations);
 

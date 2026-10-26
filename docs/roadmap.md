@@ -250,6 +250,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 | Web API | `/api/v1/files/{id}/annotations`, `/api/v1/works/{id}/annotations` | F-ANN-3 |
 | Reader | EPUB and PDF highlights, notes panel with Markdown, notes on the book page | F-ANN-1, F-ANN-2, F-ANN-4 |
 | Search, CLI, MCP | search hits, `shelf notes`, `get_annotations`, `add_note` | F-ANN-5, F-ANN-6 |
+| Export | one Markdown file per work (metadata, highlights, notes) named after the cite key: `shelf notes export`, work page, `/api/v1/works/{id}/export.md` | F-ANN-7 |
 
 **Exit criteria:** feature files exist for all F-ANN requirements, the complete BDD suite is green, `shelf reindex` restores the mirror from the files, the CSP is unchanged.
 
