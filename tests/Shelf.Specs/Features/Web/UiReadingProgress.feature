@@ -87,3 +87,12 @@ Feature: A book opens where I stopped
   Scenario: Read opens the preferred format
     When I open "/works/01J9Z3K0000000000000000001" in the browser
     Then the link "Read" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub"
+
+  Scenario Outline: Every file of a work can be read, whatever the preferred format
+    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Then the link "Read <file>" points to an address containing "/read/01J9Z3K0000000000000000001~<file>"
+
+    Examples:
+      | file    |
+      | kp.epub |
+      | kp.pdf  |
