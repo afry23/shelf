@@ -3,7 +3,7 @@
 # asset URLs only, one request per asset, no crawling), verifies the pinned SHA-256 from
 # sqlite-vec.sha256, and unpacks each archive into its own new directory vendor/<rid>/.
 # Nothing is installed and nothing from the archive is executed.
-# Usage: ./fetch-sqlite-vec.sh [rid ...]   (rid: osx-arm64 osx-x64 linux-x64 linux-arm64; default: all)
+# Usage: ./fetch-sqlite-vec.sh [rid ...]   (rid: osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64; default: all)
 # Prints the extracted library path per rid. Portable bash 3.2.
 # The libraries land in vendor/sqlite-vec/<rid>/, where Shelf.Index.csproj picks them up (ADR 0004, hand-off M3).
 set -euo pipefail
@@ -27,6 +27,7 @@ for RID in "${RIDS[@]}"; do
     osx-x64) PLAT=macos-x86_64; LIB=vec0.dylib ;;
     linux-x64) PLAT=linux-x86_64; LIB=vec0.so ;;
     linux-arm64) PLAT=linux-aarch64; LIB=vec0.so ;;
+    win-x64) PLAT=windows-x86_64; LIB=vec0.dll ;;
     *) echo "unknown rid: $RID" >&2; exit 2 ;;
   esac
   ASSET="sqlite-vec-${VERSION}-loadable-${PLAT}.tar.gz"

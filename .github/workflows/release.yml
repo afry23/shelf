@@ -1,0 +1,188 @@
+name: release
+
+# Pushing a tag vX.Y.Z (or vX.Y.Z-suffix) whose commit is on main builds the Native AOT binaries and
+# publishes a GitHub release. The tag, without the leading "v", is the version of shelf.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: verify tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check the tag name and that its commit is on main
+        id: v
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if ! printf '%s\n' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '$tag' is not of the form vX.Y.Z[-suffix]"
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag '$tag' ($GITHUB_SHA) is not on main"
+            exit 1
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build (${{ matrix.rid }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-15
+            arch: arm64
+            bin: shelf
+            ext: tar.gz
+            e2e: true
+          - rid: linux-x64
+            os: ubuntu-24.04
+            arch: x86_64
+            bin: shelf
+            ext: tar.gz
+            e2e: true
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+            bin: shelf
+            ext: tar.gz
+            e2e: false
+          - rid: win-x64
+            os: windows-2025
+            arch: x86_64
+            bin: shelf.exe
+            ext: zip
+            e2e: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assert runner architecture
+        if: runner.os != 'Windows'
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          actual="$(uname -m)"
+          echo "uname -m: $actual (expected $EXPECTED_ARCH)"
+          [ "$actual" = "$EXPECTED_ARCH" ] || { echo "::error::runner delivered '$actual', expected '$EXPECTED_ARCH'"; exit 1; }
+      - name: Install AOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: src/Shelf.Web.Ui/package-lock.json
+      - name: Install the UI packages and type-check the UI
+        working-directory: src/Shelf.Web.Ui
+        run: |
+          npm ci
+          npm run check
+      - name: Fetch sqlite-vec (pinned checksum)
+        run: tools/fetch-sqlite-vec.sh ${{ matrix.rid }}
+      - name: Publish (Native AOT)
+        run: >
+          dotnet publish src/Shelf.Cli/Shelf.Cli.csproj
+          -c Release -r ${{ matrix.rid }} -p:PublishAot=true -p:Version="$VERSION"
+          -o "$RUNNER_TEMP/aot"
+      - name: Smoke check
+        run: |
+          BIN="$RUNNER_TEMP/aot/${{ matrix.bin }}"
+          [ -f "$BIN" ] || { echo "::error::$BIN does not exist"; ls -la "$RUNNER_TEMP/aot"; exit 1; }
+          if [ -e "$RUNNER_TEMP/aot/shelf.dll" ]; then
+            echo "::error::shelf.dll present: output is not a native binary"
+            exit 1
+          fi
+          version_out="$("$BIN" --version)"
+          echo "--version output: $version_out"
+          if [ "$version_out" != "shelf $VERSION" ]; then
+            echo "::error::expected 'shelf $VERSION', got '$version_out'"
+            exit 1
+          fi
+      - name: Cache the embedding model
+        if: matrix.e2e
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/e5
+          key: e5-small-614241f6
+      - name: Fetch the embedding model (pinned checksum)
+        if: matrix.e2e
+        run: tools/fetch-e5-model.sh "$RUNNER_TEMP/e5"
+      - name: End-to-end check of the native binary
+        if: matrix.e2e
+        env:
+          SHELF_E5_DIR: ${{ runner.temp }}/e5
+        run: bash tests/e2e/native.sh "$RUNNER_TEMP/aot/shelf" "$RUNNER_TEMP/e2e"
+      - name: Pack the archive (binary and the files next to it, no debug symbols)
+        run: |
+          name="shelf-$VERSION-${{ matrix.rid }}"
+          stage="$RUNNER_TEMP/stage/$name"
+          mkdir -p "$stage" "$GITHUB_WORKSPACE/dist"
+          cp -R "$RUNNER_TEMP/aot/." "$stage/"
+          find "$stage" \( -name '*.pdb' -o -name '*.dbg' -o -name '*.dSYM' \) -prune -exec rm -rf {} +
+          cp LICENSE "$stage/"
+          echo "--- $name"; ls -l "$stage"
+          if [ "${{ matrix.ext }}" = zip ]; then
+            (cd "$RUNNER_TEMP/stage" && 7z a -tzip "$GITHUB_WORKSPACE/dist/$name.zip" "$name" > /dev/null)
+          else
+            tar -czf "$GITHUB_WORKSPACE/dist/$name.tar.gz" -C "$RUNNER_TEMP/stage" "$name"
+          fi
+          ls -l "$GITHUB_WORKSPACE/dist"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shelf-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: shelf-*
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum shelf-* > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          flags=(--verify-tag --generate-notes --title "shelf $VERSION")
+          case "$VERSION" in *-*) flags+=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" "${flags[@]}"
