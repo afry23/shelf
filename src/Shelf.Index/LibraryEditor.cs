@@ -312,7 +312,7 @@ public static class LibraryEditor
         }
     }
 
-    private static string SidecarPath(string root, LibraryWork work) => Path.Combine(root, work.Directory, SidecarStore.FileName);
+    internal static string SidecarPath(string root, LibraryWork work) => Path.Combine(root, work.Directory, SidecarStore.FileName);
 
     private static SidecarFile? FindFile(string root, LibraryWork work, WorkSidecar sidecar, string file, string workingDirectory)
     {

@@ -298,6 +298,9 @@ export const similar = (id: string, limit = 6) =>
 export const editWork = (id: string, patch: Record<string, unknown>) =>
   request<WorkDetail>('PATCH', `/works/${encodeURIComponent(id)}`, patch, 'application/merge-patch+json');
 
+export const suggestCiteKey = (id: string) =>
+  request<{ id: string; citeKey: string | null }>('POST', `/works/${encodeURIComponent(id)}/cite-key/suggest`);
+
 export const setTags = (id: string, tags: string[]) =>
   request<{ id: string; tags: string[]; added: number; removed: number }>('PUT', `/works/${encodeURIComponent(id)}/tags`, { tags });
 

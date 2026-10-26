@@ -117,6 +117,9 @@ public sealed record SimilarBooksResult(
     SemanticItem[] Results);
 
 /// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
+/// <summary>The cite key that author, year and title of a work suggest; null if the first author is not known.</summary>
+public sealed record CiteKeySuggestion(string Id, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? CiteKey);
+
 public sealed record TagSetResult(string Id, string[] Tags, int Added, int Removed);
 
 /// <summary>What a duplicate action did: files moved to the trash, and works that were left without a file and went along.</summary>

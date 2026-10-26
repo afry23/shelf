@@ -125,6 +125,14 @@ Feature: A book and its details
     And the page shows the text "ibryam2019"
     And the file "library/Ibryam/Kubernetes Patterns/book.json" contains "ibryam2019"
 
+  Scenario: A cite key is generated from author, year and title
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I click the "Edit details" button
+    And I click the "Generate cite key" button
+    Then the "Cite key" field has the value "ibryam2019kubernetes"
+    When I click the "Save" button
+    Then the page shows the text "ibryam2019kubernetes"
+
   Scenario: A cite key that BibTeX cannot use is explained and nothing is lost
     Given I open "/works/01J9Z3K0000000000000000001" in the browser
     When I click the "Edit details" button

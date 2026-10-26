@@ -275,6 +275,16 @@ public static class LibraryImporter
                 Files = [new SidecarFile(name)],
             };
 
+            if (CiteKeyOf(sidecar) is { } citeKey)
+            {
+                sidecar = sidecar with { CiteKey = citeKey };
+            }
+
+            if (LibraryCiteKeys.ForNew(connection, sidecar) is { } generatedKey)
+            {
+                sidecar = sidecar with { CiteKey = generatedKey };
+            }
+
             // Another edition of a known book is a work of its own, marked as related on both sides (F-GRP-5).
             var editions = decision.Matches.Where(m => m.IsOtherEdition).Select(m => m.WorkId).ToList();
             if (editions.Count > 0)
@@ -355,6 +365,8 @@ public static class LibraryImporter
             _directoriesThisRun[id] = dir;
             return new ImportItem(source, ImportAction.NewWork, destination, id, metadata.Title, decision.Confidence, message, entries.Count);
         }
+
+        private string? CiteKeyOf(WorkSidecar sidecar) => LibraryCiteKeys.ForNew(connection, sidecar);
 
         private void Enqueue(ReviewEntry entry)
         {

@@ -70,12 +70,12 @@ public sealed class IndexDatabaseTests : IDisposable
         var path = NewIndex();
         using (var connection = IndexDatabase.OpenWrite(path))
         {
-            IndexDatabase.Execute(connection, "PRAGMA user_version = 7");
+            IndexDatabase.Execute(connection, "PRAGMA user_version = 99");
         }
 
         var error = Assert.Throws<IndexException>(() => IndexDatabase.OpenRead(path));
 
-        Assert.Contains("schema version 7", error.Message, StringComparison.Ordinal);
+        Assert.Contains("schema version 99", error.Message, StringComparison.Ordinal);
         Assert.Contains("run 'shelf reindex'", error.Message, StringComparison.Ordinal);
     }
 
