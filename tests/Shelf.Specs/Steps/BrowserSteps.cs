@@ -172,6 +172,10 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     public void ThenLinkShowsNumber(string name, int number) =>
         Expect(Page.GetByRole(AriaRole.Link, new() { Name = name }).First, e => e.ToContainTextAsync(number.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
+    [Then("the header shows the shelf version")]
+    public void ThenVersionShown() =>
+        Expect(Page.GetByLabel("Version").First, e => e.ToHaveTextAsync(new Regex(@"^v\d+\.\d+\.\d+")));
+
     // ---- lists of books and results ----
 
     private ILocator Items(string list) => Page.Locator($"[aria-label='{list}'] > li");

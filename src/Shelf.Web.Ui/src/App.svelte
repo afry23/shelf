@@ -1,7 +1,7 @@
 <script lang="ts">
   import { handleKey } from './keys';
   import { handleLinkClick, navigate, param, router } from './router.svelte';
-  import { duplicateCount, refreshDuplicateCount } from './stores.svelte';
+  import { duplicateCount, refreshDuplicateCount, refreshVersion, version } from './stores.svelte';
   import Duplicates from './views/Duplicates.svelte';
   import Library from './views/Library.svelte';
   import Reader from './views/Reader.svelte';
@@ -46,6 +46,7 @@
 
   $effect(() => {
     void refreshDuplicateCount();
+    void refreshVersion();
   });
 
   // The field of the header shows the query while a search page is open.
@@ -76,6 +77,7 @@
 <div class="app" class:fill={route.name === 'read'}>
 <header class="top">
   <a class="brand" href="/library">shelf</a>
+  {#if version.value}<span class="version" aria-label="Version">v{version.value}</span>{/if}
   <form class="search" role="search" onsubmit={submit}>
     <input type="search" aria-label="Search your library" placeholder="Search your library" bind:value={text} />
   </form>
@@ -156,6 +158,12 @@
     letter-spacing: -0.01em;
     color: var(--accent);
     text-decoration: none;
+  }
+
+  .version {
+    margin-left: -1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
   }
 
   .search {
