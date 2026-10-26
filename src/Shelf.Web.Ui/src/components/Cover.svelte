@@ -20,8 +20,9 @@
     display: block;
     width: 100%;
     aspect-ratio: 2 / 3;
-    object-fit: cover;
-    background: var(--line);
+    object-fit: contain;
+    object-position: center bottom;
+    background: transparent;
     border-radius: 0.2rem 0.35rem 0.35rem 0.2rem;
     box-shadow:
       0 1px 2px rgb(0 0 0 / 0.25),
