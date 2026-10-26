@@ -23,6 +23,7 @@ internal static class EditCommand
         var series = Text("--series", "Series; \"\" removes it");
         var seriesIndex = Text("--series-index", "Volume within the series; \"\" removes it");
         var edition = Text("--edition", "Edition; \"\" removes it");
+        var citeKey = Text("--cite-key", "Citation key for BibTeX; \"\" removes it");
         var description = Text("--description", "Description; \"\" removes it");
         var tags = Many("--tag", "Tag (repeat for several); replaces all tags, \"\" removes them all");
         var addTags = Many("--add-tag", "Tag to add (repeatable)");
@@ -35,7 +36,7 @@ internal static class EditCommand
 
         var command = new Command("edit", "Change the metadata of a work");
         command.Arguments.Add(reference);
-        foreach (var option in new Option[] { title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, description, tags, addTags, removeTags, addRelated, removeRelated, rating, status, library })
+        foreach (var option in new Option[] { title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, citeKey, description, tags, addTags, removeTags, addRelated, removeRelated, rating, status, library })
         {
             command.Options.Add(option);
         }
@@ -96,6 +97,13 @@ internal static class EditCommand
             }
 
             if (Given(edition)) { var v = Value(edition); changed.Add("edition"); edits.Add(s => s with { Edition = v }); }
+            if (Given(citeKey))
+            {
+                var v = Value(citeKey);
+                if (v is not null && !CiteKeys.IsValid(v)) { Fail("--cite-key", $"'{v}' {CiteKeys.Rule}"); }
+                else { changed.Add("cite-key"); edits.Add(s => s with { CiteKey = v }); }
+            }
+
             if (Given(description)) { var v = Value(description); changed.Add("description"); edits.Add(s => s with { Description = v }); }
 
             var replacement = Given(tags) ? parseResult.GetValue(tags)!.Select(t => t.Trim()).Where(t => t.Length > 0).ToList() : null;

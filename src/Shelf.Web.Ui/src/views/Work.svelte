@@ -268,6 +268,7 @@
     series: '',
     seriesIndex: '',
     edition: '',
+    citeKey: '',
     isbn: '',
     description: '',
   });
@@ -286,6 +287,7 @@
       series: book.series ?? '',
       seriesIndex: book.seriesIndex?.toString() ?? '',
       edition: book.edition ?? '',
+      citeKey: book.citeKey ?? '',
       isbn: book.isbn13 ?? '',
       description: book.description ?? '',
     };
@@ -317,6 +319,7 @@
     compare('publisher', book.publisher, draft.publisher);
     compare('series', book.series, draft.series);
     compare('edition', book.edition, draft.edition);
+    compare('citeKey', book.citeKey, draft.citeKey);
     compare('isbn', book.isbn13, draft.isbn);
     compare('description', book.description, draft.description);
     if ((book.year?.toString() ?? '') !== draft.year.trim()) {
@@ -351,6 +354,7 @@
     { key: 'year', label: 'Year' },
     { key: 'publisher', label: 'Publisher' },
     { key: 'edition', label: 'Edition' },
+    { key: 'citeKey', label: 'Cite key' },
     { key: 'series', label: 'Series' },
     { key: 'seriesIndex', label: 'Series number' },
     { key: 'isbn', label: 'ISBN' },
@@ -443,6 +447,7 @@
             {#if book.publisher}<dt>Publisher</dt><dd>{book.publisher}</dd>{/if}
             {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
             {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
+            {#if book.citeKey}<dt>Cite key</dt><dd>{book.citeKey}</dd>{/if}
             {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
             <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
           </dl>

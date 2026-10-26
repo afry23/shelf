@@ -19,6 +19,7 @@ public sealed class SidecarFormatTests
         Series = "Werke",
         SeriesIndex = 1.5,
         Edition = "2nd",
+        CiteKey = "musil1930mann",
         Description = "Line one\nLine \"two\"",
         Tags = ["literatur/klassiker", "österreich"],
         Rating = 4,

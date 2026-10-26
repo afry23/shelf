@@ -11,7 +11,7 @@ Feature: Showing a work
     And a sample PDF "library/Ibryam, Bilgin/Kubernetes Patterns (2019)/kp.pdf" with the title "Kubernetes Patterns", the author "Bilgin Ibryam" and the text seed 1
     And the sidecar "library/Ibryam, Bilgin/Kubernetes Patterns (2019)/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K1000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements for Cloud Native Applications", "authors": ["Bilgin Ibryam", "Roland Huss"], "language": "en", "year": 2019, "isbn13": "9781492050285", "publisher": "O'Reilly", "series": "Patterns", "seriesIndex": 2, "edition": "1st", "tags": ["cloud/kubernetes", "devops"], "rating": 4, "readStatus": "reading", "added": "2026-10-01T09:30:00Z", "description": "A catalog of reusable patterns.", "files": [{ "name": "kp.epub", "progress": { "locator": "epubcfi(/6/14!/4/2/10)", "updatedAt": "2026-10-12T19:04:00Z" } }, { "name": "kp.pdf" }] }
+      { "schema": 1, "id": "01J9Z3K1000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements for Cloud Native Applications", "authors": ["Bilgin Ibryam", "Roland Huss"], "language": "en", "year": 2019, "isbn13": "9781492050285", "publisher": "O'Reilly", "series": "Patterns", "seriesIndex": 2, "edition": "1st", "citeKey": "ibryam2019", "tags": ["cloud/kubernetes", "devops"], "rating": 4, "readStatus": "reading", "added": "2026-10-01T09:30:00Z", "description": "A catalog of reusable patterns.", "files": [{ "name": "kp.epub", "progress": { "locator": "epubcfi(/6/14!/4/2/10)", "updatedAt": "2026-10-12T19:04:00Z" } }, { "name": "kp.pdf" }] }
       """
     And a sample PDF "library/Ålander, Jördis/Event Sourcing in Practice/es.pdf" with the title "Event Sourcing in Practice", the author "Jördis Ålander" and the text seed 2
     And the sidecar "library/Ålander, Jördis/Event Sourcing in Practice/book.json" is replaced by:
@@ -33,6 +33,7 @@ Feature: Showing a work
     And standard output matches the pattern "(?m)^Publisher +O'Reilly$"
     And standard output matches the pattern "(?m)^Series +Patterns #2$"
     And standard output matches the pattern "(?m)^Edition +1st$"
+    And standard output matches the pattern "(?m)^Cite key +ibryam2019$"
     And standard output matches the pattern "(?m)^Tags +cloud/kubernetes, devops$"
     And standard output matches the pattern "(?m)^Rating +4/5$"
     And standard output matches the pattern "(?m)^Status +reading$"
@@ -55,6 +56,7 @@ Feature: Showing a work
     And standard output matches the pattern "(?m)^Status +unread$"
     And standard output does not contain "Subtitle"
     And standard output does not contain "Publisher"
+    And standard output does not contain "Cite key"
     And standard output does not contain "ISBN"
     And standard output does not contain "Rating"
     And standard output does not contain "Tags"

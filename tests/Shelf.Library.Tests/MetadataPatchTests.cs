@@ -18,6 +18,7 @@ public sealed class MetadataPatchTests
         Series = "S",
         SeriesIndex = 1,
         Edition = "1",
+        CiteKey = "k",
         Description = "D",
         Rating = 3,
         ReadStatus = ReadStatus.Unread,
@@ -27,6 +28,13 @@ public sealed class MetadataPatchTests
 
     private static string Refusal(string field, string json) =>
         Assert.Throws<LibraryException>(() => MetadataPatch.Edit(field, JsonNode.Parse(json))).Message;
+
+    [Theory]
+    [InlineData("\"a b\"")]
+    [InlineData("\"a,b\"")]
+    [InlineData("\"a{b}\"")]
+    public void A_cite_key_BibTeX_cannot_use_is_refused(string json) =>
+        Assert.Equal("citeKey: may only contain letters, digits and - _ : . + /", Refusal("citeKey", json));
 
     [Fact]
     public void Each_field_sets_its_value()
@@ -40,6 +48,7 @@ public sealed class MetadataPatchTests
         Assert.Equal("T", Apply("series", "\"T\"").Series);
         Assert.Equal(2.5, Apply("seriesIndex", "2.5").SeriesIndex);
         Assert.Equal("2", Apply("edition", "\"2\"").Edition);
+        Assert.Equal("a:b-1", Apply("citeKey", "\" a:b-1 \"").CiteKey);
         Assert.Equal("E", Apply("description", "\"E\"").Description);
         Assert.Equal(5, Apply("rating", "5").Rating);
         Assert.Equal(ReadStatus.Reading, Apply("readStatus", "\"Reading\"").ReadStatus);
@@ -51,6 +60,7 @@ public sealed class MetadataPatchTests
     [InlineData("publisher")]
     [InlineData("series")]
     [InlineData("edition")]
+    [InlineData("citeKey")]
     [InlineData("description")]
     public void Null_and_blank_text_remove_an_optional_field(string field)
     {

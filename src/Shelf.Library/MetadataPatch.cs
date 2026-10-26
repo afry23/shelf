@@ -42,6 +42,14 @@ internal static class MetadataPatch
             case "edition":
                 var edition = Optional(field, value);
                 return s => s with { Edition = edition };
+            case "citeKey":
+                var citeKey = Optional(field, value);
+                if (citeKey is not null && !CiteKeys.IsValid(citeKey))
+                {
+                    throw Refuse(field, CiteKeys.Rule);
+                }
+
+                return s => s with { CiteKey = citeKey };
             case "description":
                 var description = Optional(field, value);
                 return s => s with { Description = description };
