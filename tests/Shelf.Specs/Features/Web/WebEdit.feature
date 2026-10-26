@@ -60,6 +60,39 @@ Feature: Changing metadata and tags over HTTP
     And the JSON field "citeKey" of the response is "ibryam2019:kubernetes_patterns-2nd.ed+1/2"
     And the file "library/Ibryam/Kubernetes Patterns/book.json" contains "ibryam2019:kubernetes_patterns-2nd.ed+1/2"
 
+  Scenario: A cite key is suggested from author, year and title and not stored
+    When I send "POST /api/v1/works/01J9Z3K0000000000000000001/cite-key/suggest" with the JSON:
+      """
+      {}
+      """
+    Then the response status is 200
+    And the JSON field "citeKey" of the response is "ibryam2019kubernetes"
+    When I request "GET /api/v1/works/01J9Z3K0000000000000000001"
+    Then the JSON field "citeKey" of the response is null
+
+  Scenario: A suggestion avoids the key of another work but not the key of the work itself
+    Given I send "PATCH /api/v1/works/01J9Z3K0000000000000000002" with the JSON:
+      """
+      { "citeKey": "ibryam2019kubernetes" }
+      """
+    When I send "POST /api/v1/works/01J9Z3K0000000000000000001/cite-key/suggest" with the JSON:
+      """
+      {}
+      """
+    Then the JSON field "citeKey" of the response is "ibryam2019kubernetesa"
+    When I send "POST /api/v1/works/01J9Z3K0000000000000000002/cite-key/suggest" with the JSON:
+      """
+      {}
+      """
+    Then the JSON field "citeKey" of the response is "alander2021event"
+
+  Scenario: A suggestion for an unknown work is a 404
+    When I send "POST /api/v1/works/01J9Z3K0000000000000000009/cite-key/suggest" with the JSON:
+      """
+      {}
+      """
+    Then the response status is 404
+
   Scenario: The authors are replaced
     When I send "PATCH /api/v1/works/01J9Z3K0000000000000000001" with the JSON:
       """

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, editWork, enrichApply, enrichPreview, fileUrl, mergeWorks, setTags, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { ApiError, editWork, enrichApply, enrichPreview, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -295,6 +295,23 @@
     editing = true;
   }
 
+  async function generateCiteKey(): Promise<void> {
+    if (!book) {
+      return;
+    }
+    saveError = null;
+    try {
+      const suggestion = await suggestCiteKey(book.id);
+      if (suggestion.citeKey === null) {
+        saveError = 'No cite key can be built: the author is not known.';
+      } else {
+        draft.citeKey = suggestion.citeKey;
+      }
+    } catch (e) {
+      saveError = (e as Error).message;
+    }
+  }
+
   // A number as a number, so that the server checks its range; anything else as it is, so that the server says what is wrong.
   const asNumber = (text: string): number | string | null => {
     const trimmed = text.trim();
@@ -425,6 +442,9 @@
                 <span>{field.label}</span>
                 <input type="text" bind:value={draft[field.key]} />
               </label>
+              {#if field.key === 'citeKey'}
+                <button type="button" class="button" onclick={generateCiteKey}>Generate cite key</button>
+              {/if}
             {/each}
             <label class="wide">
               <span>Authors (one to a line)</span>

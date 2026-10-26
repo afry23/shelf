@@ -502,6 +502,20 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         return Details(work, withToc: false);
     }
 
+    /// <summary>The cite key that the metadata of a work suggest, different from the keys of the other works. Nothing is written.</summary>
+    public CiteKeySuggestion SuggestCiteKey(string id)
+    {
+        var work = Find(id);
+        try
+        {
+            return new CiteKeySuggestion(work.Id.ToString(), LibraryCiteKeys.Suggest(root, work));
+        }
+        catch (Exception e) when (e is SidecarException or IndexException)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
     /// <summary>Gives a work exactly these tags, in one undoable step. Every name is checked first; one that is refused changes nothing.</summary>
     public TagSetResult SetTags(string id, string[] tags)
     {

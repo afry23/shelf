@@ -73,9 +73,9 @@ internal sealed class IndexWriter : IDisposable
     {
         var command = _insertWork ??= Prepare("""
             INSERT INTO works(id, title, title_norm, subtitle, authors_json, author_sort, language, year, isbn13, publisher,
-                              series, series_index, edition, description, rating, read_status, cover_path, dir_path, added_at, updated_at)
+                              series, series_index, edition, cite_key, description, rating, read_status, cover_path, dir_path, added_at, updated_at)
             VALUES ($id, $title, $titleNorm, $subtitle, $authors, $authorSort, $language, $year, $isbn13, $publisher,
-                    $series, $seriesIndex, $edition, $description, $rating, $status, $cover, $dir, $added, $updated)
+                    $series, $seriesIndex, $edition, $citeKey, $description, $rating, $status, $cover, $dir, $added, $updated)
             RETURNING seq
             """);
         BindWork(command, s, dirPath, sidecarModifiedUtc);
@@ -91,7 +91,7 @@ internal sealed class IndexWriter : IDisposable
         var command = _updateWork ??= Prepare("""
             UPDATE works SET title = $title, title_norm = $titleNorm, subtitle = $subtitle, authors_json = $authors,
                 author_sort = $authorSort, language = $language, year = $year, isbn13 = $isbn13, publisher = $publisher,
-                series = $series, series_index = $seriesIndex, edition = $edition, description = $description,
+                series = $series, series_index = $seriesIndex, edition = $edition, cite_key = $citeKey, description = $description,
                 rating = $rating, read_status = $status, cover_path = $cover, dir_path = $dir, added_at = $added,
                 updated_at = $updated
             WHERE id = $id
@@ -285,6 +285,7 @@ internal sealed class IndexWriter : IDisposable
         Bind(command, "$series", s.Series);
         Bind(command, "$seriesIndex", s.SeriesIndex);
         Bind(command, "$edition", s.Edition);
+        Bind(command, "$citeKey", s.CiteKey);
         Bind(command, "$description", s.Description);
         Bind(command, "$rating", s.Rating);
         Bind(command, "$status", s.ReadStatus.ToString().ToLowerInvariant());

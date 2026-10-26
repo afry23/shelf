@@ -100,6 +100,11 @@ internal static class Api
             .WithName("MergeWorks")
             .Produces<MergeOutcome>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/{id}/cite-key/suggest", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.CiteKeySuggestion, () => library.Service.SuggestCiteKey(RequireId(id))))
+            .WithName("SuggestCiteKey")
+            .Produces<CiteKeySuggestion>(StatusCodes.Status200OK);
+
         api.MapPost("/works/{id}/enrich", ([FromServices] LibraryHandle library, string id, [FromBody] EnrichRequest? body) =>
                 Run(WebJsonContext.Default.EnrichPreviewResult, () =>
                     library.Service.EnrichPreview(RequireId(id), OptionalText(body?.Source, "source"), OptionalFlag(body?.Overwrite, "overwrite") ?? false, OptionalWhole(body?.Pick, "pick"), CancellationToken.None)))
