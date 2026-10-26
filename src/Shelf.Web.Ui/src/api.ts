@@ -468,6 +468,9 @@ export const coverUrl = (id: string) => `/api/v1/works/${encodeURIComponent(id)}
 
 export const fileUrl = (id: string, download = false) => `/api/v1/files/${encodeURIComponent(id)}${download ? '?download=true' : ''}`;
 
+/** The Markdown export of a work (F-ANN-7): metadata, highlights and notes; the file is named after the cite key. */
+export const exportUrl = (workId: string) => `/api/v1/works/${encodeURIComponent(workId)}/export.md`;
+
 // ---- highlights and notes (F-ANN-1 to F-ANN-4) ----
 
 export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';

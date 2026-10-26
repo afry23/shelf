@@ -673,6 +673,22 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         return new AnnotationList(work.Id.ToString(), work.Title, ListWorkAnnotations(workId));
     }
 
+    /// <summary>The metadata, highlights and notes of a work as one Markdown file, named after the cite key (F-ANN-7).</summary>
+    /// <exception cref="LibraryException">Invalid: the work has no cite key. NotFound: no such work.</exception>
+    public MarkdownExport ExportMarkdown(string workId)
+    {
+        var work = Find(workId);
+        var sidecar = ReadSidecar(work);
+        try
+        {
+            return new MarkdownExport(WorkExport.FileName(sidecar), WorkExport.Render(sidecar, ReadAnnotations(work)));
+        }
+        catch (InvalidOperationException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
     /// <summary>Adds a note without a place in the text to a file of the work: the named file, else the only file of the work.</summary>
     /// <exception cref="LibraryException">Invalid: the text is empty, or the work has several files and none is named. NotFound: no such work or file.</exception>
     public AnnotationView AddNote(string workId, string text, string? file = null)

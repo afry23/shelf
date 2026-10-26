@@ -20,6 +20,7 @@ People want highlights and notes while they read. Q5 left the format open and pr
 4. **No journal.** Like reading progress, edits of annotations are not undoable through the journal; they would fill the history.
 5. **Index.** Tables `annotations` and `annotations_fts` (external content, triggers, like `chunks_fts`). The schema version rises; `shelf reindex` rebuilds the mirror.
 6. **Markdown.** Notes are stored as Markdown text. The UI renders them with `marked` and sanitizes the HTML with `dompurify`. The content security policy stays as it is (no inline script, no eval).
+7. **Export.** A work is exported as one Markdown file: the metadata as YAML front matter, then highlights and notes grouped by file. The file name is the cite key (made safe by `PathSanitizer`); a work without a cite key is refused instead of getting a made-up name. CLI and web share `WorkExport` (`Shelf.Core`).
 
 ## Libraries
 
