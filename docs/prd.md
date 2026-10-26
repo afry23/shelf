@@ -98,7 +98,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 **Metadata per work:**
 
 - Required fields: title, authors
-- Optional fields: subtitle, language, publisher, publication year, ISBN-10/13, series + volume, edition, description, tags, rating (1–5), reading status (unread / currently reading / read), date added, cover path
+- Optional fields: subtitle, language, publisher, publication year, ISBN-10/13, series + volume, edition, citation key (for BibTeX and the like), description, tags, rating (1–5), reading status (unread / currently reading / read), date added, cover path
 
 **Metadata per file:**
 

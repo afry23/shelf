@@ -331,6 +331,7 @@ internal static class Api
             b.Series,
             b.SeriesIndex,
             b.Edition,
+            b.CiteKey,
             b.Description,
             b.Rating,
             b.Tags,

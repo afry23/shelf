@@ -60,6 +60,7 @@ internal static class ShowCommand
         Line("Publisher", s.Publisher);
         Line("Series", s.Series is null ? null : s.SeriesIndex is { } index ? $"{s.Series} #{index.ToString("0.##", CultureInfo.InvariantCulture)}" : s.Series);
         Line("Edition", s.Edition);
+        Line("Cite key", s.CiteKey);
         Line("Tags", s.Tags.Count > 0 ? string.Join(", ", s.Tags) : null);
         Line("Rating", s.Rating is { } rating ? $"{rating.ToString(CultureInfo.InvariantCulture)}/5" : null);
         Line("Status", s.ReadStatus.ToString().ToLowerInvariant());
@@ -108,6 +109,7 @@ internal static class ShowCommand
         JsonOutput.Property(writer, "series", s.Series);
         JsonOutput.Property(writer, "seriesIndex", s.SeriesIndex);
         JsonOutput.Property(writer, "edition", s.Edition);
+        JsonOutput.Property(writer, "citeKey", s.CiteKey);
         JsonOutput.Property(writer, "description", s.Description);
         WorkSupport.WriteStrings(writer, "tags", s.Tags);
         JsonOutput.Property(writer, "rating", s.Rating);

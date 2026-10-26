@@ -92,6 +92,7 @@ export interface WorkDetail {
   series: string | null;
   seriesIndex: number | null;
   edition: string | null;
+  citeKey: string | null;
   description: string | null;
   rating: number | null;
   tags: string[];

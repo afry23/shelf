@@ -46,9 +46,19 @@ Feature: Changing metadata and tags over HTTP
       | series      | "Patterns"             | "Patterns"             |
       | seriesIndex | 2.5                    | 2.5                    |
       | edition     | "2"                    | "2"                    |
+      | citeKey     | "ibryam2019kubernetes" | "ibryam2019kubernetes" |
       | description | "A new description"    | "A new description"    |
       | rating      | 4                      | 4                      |
       | readStatus  | "reading"              | "reading"              |
+
+  Scenario: A cite key is trimmed and written to the sidecar
+    When I send "PATCH /api/v1/works/01J9Z3K0000000000000000001" with the JSON:
+      """
+      { "citeKey": "  ibryam2019:kubernetes_patterns-2nd.ed+1/2  " }
+      """
+    Then the response status is 200
+    And the JSON field "citeKey" of the response is "ibryam2019:kubernetes_patterns-2nd.ed+1/2"
+    And the file "library/Ibryam/Kubernetes Patterns/book.json" contains "ibryam2019:kubernetes_patterns-2nd.ed+1/2"
 
   Scenario: The authors are replaced
     When I send "PATCH /api/v1/works/01J9Z3K0000000000000000001" with the JSON:
@@ -81,6 +91,7 @@ Feature: Changing metadata and tags over HTTP
       | year        |
       | description |
       | language    |
+      | citeKey     |
 
   Scenario: A field that is left out stays
     When I send "PATCH /api/v1/works/01J9Z3K0000000000000000001" with the JSON:
@@ -124,6 +135,9 @@ Feature: Changing metadata and tags over HTTP
       | { "authors": [], "title": "X" }               | authors: give at least one author    |
       | { "authors": ["A", ""], "title": "X" }        | authors: must not be empty           |
       | { "seriesIndex": "one", "title": "X" }        | seriesIndex: must be a number        |
+      | { "citeKey": "a b", "title": "X" }            | citeKey: may only contain letters, digits and - _ : . + / |
+      | { "citeKey": "a,b", "title": "X" }            | citeKey: may only contain letters, digits and - _ : . + / |
+      | { "citeKey": 7 }                              | citeKey: must be text                |
       | { "colour": "red", "title": "X" }             | colour: unknown field                |
       | { "tags": ["a"] }                             | tags: unknown field                  |
 

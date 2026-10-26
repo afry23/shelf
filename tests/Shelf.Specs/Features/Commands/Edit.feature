@@ -41,6 +41,7 @@ Feature: Editing the metadata of a work
       | --series Patterns --series-index 3   | number | seriesIndex  | 3                       |
       | --series Patterns                    | string | series       | "Patterns"              |
       | --edition 2nd                        | string | edition      | "2nd"                   |
+      | --cite-key ibryam2019                | string | citeKey      | "ibryam2019"            |
       | --description 'A new description'  | string | description  | "A new description"     |
       | --rating 5                           | number | rating       | 5                       |
       | --status read                        | string | readStatus   | "read"                  |
@@ -79,6 +80,7 @@ Feature: Editing the metadata of a work
       | --year      | year       |
       | --rating    | rating     |
       | --language  | language |
+      | --cite-key  | citeKey    |
 
   Scenario: Several fields change in one call and the output names them
     When I run shelf with arguments "edit 01J9Z3K1 --year 2020 --rating 5 --status read --library library"
@@ -119,6 +121,7 @@ Feature: Editing the metadata of a work
       | --title ''               | --title: must not be empty                      |
       | --author ''              | --author: must not be empty                     |
       | --series-index abc         | --series-index: 'abc' is not a number           |
+      | --cite-key 'a b'         | --cite-key: 'a b' may only contain letters, digits and - _ : . + / |
       | --add-tag ''             | --add-tag: must not be empty                    |
 
   Scenario: Without anything to change the command says so

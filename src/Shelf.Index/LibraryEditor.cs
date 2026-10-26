@@ -141,6 +141,7 @@ public static class LibraryEditor
             Series = t.Series ?? s.Series,
             SeriesIndex = t.Series is null ? s.SeriesIndex : t.SeriesIndex,
             Edition = t.Edition ?? s.Edition,
+            CiteKey = t.CiteKey ?? s.CiteKey,
             Description = t.Description ?? s.Description,
             Rating = t.Rating ?? s.Rating,
             Tags = [.. t.Tags.Concat(s.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],

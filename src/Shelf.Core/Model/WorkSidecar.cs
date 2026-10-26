@@ -63,6 +63,9 @@ public sealed record WorkSidecar
 
     public string? Edition { get; init; }
 
+    /// <summary>The key under which the work is cited (BibTeX and the like); see <see cref="CiteKeys"/>.</summary>
+    public string? CiteKey { get; init; }
+
     public string? Description { get; init; }
 
     public IReadOnlyList<string> Tags { get; init; } = [];

@@ -77,6 +77,7 @@ public sealed record BookDetails(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Series,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? SeriesIndex,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Edition,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? CiteKey,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Description,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,

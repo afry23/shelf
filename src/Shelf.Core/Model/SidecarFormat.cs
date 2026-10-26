@@ -17,7 +17,7 @@ public static class SidecarFormat
     private static readonly HashSet<string> KnownKeys =
     [
         "schema", "id", "title", "subtitle", "authors", "language", "year", "isbn10", "isbn13", "publisher",
-        "series", "seriesIndex", "edition", "description", "tags", "rating", "readStatus", "added", "cover",
+        "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "added", "cover",
         "files", "notDuplicates", "related",
     ];
 
@@ -204,6 +204,7 @@ public static class SidecarFormat
             }
 
             Optional(w, "edition", sidecar.Edition);
+            Optional(w, "citeKey", sidecar.CiteKey);
             Optional(w, "description", sidecar.Description);
             w.WriteStartArray("tags");
             foreach (var tag in sidecar.Tags)
@@ -353,6 +354,7 @@ public static class SidecarFormat
                 Series = String(root, "series", ""),
                 SeriesIndex = Number(root, "seriesIndex", ""),
                 Edition = String(root, "edition", ""),
+                CiteKey = String(root, "citeKey", ""),
                 Description = String(root, "description", ""),
                 Tags = Strings(root, "tags", ""),
                 Rating = Int32(root, "rating", ""),

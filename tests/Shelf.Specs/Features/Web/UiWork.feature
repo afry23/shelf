@@ -116,6 +116,23 @@ Feature: A book and its details
     And the page shows the text "2024"
     And the file "library/Ibryam/Kubernetes Patterns/book.json" contains "Kubernetes in Depth"
 
+  Scenario: The cite key is edited with the other details
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I click the "Edit details" button
+    And I fill the "Cite key" field with "ibryam2019"
+    And I click the "Save" button
+    Then the page shows the text "Cite key"
+    And the page shows the text "ibryam2019"
+    And the file "library/Ibryam/Kubernetes Patterns/book.json" contains "ibryam2019"
+
+  Scenario: A cite key that BibTeX cannot use is explained and nothing is lost
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I click the "Edit details" button
+    And I fill the "Cite key" field with "ibryam 2019"
+    And I click the "Save" button
+    Then an alert says "citeKey: may only contain letters, digits and - _ : . + /"
+    And the "Cite key" field has the value "ibryam 2019"
+
   Scenario: The authors are edited one to a line
     Given I open "/works/01J9Z3K0000000000000000001" in the browser
     When I click the "Edit details" button
