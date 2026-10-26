@@ -48,6 +48,9 @@ jobs:
     name: build (${{ matrix.rid }})
     needs: verify
     runs-on: ${{ matrix.os }}
+    # Linux binaries are built on Debian 12 (glibc 2.36) so they also run on Raspberry Pi OS Bookworm and
+    # other older distributions; a binary built on ubuntu-24.04 needs glibc 2.38.
+    container: ${{ matrix.container }}
     timeout-minutes: 30
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -64,12 +67,14 @@ jobs:
           - rid: linux-x64
             os: ubuntu-24.04
             arch: x86_64
+            container: debian:bookworm
             bin: shelf
             ext: tar.gz
             e2e: true
           - rid: linux-arm64
             os: ubuntu-24.04-arm
             arch: aarch64
+            container: debian:bookworm
             bin: shelf
             ext: tar.gz
             e2e: false
@@ -89,9 +94,11 @@ jobs:
           actual="$(uname -m)"
           echo "uname -m: $actual (expected $EXPECTED_ARCH)"
           [ "$actual" = "$EXPECTED_ARCH" ] || { echo "::error::runner delivered '$actual', expected '$EXPECTED_ARCH'"; exit 1; }
-      - name: Install AOT prerequisites (Linux)
+      - name: Install AOT prerequisites (Linux, inside the Debian container)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends clang zlib1g-dev curl ca-certificates git binutils file xz-utils libfontconfig1
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
@@ -119,6 +126,14 @@ jobs:
           if [ -e "$RUNNER_TEMP/aot/shelf.dll" ]; then
             echo "::error::shelf.dll present: output is not a native binary"
             exit 1
+          fi
+          if [ "${{ runner.os }}" = Linux ]; then
+            glibc="$(objdump -T "$BIN" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -V | tail -1)"
+            echo "highest glibc symbol version: $glibc"
+            if [ "$(printf '%s\n2.36\n' "$glibc" | sort -V | tail -1)" != "2.36" ]; then
+              echo "::error::binary needs glibc $glibc, more than 2.36 (Raspberry Pi OS Bookworm)"
+              exit 1
+            fi
           fi
           version_out="$("$BIN" --version)"
           echo "--version output: $version_out"
