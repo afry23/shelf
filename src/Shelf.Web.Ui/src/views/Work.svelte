@@ -552,7 +552,7 @@
         <section>
           <h2>Files</h2>
           <table class="files">
-            <thead><tr><th scope="col">Name</th><th scope="col">Format</th><th scope="col">Size</th><th scope="col">Pages</th><th scope="col"><span class="visually-hidden">Download</span></th></tr></thead>
+            <thead><tr><th scope="col">Name</th><th scope="col">Format</th><th scope="col">Size</th><th scope="col">Pages</th><th scope="col"><span class="visually-hidden">Read and download</span></th></tr></thead>
             <tbody>
               {#each book.files as file (file.id)}
                 <tr>
@@ -560,7 +560,9 @@
                   <td>{file.format}</td>
                   <td>{bytes(file.sizeBytes)}</td>
                   <td>{file.pages ?? ''}</td>
-                  <td><a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a></td>
+                  <td>
+                    {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a> · {/if}<a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
+                  </td>
                 </tr>
               {/each}
             </tbody>
