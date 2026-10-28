@@ -323,12 +323,13 @@ Requirements for the MCP server:
 | F-WEB-3 | The UI is embedded into the binary as static assets. No Node.js at runtime. | M |
 | F-WEB-4 | Responsive for desktop and tablet, light and dark mode. | M |
 | F-WEB-5 | Keyboard control: `/` focuses the search, `j`/`k` navigates, `Enter` opens. | S |
+| F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. | M |
 
 ### 8.2 Views
 
 | View | Content | Prio |
 |---|---|---|
-| **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
+| **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting; paging with page numbers and a page size (F-WEB-6) | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle and an Everything / Titles only scope toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |

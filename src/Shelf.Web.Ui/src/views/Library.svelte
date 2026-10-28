@@ -18,7 +18,14 @@
   const sort = $derived(param('sort', 'title'));
   const order = $derived(param('order', 'asc'));
   const offset = $derived(Math.max(0, Number(param('offset', '0')) || 0));
-  const limit = $derived(Math.max(1, Number(param('limit', '48')) || 48));
+  // The sizes on offer. Another size in the address is kept as it is, within what the API accepts.
+  const pageSizes = [20, 40, 60, 80, 100];
+  const maxPageSize = 100;
+  const limit = $derived.by(() => {
+    const wanted = Math.floor(Number(param('limit', '')));
+    return wanted >= 1 ? Math.min(wanted, maxPageSize) : pageSizes[0];
+  });
+  const sizeChoices = $derived(pageSizes.includes(limit) ? pageSizes : [...pageSizes, limit].sort((a, b) => a - b));
 
   type View = 'grid' | 'list';
   function storedView(): View {
@@ -104,6 +111,24 @@
 
   const visible = (key: FacetKey, values: FacetValue[]) => (expanded[key] ? values : values.slice(0, 10));
   const last = $derived(list ? Math.min(offset + limit, list.total) : 0);
+  const pageCount = $derived(list ? Math.max(1, Math.ceil(list.total / limit)) : 1);
+  const page = $derived(Math.floor(offset / limit) + 1);
+
+  // The first and the last page and the one before and after the current one; a gap between them shows as null.
+  const pageItems = $derived.by(() => {
+    const shown = [...new Set([1, page - 1, page, page + 1, pageCount].filter((n) => n >= 1 && n <= pageCount))].sort((a, b) => a - b);
+    const items: (number | null)[] = [];
+    for (const n of shown) {
+      const before = items[items.length - 1];
+      if (typeof before === 'number' && n - before > 1) {
+        items.push(null);
+      }
+      items.push(n);
+    }
+    return items;
+  });
+
+  const goTo = (target: number) => setParams({ offset: target <= 1 ? null : String((target - 1) * limit) });
 </script>
 
 <div class="page">
@@ -254,9 +279,29 @@
         {/if}
 
         <nav class="pager" aria-label="Pages">
-          <button type="button" class="button" disabled={offset === 0} onclick={() => setParams({ offset: String(Math.max(0, offset - limit)) })}>Previous page</button>
-          <span class="muted">{offset + 1}–{last} of {list.total}</span>
-          <button type="button" class="button" disabled={last >= list.total} onclick={() => setParams({ offset: String(offset + limit) })}>Next page</button>
+          <button type="button" class="button" disabled={page <= 1} onclick={() => goTo(page - 1)}>Previous page</button>
+          <ol class="numbers">
+            {#each pageItems as item, index (item ?? `gap${index}`)}
+              <li>
+                {#if item === null}
+                  <span class="gap muted" aria-hidden="true">…</span>
+                {:else}
+                  <button type="button" class="button number" aria-label={`Page ${item}`} aria-current={item === page ? 'page' : undefined} onclick={() => goTo(item)}>{item}</button>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+          <button type="button" class="button" disabled={page >= pageCount} onclick={() => goTo(page + 1)}>Next page</button>
+          <span class="muted">{list.total === 0 ? 0 : offset + 1}–{last} of {list.total}</span>
+          <span class="muted">Page {page} of {pageCount}</span>
+          <span class="size">
+            <label class="muted" for="page-size">Works per page</label>
+            <select id="page-size" value={String(limit)} onchange={(event) => setParams({ limit: event.currentTarget.value, offset: null })}>
+              {#each sizeChoices as size (size)}
+                <option value={String(size)}>{size}</option>
+              {/each}
+            </select>
+          </span>
         </nav>
       {/if}
     </div>
@@ -490,10 +535,35 @@
 
   .pager {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
+    gap: 0.75rem 1rem;
     margin-top: 2rem;
+  }
+
+  .numbers {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .number[aria-current='page'] {
+    font-weight: 700;
+    border-color: currentColor;
+  }
+
+  .gap {
+    padding: 0 0.25rem;
+  }
+
+  .size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   /* Tablet and narrower: the filters sit behind a button. */
