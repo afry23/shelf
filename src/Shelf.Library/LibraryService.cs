@@ -31,7 +31,8 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
     public SearchBooksResult SearchBooks(
         string query,
-        int limit = LibrarySearch.DefaultLimit)
+        int limit = LibrarySearch.DefaultLimit,
+        bool titleOnly = false)
     {
         if (limit is < 1 or > MaxLimit)
         {
@@ -54,7 +55,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
 
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-        var hits = LibrarySearch.Search(connection, parsed, limit);
+        var hits = LibrarySearch.Search(connection, parsed, limit, titleOnly: titleOnly);
         return new SearchBooksResult(
             query,
             hits.Count,
@@ -150,7 +151,8 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         string query,
         string level = "work",
         bool hybrid = false,
-        int limit = 10)
+        int limit = 10,
+        bool titleOnly = false)
     {
         if (limit is < 1 or > MaxLimit)
         {
@@ -160,6 +162,11 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         if (level is not ("work" or "chunk"))
         {
             throw new LibraryException("level must be 'work' or 'chunk'.");
+        }
+
+        if (titleOnly && level == "chunk")
+        {
+            throw new LibraryException("titleOnly cannot be combined with level 'chunk'; passages have no titles.");
         }
 
         var text = query.Trim();
@@ -209,7 +216,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             hits = passages
                 ? HybridSearch.SearchPassages(connection, store, vector, words!, limit)
-                : HybridSearch.SearchWorks(connection, store, vector, words!, limit);
+                : HybridSearch.SearchWorks(connection, store, vector, words!, limit, titleOnly);
         }
         else if (store is null)
         {
@@ -219,10 +226,10 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             hits = passages
                 ? Shelf.Semantic.SemanticSearch.SearchPassages(connection, store, vector!, limit)
-                : Shelf.Semantic.SemanticSearch.SearchWorks(connection, store, vector!, limit);
+                : Shelf.Semantic.SemanticSearch.SearchWorks(connection, store, vector!, limit, titleOnly);
         }
 
-        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store, titleOnly);
         var empty = store is null || (store.Count(VectorKind.Work) == 0 && store.Count(VectorKind.Chunk) == 0);
         return new SemanticSearchResult(
             text,

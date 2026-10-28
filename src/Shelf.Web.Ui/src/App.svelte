@@ -66,6 +66,10 @@
     if (mode) {
       params.set('mode', mode);
     }
+    const scope = route.name === 'search' ? param('scope') : '';
+    if (scope) {
+      params.set('scope', scope);
+    }
     navigate(`/search?${params.toString()}`);
   }
 

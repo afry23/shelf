@@ -15,8 +15,9 @@ internal sealed class LibraryTools(LibraryService service)
     [Description("Search titles, authors, tags and the text of the books with the shelf query language: words, \"phrases\", prefix*, -excluded, and author: title: tag: lang: year: format: status: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
     public SearchBooksResult SearchBooks(
         [Description("The query, e.g. 'event sourcing tag:architektur year:>=2015'")] string query,
-        [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit) =>
-        Run(() => service.SearchBooks(query, limit));
+        [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit,
+        [Description("Look only at titles and subtitles, not at authors, tags, descriptions or the text; the places in the text are then empty (default false)")] bool titleOnly = false) =>
+        Run(() => service.SearchBooks(query, limit, titleOnly));
 
     [Description("Metadata, files, tags and table of contents of a work. Locations in the table of contents can be given to read_passage.")]
     public BookDetails GetBook([Description("The ID of a work, or the start of it (at least one character that names exactly one work)")] string id) =>
@@ -36,8 +37,9 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("What the books or passages should be about, as a sentence or a few words")] string query,
         [Description("'work' (default) finds works, 'chunk' finds passages inside works")] string level = "work",
         [Description("Also use the full-text search and fuse both rankings; then the query may only have words and phrases, no filters (default false)")] bool hybrid = false,
-        [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10) =>
-        Run(() => service.SemanticSearch(query, level, hybrid, limit));
+        [Description("Largest number of hits, 1 to 100 (default 10)")] int limit = 10,
+        [Description("Compare the query with titles and subtitles only, not with descriptions, tags or the text; only with level 'work' (default false)")] bool titleOnly = false) =>
+        Run(() => service.SemanticSearch(query, level, hybrid, limit, titleOnly));
 
     [Description("The works most like a given work, best first (without the work itself), by the meaning of title, description and tags. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete.")]
     public SimilarBooksResult SimilarBooks(

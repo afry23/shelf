@@ -24,6 +24,10 @@ internal static class SemanticCommand
         {
             Description = "Combine with the full-text results (words and phrases only, no filters): an exact word and a similar meaning both count",
         };
+        var titleOnly = new Option<bool>("--title-only")
+        {
+            Description = "Compare the query with titles and subtitles only, not with descriptions, tags or the text (works only, not with --chunks)",
+        };
         var limit = new Option<int>("--limit")
         {
             Description = "Largest number of hits to show",
@@ -41,6 +45,7 @@ internal static class SemanticCommand
         command.Arguments.Add(words);
         command.Options.Add(chunks);
         command.Options.Add(hybrid);
+        command.Options.Add(titleOnly);
         command.Options.Add(limit);
         command.Options.Add(library);
         command.SetAction(parseResult =>
@@ -49,6 +54,13 @@ internal static class SemanticCommand
             if (text.Length == 0)
             {
                 stderr.WriteLine("error: the query has nothing to search for");
+                return ExitCodes.Usage;
+            }
+
+            var onlyTitles = parseResult.GetValue(titleOnly);
+            if (onlyTitles && parseResult.GetValue(chunks))
+            {
+                stderr.WriteLine("error: --title-only cannot be combined with --chunks; passages have no titles");
                 return ExitCodes.Usage;
             }
 
@@ -92,7 +104,7 @@ internal static class SemanticCommand
             {
                 hits = passages
                     ? HybridSearch.SearchPassages(connection, store, vector, parsed!, count)
-                    : HybridSearch.SearchWorks(connection, store, vector, parsed!, count);
+                    : HybridSearch.SearchWorks(connection, store, vector, parsed!, count, onlyTitles);
             }
             else if (store is null)
             {
@@ -102,10 +114,10 @@ internal static class SemanticCommand
             {
                 hits = passages
                     ? SemanticSearch.SearchPassages(connection, store, vector!, count)
-                    : SemanticSearch.SearchWorks(connection, store, vector!, count);
+                    : SemanticSearch.SearchWorks(connection, store, vector!, count, onlyTitles);
             }
 
-            var coverage = SemanticSearch.Coverage(connection, store);
+            var coverage = SemanticSearch.Coverage(connection, store, onlyTitles);
             if (parseResult.GetValue(json))
             {
                 stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, text, passages, useHybrid, hits, coverage)));

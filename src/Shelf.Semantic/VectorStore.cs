@@ -10,6 +10,9 @@ public enum VectorKind
 {
     Work,
     Chunk,
+
+    /// <summary>One vector per work from its title and subtitle only (F-SEM-10).</summary>
+    Title,
 }
 
 public enum VectorBackend
@@ -40,6 +43,7 @@ public sealed class VectorStore
     private const string DimensionsKey = "dimensions";
 
     private readonly SqliteConnection _connection;
+    private bool _hasTitleTable;
 
     private VectorStore(SqliteConnection connection, int dimensions, string model, VectorBackend backend, string? storedModel, int? storedDimensions)
     {
@@ -153,6 +157,7 @@ public sealed class VectorStore
             throw new VectorStoreException($"the vectors in this index were made with {StoredModel} ({StoredDimensions} dimensions), not {Model}");
         }
 
+        EnsureTable(kind);
         var table = TableOf(kind);
         var blob = VectorCodec.ToBytes(vector);
         using var transaction = _connection.BeginTransaction();
@@ -167,6 +172,11 @@ public sealed class VectorStore
 
     public void Delete(VectorKind kind, long id)
     {
+        if (Missing(kind))
+        {
+            return;
+        }
+
         using var command = _connection.CreateCommand();
         command.CommandText = $"DELETE FROM {TableOf(kind)} WHERE {IdColumn(kind)} = $id";
         command.Parameters.AddWithValue("$id", id);
@@ -176,6 +186,11 @@ public sealed class VectorStore
     /// <summary>The vector stored under <paramref name="id"/>, or null if there is none.</summary>
     public float[]? Get(VectorKind kind, long id)
     {
+        if (Missing(kind))
+        {
+            return null;
+        }
+
         using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT embedding FROM {TableOf(kind)} WHERE {IdColumn(kind)} = $id";
         command.Parameters.AddWithValue("$id", id);
@@ -192,6 +207,11 @@ public sealed class VectorStore
     /// <summary>Every vector with its id, in one pass.</summary>
     public IReadOnlyList<(long Id, float[] Vector)> All(VectorKind kind)
     {
+        if (Missing(kind))
+        {
+            return [];
+        }
+
         using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT {IdColumn(kind)}, embedding FROM {TableOf(kind)}";
         using var reader = command.ExecuteReader();
@@ -209,6 +229,11 @@ public sealed class VectorStore
     /// <summary>Every id that has a vector.</summary>
     public IReadOnlyList<long> Ids(VectorKind kind)
     {
+        if (Missing(kind))
+        {
+            return [];
+        }
+
         using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT {IdColumn(kind)} FROM {TableOf(kind)}";
         using var reader = command.ExecuteReader();
@@ -223,6 +248,11 @@ public sealed class VectorStore
 
     public long Count(VectorKind kind)
     {
+        if (Missing(kind))
+        {
+            return 0;
+        }
+
         using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT count(*) FROM {TableOf(kind)}";
         return (long)command.ExecuteScalar()!;
@@ -233,6 +263,11 @@ public sealed class VectorStore
     {
         CheckDimensions(query.Length);
         ArgumentOutOfRangeException.ThrowIfLessThan(k, 1);
+        if (Missing(kind))
+        {
+            return [];
+        }
+
         return Backend == VectorBackend.SqliteVec ? NearestWithExtension(kind, query, k) : NearestByScan(kind, query, k);
     }
 
@@ -296,21 +331,53 @@ public sealed class VectorStore
         }
     }
 
-    private static string TableOf(VectorKind kind) => kind == VectorKind.Work ? VectorTables.Works : VectorTables.Chunks;
+    // Indexes made before the title vectors have no table for them: a read finds nothing, a write creates it.
+    private bool Missing(VectorKind kind) => kind == VectorKind.Title && !TitleTableExists();
 
-    private static string IdColumn(VectorKind kind) => kind == VectorKind.Work ? "work_seq" : "chunk_id";
+    private void EnsureTable(VectorKind kind)
+    {
+        if (kind == VectorKind.Title && !TitleTableExists())
+        {
+            CreateTable(_connection, VectorKind.Title, Backend, Dimensions);
+            _hasTitleTable = true;
+        }
+    }
+
+    private bool TitleTableExists()
+    {
+        if (!_hasTitleTable)
+        {
+            using var command = _connection.CreateCommand();
+            command.CommandText = $"SELECT count(*) FROM sqlite_master WHERE name = '{VectorTables.Titles}'";
+            _hasTitleTable = (long)command.ExecuteScalar()! > 0;
+        }
+
+        return _hasTitleTable;
+    }
+
+    private static string TableOf(VectorKind kind) => kind switch
+    {
+        VectorKind.Work => VectorTables.Works,
+        VectorKind.Title => VectorTables.Titles,
+        _ => VectorTables.Chunks,
+    };
+
+    private static string IdColumn(VectorKind kind) => kind == VectorKind.Chunk ? "chunk_id" : "work_seq";
 
     private static void CreateTables(SqliteConnection connection, VectorBackend backend, int dimensions)
     {
-        foreach (var kind in new[] { VectorKind.Work, VectorKind.Chunk })
+        foreach (var kind in new[] { VectorKind.Work, VectorKind.Chunk, VectorKind.Title })
         {
-            Execute(
-                connection,
-                backend == VectorBackend.SqliteVec
-                    ? $"CREATE VIRTUAL TABLE {TableOf(kind)} USING vec0({IdColumn(kind)} INTEGER PRIMARY KEY, embedding float[{dimensions.ToString(CultureInfo.InvariantCulture)}] distance_metric=cosine)"
-                    : $"CREATE TABLE {TableOf(kind)}({IdColumn(kind)} INTEGER PRIMARY KEY, embedding BLOB NOT NULL)");
+            CreateTable(connection, kind, backend, dimensions);
         }
     }
+
+    private static void CreateTable(SqliteConnection connection, VectorKind kind, VectorBackend backend, int dimensions) =>
+        Execute(
+            connection,
+            backend == VectorBackend.SqliteVec
+                ? $"CREATE VIRTUAL TABLE {TableOf(kind)} USING vec0({IdColumn(kind)} INTEGER PRIMARY KEY, embedding float[{dimensions.ToString(CultureInfo.InvariantCulture)}] distance_metric=cosine)"
+                : $"CREATE TABLE {TableOf(kind)}({IdColumn(kind)} INTEGER PRIMARY KEY, embedding BLOB NOT NULL)");
 
     private static void WriteMeta(SqliteConnection connection, VectorBackend backend, string model, int dimensions)
     {

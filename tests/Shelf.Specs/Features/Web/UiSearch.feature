@@ -1,4 +1,4 @@
-@ui @F-SRC-5 @F-SEM-5 @PRD-8.2 @M4
+@ui @F-SRC-5 @F-SRC-7 @F-SEM-5 @F-SEM-10 @PRD-8.2 @M4
 Feature: Searching from the browser
   As a person who remembers a word or an idea from a book
   I want to search the whole library and land on the right page
@@ -112,3 +112,15 @@ Feature: Searching from the browser
   Scenario: An empty search asks for a word
     When I open "/search" in the browser
     Then the page shows the text "Type a word or a phrase"
+
+  Scenario: The search can look at titles only
+    Given I open "/search?q=sidecar" in the browser
+    When I click the "Titles only" button
+    Then the "Titles only" button is pressed
+    And the browser address contains "scope=title"
+    And the page shows the text "Nothing found for sidecar"
+
+  Scenario: The scope is kept when the page is opened again, and passages are not offered for titles
+    When I open "/search?q=kubernetes&mode=semantic&scope=title" in the browser
+    Then the "Titles only" button is pressed
+    And the "Passages" button is not shown

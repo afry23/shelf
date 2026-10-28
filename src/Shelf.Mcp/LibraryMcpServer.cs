@@ -87,8 +87,8 @@ public static class LibraryMcpServer
     {
         var json = McpJsonContext.SharedOptions;
         var collection = new McpServerPrimitiveCollection<McpServerTool>();
-        collection.Add(McpServerTool.Create((Func<string, int, SearchBooksResult>)tools.SearchBooks, Read("search_books", json)));
-        collection.Add(McpServerTool.Create((Func<string, string, bool, int, SemanticSearchResult>)tools.SemanticSearch, Read("semantic_search", json)));
+        collection.Add(McpServerTool.Create((Func<string, int, bool, SearchBooksResult>)tools.SearchBooks, Read("search_books", json)));
+        collection.Add(McpServerTool.Create((Func<string, string, bool, int, bool, SemanticSearchResult>)tools.SemanticSearch, Read("semantic_search", json)));
         collection.Add(McpServerTool.Create((Func<string, int, SimilarBooksResult>)tools.SimilarBooks, Read("similar_books", json)));
         collection.Add(McpServerTool.Create((Func<string, BookDetails>)tools.GetBook, Read("get_book", json)));
         collection.Add(McpServerTool.Create((Func<string, AnnotationList>)tools.GetAnnotations, Read("get_annotations", json)));

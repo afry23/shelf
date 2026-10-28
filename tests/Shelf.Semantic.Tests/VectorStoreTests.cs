@@ -36,6 +36,38 @@ public sealed class VectorStoreTests : IDisposable
     }
 
     [Fact]
+    public void Title_vectors_are_kept_apart_from_work_vectors()
+    {
+        using var db = Open(Path.Combine(_root, "titles.db"));
+        var store = VectorStore.Open(db, 3, "m", NoVectorExtension.Instance);
+        store.Put(VectorKind.Title, 1, [1f, 0f, 0f]);
+        store.Put(VectorKind.Work, 1, [0f, 1f, 0f]);
+        Assert.Equal(new[] { 1f, 0f, 0f }, store.Get(VectorKind.Title, 1));
+        Assert.Equal(1, store.Count(VectorKind.Title));
+        Assert.Equal(1, store.Nearest(VectorKind.Title, [1f, 0f, 0f], 1)[0].Id);
+    }
+
+    [Fact]
+    public void An_index_from_before_the_title_vectors_has_none_and_gets_the_table_on_the_first_write()
+    {
+        using var db = Open(Path.Combine(_root, "old.db"));
+        var store = VectorStore.Open(db, 3, "m", NoVectorExtension.Instance);
+        using (var drop = db.CreateCommand())
+        {
+            drop.CommandText = $"DROP TABLE {VectorTables.Titles}";
+            drop.ExecuteNonQuery();
+        }
+
+        var reopened = VectorStore.OpenExisting(db, NoVectorExtension.Instance)!;
+        Assert.Equal(0, reopened.Count(VectorKind.Title));
+        Assert.Empty(reopened.Nearest(VectorKind.Title, [1f, 0f, 0f], 3));
+        Assert.Null(reopened.Get(VectorKind.Title, 1));
+
+        reopened.Put(VectorKind.Title, 1, [1f, 0f, 0f]);
+        Assert.Equal(1, reopened.Count(VectorKind.Title));
+    }
+
+    [Fact]
     public void Plain_and_sqlite_vec_find_the_same_neighbours()
     {
         Assert.SkipUnless(File.Exists(SqliteVecExtension.LibraryPath), "vec0 is not next to the test assembly");

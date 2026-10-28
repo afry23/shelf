@@ -27,10 +27,12 @@ internal static class SearchCommand
                 result.AddError("--limit must be between 1 and 1000");
             }
         });
+        var titleOnly = new Option<bool>("--title-only") { Description = "Look only at the titles and subtitles, not at authors, tags, descriptions or the text of the books" };
         var library = LibraryContext.CreateOption();
         var command = new Command("search", "Search titles, authors, tags and the text of the books");
         command.Arguments.Add(words);
         command.Options.Add(limit);
+        command.Options.Add(titleOnly);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
@@ -54,11 +56,11 @@ internal static class SearchCommand
 
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(context.Root));
-            var hits = LibrarySearch.Search(connection, query, parseResult.GetValue(limit));
+            var hits = LibrarySearch.Search(connection, query, parseResult.GetValue(limit), titleOnly: parseResult.GetValue(titleOnly));
             var fuzzy = false;
             if (hits.Count == 0)
             {
-                hits = LibrarySearch.SearchFuzzy(connection, query, parseResult.GetValue(limit));
+                hits = LibrarySearch.SearchFuzzy(connection, query, parseResult.GetValue(limit), parseResult.GetValue(titleOnly));
                 fuzzy = hits.Count > 0;
                 if (fuzzy)
                 {

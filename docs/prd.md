@@ -210,6 +210,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-SRC-4 | Fuzzy search for typos in title and author via trigrams. | S |
 | F-SRC-5 | Content hits with snippet and location: page (PDF) or chapter + CFI (EPUB). | M |
 | F-SRC-6 | Language-dependent stemming for German and English. | S |
+| F-SRC-7 | Title scope: `--title-only` searches only title and subtitle (words, phrases, prefixes, stemming; filters still apply). | S |
 
 ### 6.7 Semantic Search
 
@@ -224,6 +225,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-SEM-7 | Indexing runs in the background, can be interrupted, and resumes where it left off. Progress is displayed. | M |
 | F-SEM-8 | The model is replaceable. Changing the model triggers a re-indexing of the embeddings. | S |
 | F-SEM-9 | Text that is no prose is not embedded: table of contents, front matter (preface, foreword, acknowledgments, copyright), index, bibliography, glossary and source code. It stays in the full-text index. | S |
+| F-SEM-10 | Title scope for semantic and hybrid search: one extra embedding per work from title and subtitle only; `--title-only` compares the query with it (works only, no passages). | S |
 
 ### 6.8 Duplicate Detection
 
@@ -249,8 +251,8 @@ shelf import <path> [--move] [--dry-run]  Import files
 shelf import --from rclone:<spec> [--dry-run]  Import files from a cloud folder via rclone
 shelf scan                                Incremental scan
 shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
-shelf search <query> [--limit] [--json]   Metadata/full-text search
-shelf semantic <text> [--chunks] [--hybrid] [--json]  Semantic search (--hybrid: combined with full text)
+shelf search <query> [--title-only] [--limit] [--json]   Metadata/full-text search
+shelf semantic <text> [--chunks] [--hybrid] [--title-only] [--json]  Semantic search (--hybrid: combined with full text)
 shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
@@ -327,7 +329,7 @@ Requirements for the MCP server:
 | View | Content | Prio |
 |---|---|---|
 | **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
-| **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
+| **Search** | One search field with a Full text / Semantic / Hybrid toggle and an Everything / Titles only scope toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
 | **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for probable pairs also "merge the other into this one" (F-GRP-4); for different files of one book also "split into own work" (F-GRP-4) | M |
