@@ -735,7 +735,7 @@
           <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
           <p>
             <label>Replaces
-              <select bind:value={addReplace}>
+              <select aria-label="Replaces" bind:value={addReplace}>
                 <option value="">nothing, keep all files</option>
                 {#each book.files as file (file.id)}<option value={file.id}>{file.name}</option>{/each}
               </select>
