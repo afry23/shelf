@@ -85,6 +85,97 @@ shelf finds the library from the current folder (or a parent), from `--library`,
 
 `book.json` is the source of truth. The SQLite database is only an index: `shelf reindex` rebuilds it from the folders and sidecars.
 
+## Changing files by hand
+
+You may use `cp`, `mv` and `rm` in the library folder. Afterwards run `shelf scan`. It looks only at what changed (new, changed, removed files) and brings the index in line. You do not need `shelf reindex` for this.
+
+| What you do | What `shelf scan` does |
+|---|---|
+| Copy or move a file into an existing **work folder** (next to its `book.json`) | The file joins that work, is read and indexed, and is added to the sidecar |
+| Put a file anywhere else in the library | Reports `untracked <path>` and does nothing. Use `shelf import --move` on its folder, or `shelf add` / `shelf create` |
+| Create a new work folder with a `book.json` | The folder is indexed as a new work |
+| Replace a file with other content | The file is read again |
+| Delete a file | The file leaves the index. **The sidecar still names it** |
+| Delete a work folder | The work leaves the index |
+| Rename or move a work folder | The work keeps its content and gets the new path |
+| Edit `book.json` | Title, tags and other metadata are updated without reading the files again |
+
+Notes:
+
+- `shelf scan` does not create embeddings. After adding books run `shelf reindex --embeddings`, which only creates the missing ones. Semantic search will not find new files before that.
+- `rm` is final. `shelf delete <work> [file]` moves the file to `.shelf/trash/` and `shelf undo` brings it back.
+- `shelf add <work> <file>` is safer than `cp`: it refuses a file with the same SHA-256 as one already in the library, and `--replace` keeps the old file in the trash.
+- Do not run `shelf scan` while you are still copying a large file into the library.
+- shelf does not watch the folder. A running `shelf serve` or `shelf mcp` sees changes only after a scan.
+
+## `scan` or `reindex`?
+
+| Command | Reads | Use it when |
+|---|---|---|
+| `shelf scan` | Only what changed: new, changed and removed files, changed sidecars. Files with the same size and time are skipped | Daily work. You added, replaced or deleted files, or edited a `book.json` |
+| `shelf reindex` | **Everything**: all sidecars and the content of all files (full text, chunks, covers for works without one). The index is rebuilt from scratch | The index is damaged or lost, or you moved the library. Takes a while on a big library |
+| `shelf reindex --metadata-only` | All sidecars, **no file content**. Fast, but full-text search finds only metadata until the content is read | You want a quick index of titles, authors and tags first. A later `shelf scan` reads the files |
+| `shelf reindex --embeddings` | Nothing of the above. Only makes the **missing embeddings** for semantic search; the rest of the index is not touched | After a scan or reindex, or after changing `semantic.model`. Resumable |
+
+Notes:
+
+- `--embeddings` and `--metadata-only` cannot be combined.
+- A plain `shelf reindex` drops the embeddings. Run `shelf reindex --embeddings` afterwards.
+- `--embeddings` can be interrupted with Ctrl-C (exit code 1). Run the same command again to continue where it stopped. The file in progress at the interrupt is embedded again.
+- If the model is not installed yet, `--embeddings` downloads it once.
+
+Typical sequences:
+
+```sh
+# New books copied into work folders
+shelf scan
+shelf reindex --embeddings
+
+# Index lost or damaged
+shelf reindex
+shelf reindex --embeddings
+
+# Quick start on a huge library, content later
+shelf reindex --metadata-only
+shelf scan
+shelf reindex --embeddings
+```
+
+## Embedding model
+
+Semantic search (`shelf semantic`, hybrid search, `shelf similar`, MCP `semantic_search`) runs on a local embedding model via ONNX Runtime. Nothing is sent to a server.
+
+**Which models are there?** Currently exactly one:
+
+| Name | Languages | Size | Notes |
+|---|---|---|---|
+| `multilingual-e5-small` (default) | multilingual, tested with German and English | about 470 MB (`model.onnx`) plus 5 MB tokenizer | Pinned to one revision of [intfloat/multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small) on Hugging Face. Every file is checked by size and SHA-256; a file that differs is never installed |
+
+There is no choice between models yet, so there is nothing to compare. The catalog (`src/Shelf.Semantic/ModelCatalog.cs`) is built so that more models can be added. Smaller or quantized variants are considered in [ADR 0014](docs/adr/0014-m3-semantic-performance.md) but not planned. If another model gets added, `semantic.model` selects it.
+
+**Install it:**
+
+```sh
+shelf model install                  # download once (about 475 MB) into <root>/.shelf/models/multilingual-e5-small/
+shelf model install ~/Downloads/e5   # offline: from a folder that holds model.onnx and sentencepiece.bpe.model
+```
+
+Without a network, fetch the two files on another machine with `tools/fetch-e5-model.sh <folder>` (same revision, same SHA-256), copy the folder over and install from it. `shelf reindex --embeddings` also downloads the model if it is missing.
+
+**Use it:**
+
+```sh
+shelf reindex --embeddings                                   # make the vectors
+shelf semantic "books about event sourcing in distributed systems"
+shelf semantic "event sourcing" --chunks                     # passages with page or CFI location
+shelf semantic "event sourcing" --hybrid                     # combined with full-text search
+shelf similar <work-id>                                      # books like this one
+```
+
+**Select or change the model** with `semantic.model` in a config file (default `multilingual-e5-small`). Vectors of different models cannot be compared. After a change, `shelf reindex --embeddings` warns and makes all embeddings again.
+
+**Cost:** The model uses about 1.3 GB of memory while loaded. A one-shot `shelf semantic` loads it on every start (about half a second). `shelf serve` and `shelf mcp` keep it loaded, so their queries answer in milliseconds. Embedding a big library on CPU takes hours (the reference library was estimated at about 2 hours).
+
 ## Configuration
 
 shelf reads two TOML files. Later ones override earlier ones:
