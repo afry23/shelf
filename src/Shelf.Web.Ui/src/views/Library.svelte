@@ -18,15 +18,6 @@
   const sort = $derived(param('sort', 'title'));
   const order = $derived(param('order', 'asc'));
   const offset = $derived(Math.max(0, Number(param('offset', '0')) || 0));
-  // The sizes on offer. Another size in the address is kept as it is, within what the API accepts.
-  const pageSizes = [20, 40, 60, 80, 100];
-  const maxPageSize = 100;
-  const limit = $derived.by(() => {
-    const wanted = Math.floor(Number(param('limit', '')));
-    return wanted >= 1 ? Math.min(wanted, maxPageSize) : pageSizes[0];
-  });
-  const sizeChoices = $derived(pageSizes.includes(limit) ? pageSizes : [...pageSizes, limit].sort((a, b) => a - b));
-
   type View = 'grid' | 'list';
   function storedView(): View {
     try {
@@ -37,6 +28,30 @@
   }
   const view = $derived<View>(param('view') === 'list' ? 'list' : param('view') === 'grid' ? 'grid' : storedView());
 
+  // The sizes on offer. Another size in the address is kept as it is, within what the API accepts.
+  const pageSizes = [20, 40, 60, 80, 100];
+  const maxPageSize = 100;
+  const wantedLimit = $derived(Math.floor(Number(param('limit', ''))));
+  const baseLimit = $derived(wantedLimit >= 1 ? Math.min(wantedLimit, maxPageSize) : pageSizes[0]);
+
+  // How many covers stand in a row of the shelf, from the width of the column. This is what the grid below is told to use.
+  const minCover = 152;
+  const shelfGap = 24;
+  let mainWidth = $state(0);
+  let narrow = $state(matchMedia('(max-width: 480px)').matches);
+  $effect(() => {
+    const query = matchMedia('(max-width: 480px)');
+    const update = () => (narrow = query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  });
+  const columns = $derived(view === 'grid' ? (narrow ? 2 : Math.max(1, Math.floor((mainWidth + shelfGap) / (minCover + shelfGap)))) : 1);
+
+  // A size from the list is rounded to whole rows, so the shelf is full on every page but the last.
+  const fit = (size: number) => (pageSizes.includes(size) ? Math.max(columns, Math.min(Math.round(size / columns) * columns, Math.floor(maxPageSize / columns) * columns)) : size);
+  const limit = $derived(fit(baseLimit));
+  const sizeChoices = $derived(pageSizes.includes(baseLimit) ? pageSizes : [...pageSizes, baseLimit].sort((a, b) => a - b));
+
   let list = $state<WorkList | null>(null);
   let error = $state<string | null>(null);
   let filtersOpen = $state(false);
@@ -44,6 +59,9 @@
 
   // Fetches again whenever the address changes. An answer that comes late for an older address is dropped.
   $effect(() => {
+    if (mainWidth === 0) {
+      return;
+    }
     const params = { q, sort, order, offset, limit };
     let current = true;
     works(params)
@@ -216,7 +234,7 @@
       {/if}
     </aside>
 
-    <div class="main">
+    <div class="main" bind:clientWidth={mainWidth}>
       {#if active.length}
         <ul class="chips" aria-label="Active filters">
           {#each active as token (token)}
@@ -245,7 +263,7 @@
         </section>
       {:else}
         {#if view === 'grid'}
-          <ul class="shelf" aria-label="Books">
+          <ul class="shelf" aria-label="Books" style:grid-template-columns={`repeat(${columns}, minmax(0, 1fr))`}>
             {#each list.items as book (book.id)}
               <li data-nav>
                 <a class="book" href={`/works/${book.id}`}>
@@ -296,9 +314,9 @@
           <span class="muted">Page {page} of {pageCount}</span>
           <span class="size">
             <label class="muted" for="page-size">Works per page</label>
-            <select id="page-size" value={String(limit)} onchange={(event) => setParams({ limit: event.currentTarget.value, offset: null })}>
+            <select id="page-size" value={String(baseLimit)} onchange={(event) => setParams({ limit: event.currentTarget.value, offset: null })}>
               {#each sizeChoices as size (size)}
-                <option value={String(size)}>{size}</option>
+                <option value={String(size)}>{fit(size)}</option>
               {/each}
             </select>
           </span>
