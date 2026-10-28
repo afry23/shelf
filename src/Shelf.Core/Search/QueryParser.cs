@@ -5,7 +5,7 @@ namespace Shelf.Core.Search;
 
 /// <summary>
 /// Reads the search language (F-SRC-3): free words, <c>"phrases"</c>, <c>prefix*</c>, <c>-negation</c>, and the
-/// filters <c>author:</c> <c>title:</c> <c>tag:</c> <c>lang:</c> <c>year:</c> <c>format:</c> <c>status:</c>. Everything else is
+/// filters <c>author:</c> <c>title:</c> <c>tag:</c> <c>publisher:</c> <c>lang:</c> <c>year:</c> <c>format:</c> <c>status:</c>. Everything else is
 /// plain text: characters that mean something to the index (<c>( ) : ^ NEAR OR</c>) are never passed on as syntax.
 /// </summary>
 public static partial class QueryParser
@@ -134,6 +134,7 @@ public static partial class QueryParser
             "author" => (FieldKind?)FieldKind.Author,
             "title" => FieldKind.Title,
             "tag" => FieldKind.Tag,
+            "publisher" => FieldKind.Publisher,
             "lang" => FieldKind.Language,
             "year" => FieldKind.Year,
             "format" => FieldKind.Format,
@@ -164,7 +165,7 @@ public static partial class QueryParser
 
         switch (kind)
         {
-            case FieldKind.Author or FieldKind.Title or FieldKind.Tag:
+            case FieldKind.Author or FieldKind.Title or FieldKind.Tag or FieldKind.Publisher:
                 var prefix = !quoted && value.Length > 1 && value.EndsWith('*');
                 var term = new SearchTerm(prefix ? value[..^1] : value, quoted, prefix);
                 return term.HasContent ? new TextFilter(kind.Value, term, negated) : throw new QueryException($"{field}: needs a value");

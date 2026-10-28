@@ -1,4 +1,4 @@
-// The filters of the query language (tag: author: lang: year: format: status:) as buttons: a facet adds one token to `q`, a chip
+// The filters of the query language (tag: author: publisher: lang: year: format: status:) as buttons: a facet adds one token to `q`, a chip
 // removes one. The server parses `q`; this file only builds and splits tokens.
 
 import type { Facets } from './api';
@@ -8,6 +8,7 @@ export type FacetKey = keyof Facets;
 export const facetGroups: { key: FacetKey; label: string; field: string }[] = [
   { key: 'tags', label: 'Tags', field: 'tag' },
   { key: 'authors', label: 'Authors', field: 'author' },
+  { key: 'publishers', label: 'Publisher', field: 'publisher' },
   { key: 'languages', label: 'Language', field: 'lang' },
   { key: 'years', label: 'Year', field: 'year' },
   { key: 'formats', label: 'Format', field: 'format' },

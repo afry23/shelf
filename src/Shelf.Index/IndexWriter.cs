@@ -330,13 +330,14 @@ internal sealed class IndexWriter : IDisposable
         }
 
         var fts = _insertFts ??= Prepare(
-            "INSERT INTO works_fts(rowid, title, subtitle, authors, description, tags, stems_en, stems_de) VALUES ($seq, $title, $subtitle, $authors, $description, $tags, $stemsEn, $stemsDe)");
+            "INSERT INTO works_fts(rowid, title, subtitle, authors, description, tags, stems_en, stems_de, publisher) VALUES ($seq, $title, $subtitle, $authors, $description, $tags, $stemsEn, $stemsDe, $publisher)");
         Bind(fts, "$seq", seq);
         Bind(fts, "$title", s.Title);
         Bind(fts, "$subtitle", s.Subtitle);
         Bind(fts, "$authors", string.Join(' ', s.Authors));
         Bind(fts, "$description", s.Description);
         Bind(fts, "$tags", string.Join(' ', s.Tags));
+        Bind(fts, "$publisher", s.Publisher);
 
         // Stems of the words of title, subtitle, description and tags, in the column of the language of the work
         // (F-SRC-6); names of authors are not stemmed.

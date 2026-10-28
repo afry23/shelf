@@ -40,10 +40,11 @@ public sealed record WorkListEntry(
 /// <summary>A value of a facet and the number of works of the filtered set that have it.</summary>
 public sealed record FacetCount(string Value, int Count);
 
-/// <summary>Counts over the filtered set, for the filter panel. Tags and authors are cut at <see cref="LibraryBrowse.FacetLimit"/> values.</summary>
+/// <summary>Counts over the filtered set, for the filter panel. Tags, authors and publishers are cut at <see cref="LibraryBrowse.FacetLimit"/> values.</summary>
 public sealed record BrowseFacets(
     IReadOnlyList<FacetCount> Tags,
     IReadOnlyList<FacetCount> Authors,
+    IReadOnlyList<FacetCount> Publishers,
     IReadOnlyList<FacetCount> Languages,
     IReadOnlyList<FacetCount> Years,
     IReadOnlyList<FacetCount> Formats,
@@ -173,6 +174,7 @@ public static class LibraryBrowse
     {
         var tags = Counts(connection, filter, $"SELECT t.path, COUNT(*) FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id IN ({selection}) GROUP BY t.id ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
         var languages = Counts(connection, filter, $"SELECT lower(w.language), COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.language IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1");
+        var publishers = Counts(connection, filter, $"SELECT w.publisher, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.publisher IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
         var years = Counts(connection, filter, $"SELECT w.year, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.year IS NOT NULL GROUP BY 1 ORDER BY 1 DESC");
         var formats = Counts(connection, filter, $"SELECT f.format, COUNT(DISTINCT f.work_id) FROM files f WHERE f.work_id IN ({selection}) GROUP BY f.format ORDER BY 2 DESC, 1");
         var statuses = Counts(connection, filter, $"SELECT w.read_status, COUNT(*) FROM works w WHERE w.id IN ({selection}) GROUP BY 1 ORDER BY 2 DESC, 1");
@@ -194,6 +196,7 @@ public static class LibraryBrowse
         return new BrowseFacets(
             tags,
             [.. authors.OrderByDescending(a => a.Value).ThenBy(a => a.Key, StringComparer.Ordinal).Take(FacetLimit).Select(a => new FacetCount(a.Key, a.Value))],
+            publishers,
             languages,
             years,
             formats,

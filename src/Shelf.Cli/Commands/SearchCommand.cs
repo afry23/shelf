@@ -12,7 +12,7 @@ internal static class SearchCommand
     {
         var words = new Argument<string[]>("query")
         {
-            Description = "Words, \"phrases\", prefix*, -excluded, and author: title: tag: lang: year: format: status: filters",
+            Description = "Words, \"phrases\", prefix*, -excluded, and author: title: tag: publisher: lang: year: format: status: filters",
             Arity = ArgumentArity.OneOrMore,
         };
         var limit = new Option<int>("--limit")
