@@ -109,6 +109,10 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [When("I send {string} with the header {string} and the JSON:")]
     public void WhenISendWithTheHeaderAndTheJson(string request, string header, string body) => Send(request, header, withCookie: false, body);
 
+    [Given("I upload the file {string} with {string}")]
+    [When("I upload the file {string} with {string}")]
+    public void WhenIUploadTheFileWith(string path, string request) => Send(request, header: null, withCookie: false, upload: File(path));
+
     [When("I request {string} with the cookie")]
     public void WhenIRequestWithTheCookie(string request) => Send(request, header: null, withCookie: true);
 
@@ -337,7 +341,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     private string _entry = string.Empty;
 
-    private void Send(string request, string? header, bool withCookie, string? body = null)
+    private void Send(string request, string? header, bool withCookie, string? body = null, byte[]? upload = null)
     {
         request = request.Replace("{id}", _workId, StringComparison.Ordinal)
             .Replace("{entry}", _entry, StringComparison.Ordinal)
@@ -370,6 +374,12 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
             var type = message.Method == HttpMethod.Patch ? "application/merge-patch+json" : "application/json";
             message.Content = new StringContent(body, Encoding.UTF8, type);
+        }
+
+        if (upload is not null)
+        {
+            message.Content = new ByteArrayContent(upload);
+            message.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         }
 
         if (withCookie)

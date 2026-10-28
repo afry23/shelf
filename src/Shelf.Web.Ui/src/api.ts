@@ -248,6 +248,23 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
   return (await response.json()) as T;
 }
 
+/** Sends a file as the body of the request, as it is: the server reads the name from `?name=`. */
+async function upload<T>(path: string, file: File): Promise<T> {
+  const response = await fetch(`/api/v1${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream' },
+    body: file,
+  });
+  if (response.status === 401) {
+    throw new ApiError('This server needs an access token. Open the address that shelf serve was started for with ?token=… at the end, once.', 401);
+  }
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as Problem | null;
+    throw new ApiError(problem?.detail ?? problem?.title ?? `HTTP ${response.status}`, response.status);
+  }
+  return (await response.json()) as T;
+}
+
 const query = (params: Record<string, string | number | undefined>): string => {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -422,6 +439,40 @@ export const deleteFile = (fileId: string) => request<DeleteOutcome>('DELETE', `
 
 /** Moves a work with all its files to the trash. `shelf undo` brings it back. */
 export const deleteWork = (workId: string) => request<DeleteOutcome>('DELETE', `/works/${encodeURIComponent(workId)}`);
+
+export interface AddFileOutcome {
+  work: string;
+  file: string;
+  replaced?: string;
+}
+
+export interface CreateWorkOutcome {
+  work: string;
+  file: string;
+  folder: string;
+}
+
+export interface MoveFileOutcome {
+  work: string;
+  target: string;
+  file: string;
+  workRemoved: boolean;
+}
+
+/** Adds a file to a work; with `replace` (a file ID of the work) the old file goes to the trash. `shelf undo` reverts it. */
+export const addFile = (workId: string, file: File, options: { replace?: string; carryNotes?: boolean } = {}) =>
+  upload<AddFileOutcome>(
+    `/works/${encodeURIComponent(workId)}/files${query({ name: file.name, replace: options.replace, carryNotes: options.carryNotes ? 'true' : undefined })}`,
+    file,
+  );
+
+/** Makes a work of a file, without grouping; what is not given is read from the file. */
+export const createWork = (file: File, values: { title?: string; author?: string; year?: string } = {}) =>
+  upload<CreateWorkOutcome>(`/works${query({ name: file.name, title: values.title?.trim(), author: values.author?.trim(), year: values.year?.trim() })}`, file);
+
+/** Moves a file to the work `target`, or to a work of its own when `target` is null. `shelf undo` reverts it. */
+export const moveFile = (fileId: string, target: string | null) =>
+  request<MoveFileOutcome>('POST', `/files/${encodeURIComponent(fileId)}/move`, target === null ? { new: true } : { to: target });
 
 export interface EnrichChange {
   field: string;

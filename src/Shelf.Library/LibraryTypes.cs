@@ -243,3 +243,12 @@ public sealed record EnrichPreviewResult(
 
 /// <summary>What <c>enrich/apply</c> wrote: the fields, the name of the cover file when one was saved, and the warnings.</summary>
 public sealed record EnrichApplyResult(string Id, string Source, string[] Fields, string? Cover, string[] Warnings);
+
+/// <summary>A file added to a work (F-GRP-7): the work, the name the file got in the work folder, and the file it replaced.</summary>
+public sealed record AddFileOutcome(string Work, string File, string? Replaced);
+
+/// <summary>A work made by hand from a file (F-GRP-9): its ID, the file name and the folder (relative to the library).</summary>
+public sealed record CreateWorkOutcome(string Work, string File, string Folder);
+
+/// <summary>A file moved to another work (F-GRP-8): the work it came from, the work that has it now, its name there, and whether the work it came from went along.</summary>
+public sealed record MoveFileOutcome(string Work, string Target, string File, bool WorkRemoved);

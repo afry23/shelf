@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { works, type FacetValue, type WorkList } from '../api';
+  import { createWork, works, type FacetValue, type WorkList } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural } from '../format';
   import { addToken, describeToken, facetGroups, filterToken, hasToken, removeToken, tokens, type FacetKey } from '../query';
-  import { param, setParams } from '../router.svelte';
+  import { navigate, param, setParams } from '../router.svelte';
 
   const sortFields = [
     { value: 'title', label: 'Title' },
@@ -74,6 +74,34 @@
     setParams({ view: next }, { replace: true });
   }
 
+  // A work by hand: one file, and the values that should replace what the file says.
+  let creating = $state(false);
+  let createBusy = $state(false);
+  let createError = $state<string | null>(null);
+  let createInput = $state<HTMLInputElement | null>(null);
+  let createTitle = $state('');
+  let createAuthor = $state('');
+  let createYear = $state('');
+
+  async function submitCreate(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    const file = createInput?.files?.[0];
+    if (!file) {
+      createError = 'Choose a file first.';
+      return;
+    }
+    createError = null;
+    createBusy = true;
+    try {
+      const outcome = await createWork(file, { title: createTitle, author: createAuthor, year: createYear });
+      navigate(`/works/${outcome.work}`);
+    } catch (e) {
+      createError = (e as Error).message;
+    } finally {
+      createBusy = false;
+    }
+  }
+
   const visible = (key: FacetKey, values: FacetValue[]) => (expanded[key] ? values : values.slice(0, 10));
   const last = $derived(list ? Math.min(offset + limit, list.total) : 0);
 </script>
@@ -82,7 +110,20 @@
   <div class="head">
     <h1>Library</h1>
     <p class="count muted" role="status">{list ? plural(list.total, 'book') : ''}</p>
+    <button type="button" class="button" aria-expanded={creating} aria-controls="new-work" onclick={() => (creating = !creating)}>New work</button>
   </div>
+
+  {#if creating}
+    <form id="new-work" aria-label="New work" onsubmit={submitCreate}>
+      <p class="muted">Makes a work of one file without grouping it into a work it matches. What you leave empty is read from the file.</p>
+      <p><input type="file" aria-label="File of the new work" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={createInput} /></p>
+      <p><input type="text" aria-label="Title" placeholder="Title" bind:value={createTitle} /></p>
+      <p><input type="text" aria-label="Author" placeholder="Author" bind:value={createAuthor} /></p>
+      <p><input type="text" inputmode="numeric" aria-label="Year" placeholder="Year" bind:value={createYear} /></p>
+      {#if createError}<p class="error" role="alert">{createError}</p>{/if}
+      <button type="submit" class="button" disabled={createBusy}>{createBusy ? 'Uploading…' : 'Create work'}</button>
+    </form>
+  {/if}
 
   <div class="toolbar">
     <button

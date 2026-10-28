@@ -113,7 +113,7 @@ public static class LibraryDeleter
     }
 
     /// <summary>The notes of the deleted file go; those of the other files stay. The old file is kept for undo.</summary>
-    private static void DropNotes(string root, LibraryWork work, FileJournal journal, string name)
+    internal static void DropNotes(string root, LibraryWork work, FileJournal journal, string name)
     {
         var path = LibraryAnnotations.PathOf(root, work);
         AnnotationsSidecar notes;
@@ -144,7 +144,7 @@ public static class LibraryDeleter
     }
 
     /// <summary>Review entries about the deleted file, or all about the deleted work, are settled; candidates that name the work go.</summary>
-    private static void DropFromQueue(string root, Ulid work, string? file)
+    internal static void DropFromQueue(string root, Ulid work, string? file)
     {
         var queue = LibraryEditor.LoadQueue(root);
         var entries = new List<ReviewEntry>();

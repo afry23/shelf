@@ -100,6 +100,11 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     public void WhenIFill(string label, string text) =>
         Page.GetByLabel(label, new() { Exact = true }).FillAsync(text.Replace("\\n", "\n", StringComparison.Ordinal)).GetAwaiter().GetResult();
 
+    [When("I choose the file {string} in the {string} field")]
+    [Given("I choose the file {string} in the {string} field")]
+    public void WhenIChooseTheFile(string path, string label) =>
+        Page.GetByLabel(label, new() { Exact = true }).SetInputFilesAsync(Path.Combine(workspace.WorkingDirectory, path)).GetAwaiter().GetResult();
+
     [When("I press Enter in the {string} field")]
     [Given("I press Enter in the {string} field")]
     public void WhenIPressEnter(string label) => Page.GetByLabel(label, new() { Exact = true }).PressAsync("Enter").GetAwaiter().GetResult();

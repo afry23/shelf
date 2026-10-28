@@ -177,6 +177,8 @@ internal sealed class IndexWriter : IDisposable
         Execute("DELETE FROM annotations WHERE work_id = $w", ("$w", workId));
         foreach (var a in annotations)
         {
+            // A note that moved here from another work is still listed there until that work is synced.
+            Execute("DELETE FROM annotations WHERE uid = $uid AND work_id <> $w", ("$uid", a.Id.ToString()), ("$w", workId));
             Execute(
                 "INSERT INTO annotations(uid, work_id, file_name, kind, locator, quote, color, note, created_at, updated_at) "
                 + "VALUES ($uid, $w, $f, $k, $l, $q, $c, $n, $cr, $up)",

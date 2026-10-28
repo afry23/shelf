@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ApiError, deleteFile, deleteWork, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -180,6 +180,95 @@
       mergeQuery = '';
       mergeFound = null;
       mergeCandidate = null;
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      actionError = (e as Error).message;
+    }
+  }
+
+  // ---- adding a file, moving a file ----
+
+  let addInput = $state<HTMLInputElement | null>(null);
+  let addReplace = $state('');
+  let addCarry = $state(false);
+  let addBusy = $state(false);
+  let filesDone = $state<string | null>(null);
+
+  // A new version of the book joins the work; "replaces" sends the old file to the trash (shelf undo brings it back).
+  async function uploadFile(): Promise<void> {
+    const file = addInput?.files?.[0];
+    if (!book || !file) {
+      actionError = 'Choose a file first.';
+      return;
+    }
+    actionError = null;
+    filesDone = null;
+    addBusy = true;
+    try {
+      const outcome = await addFile(book.id, file, { replace: addReplace || undefined, carryNotes: addReplace ? addCarry : false });
+      filesDone = outcome.replaced ? `Added ${outcome.file} and moved ${outcome.replaced} to the trash.` : `Added ${outcome.file}.`;
+      addReplace = '';
+      addCarry = false;
+      if (addInput) {
+        addInput.value = '';
+      }
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      actionError = (e as Error).message;
+    } finally {
+      addBusy = false;
+    }
+  }
+
+  // The file that is being moved, and the works it can go to.
+  let moving = $state<{ id: string; name: string } | null>(null);
+  let moveQuery = $state('');
+  let moveFound = $state<WorkItem[] | null>(null);
+
+  $effect(() => {
+    const q = moveQuery.trim();
+    const self = id;
+    if (!moving || !q) {
+      moveFound = null;
+      return;
+    }
+    let current = true;
+    const timer = setTimeout(() => {
+      findWorks({ q: `title:"${q.replaceAll('"', '')}"`, limit: 6 })
+        .then((list) => {
+          if (current) {
+            moveFound = list.items.filter((w) => w.id !== self);
+          }
+        })
+        .catch(() => {
+          if (current) {
+            moveFound = [];
+          }
+        });
+    }, 200);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  });
+
+  async function moveTo(target: WorkItem | null): Promise<void> {
+    if (!book || !moving) {
+      return;
+    }
+    const file = moving;
+    actionError = null;
+    filesDone = null;
+    try {
+      const outcome = await moveFile(file.id, target ? target.id : null);
+      moving = null;
+      moveQuery = '';
+      moveFound = null;
+      if (outcome.workRemoved) {
+        navigate(`/works/${outcome.target}`);
+        return;
+      }
+      filesDone = target ? `Moved ${file.name} to ${target.title}.` : `Made ${file.name} a work of its own.`;
       book = { ...(await loadWork(book.id)) };
     } catch (e) {
       actionError = (e as Error).message;
@@ -596,9 +685,35 @@
                   <td>{file.pages ?? ''}</td>
                   <td>
                     {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a> · {/if}<a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
+                    · <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
                     · <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
                   </td>
                 </tr>
+                {#if moving?.id === file.id}
+                  <tr>
+                    <td colspan="5">
+                      <p>Move {file.name} to which work? Reading position and notes go with it.{book.files.length === 1 ? ' It is the last file, so this book goes too.' : ''} shelf undo brings it back.</p>
+                      <input type="search" aria-label="Find the work to move the file to" placeholder="Find a work" bind:value={moveQuery} />
+                      {#if moveFound}
+                        {#if moveFound.length === 0}
+                          <p class="muted">No other work found.</p>
+                        {:else}
+                          <ul class="similar" aria-label="Works to move the file to">
+                            {#each moveFound as item (item.id)}
+                              <li>
+                                <a href={`/works/${item.id}`}>{item.title}</a>
+                                <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                                <button type="button" class="button" onclick={() => moveTo(item)}>Move here</button>
+                              </li>
+                            {/each}
+                          </ul>
+                        {/if}
+                      {/if}
+                      {#if book.files.length > 1}<button type="button" class="button" onclick={() => moveTo(null)}>Make it a work of its own</button>{/if}
+                      <button type="button" class="button" onclick={() => (moving = null)}>Cancel</button>
+                    </td>
+                  </tr>
+                {/if}
                 {#if deleting?.kind === 'file' && deleting.id === file.id}
                   <tr>
                     <td colspan="5">
@@ -611,6 +726,25 @@
               {/each}
             </tbody>
           </table>
+        </section>
+
+        <section>
+          <h2>Add a file</h2>
+          {#if filesDone}<p class="done" role="status">{filesDone}</p>{/if}
+          <p class="muted">A new version of this book, or another format. The file joins this work whatever its own metadata says.</p>
+          <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
+          <p>
+            <label>Replaces
+              <select aria-label="Replaces" bind:value={addReplace}>
+                <option value="">nothing, keep all files</option>
+                {#each book.files as file (file.id)}<option value={file.id}>{file.name}</option>{/each}
+              </select>
+            </label>
+          </p>
+          {#if addReplace}
+            <p><label><input type="checkbox" bind:checked={addCarry} /> Take over reading position and notes</label> <span class="muted">The replaced file goes to the trash; shelf undo brings it back.</span></p>
+          {/if}
+          <button type="button" class="button" disabled={addBusy} onclick={uploadFile}>{addBusy ? 'Uploading…' : 'Add file'}</button>
         </section>
 
         <section>
