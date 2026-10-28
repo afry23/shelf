@@ -43,7 +43,7 @@ dotnet publish src/Shelf.Cli/Shelf.Cli.csproj -c Release -r osx-arm64 -p:Publish
 ```sh
 docker compose run --rm --entrypoint /app/shelf shelf init /library   # once
 echo "SHELF_TOKEN=change-me" > .env
-docker compose up -d --build
+SHELF_VERSION=$(git describe --tags) docker compose up -d --build   # SHELF_VERSION is shown in the web UI
 ```
 
 The container listens on `0.0.0.0`, so a token is mandatory. The compose file publishes the port on `127.0.0.1` only. The library folder must belong to UID 10001. See `compose.yaml` and `Dockerfile`.
