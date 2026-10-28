@@ -365,6 +365,16 @@
     align-items: start;
   }
 
+  /* Beside the shelf the filters stay in view and scroll by themselves when a facet list is long. */
+  .filters {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.5rem;
+  }
+
   .filters section + section {
     margin-top: 1.25rem;
   }
@@ -597,14 +607,24 @@
 
     .filters {
       display: none;
+      position: static;
+      max-height: min(70dvh, 36rem);
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 1rem;
     }
 
+    /* The facets stand in as many columns as the panel has room for, so that the panel does not push the shelf off the screen. */
     .filters.open {
-      display: block;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      gap: 1rem 1.5rem;
+      align-items: start;
+    }
+
+    .filters section + section {
+      margin-top: 0;
     }
 
     .row {
@@ -621,6 +641,63 @@
     .shelf {
       --gap: 1.25rem;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .toolbar {
+      gap: 0.6rem;
+    }
+
+    .sort {
+      flex: 1 1 10rem;
+    }
+
+    .sort select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Previous and next share the first row; the page numbers get a row of their own and scroll inside it. */
+    .pager > .button {
+      flex: 1 1 40%;
+      justify-content: center;
+    }
+
+    .numbers {
+      order: 3;
+      flex-basis: 100%;
+      justify-content: safe center;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+
+    .numbers .number {
+      min-width: 2.5rem;
+    }
+
+    .row {
+      gap: 0.75rem;
+    }
+
+    .row .year {
+      display: none;
+    }
+
+    .row {
+      grid-template-columns: 3rem minmax(0, 1fr);
+    }
+  }
+
+  /* A finger needs more room than a pointer. */
+  @media (pointer: coarse) {
+    .filters li button,
+    .more,
+    .chips button {
+      min-height: 2.5rem;
+      align-items: center;
+    }
+
+    .filters li button {
+      padding-inline: 0.6rem;
     }
   }
 </style>
