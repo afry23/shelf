@@ -24,6 +24,7 @@ public sealed record FacetValue(string Value, int Count);
 public sealed record Facets(
     FacetValue[] Tags,
     FacetValue[] Authors,
+    FacetValue[] Publishers,
     FacetValue[] Languages,
     FacetValue[] Years,
     FacetValue[] Formats,

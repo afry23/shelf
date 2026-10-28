@@ -11,6 +11,7 @@ public enum FieldKind
     Author,
     Title,
     Tag,
+    Publisher,
     Language,
     Year,
     Format,
@@ -38,7 +39,7 @@ public abstract record SearchFilter(FieldKind Field, bool Negated)
     };
 }
 
-/// <summary><c>author:</c>, <c>title:</c> and <c>tag:</c>: words of that field in the index.</summary>
+/// <summary><c>author:</c>, <c>title:</c>, <c>tag:</c> and <c>publisher:</c>: words of that field in the index.</summary>
 public sealed record TextFilter(FieldKind Field, SearchTerm Term, bool Negated) : SearchFilter(Field, Negated)
 {
     public override string Describe() => (Negated ? "-" : string.Empty) + Name + ":" + Term.Describe();

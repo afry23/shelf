@@ -206,7 +206,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 |---|---|---|
 | F-SRC-1 | Full-text index over metadata and book content using SQLite FTS5. | M |
 | F-SRC-2 | Ranking with BM25. Metadata fields (title, author) are weighted higher than content. | M |
-| F-SRC-3 | Query language: free text, phrases `"..."`, field filters (`author:`, `title:`, `tag:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`), negation `-tag:x`, prefix `kube*`. | M |
+| F-SRC-3 | Query language: free text, phrases `"..."`, field filters (`author:`, `title:`, `tag:`, `publisher:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`), negation `-tag:x`, prefix `kube*`. | M |
 | F-SRC-4 | Fuzzy search for typos in title and author via trigrams. | S |
 | F-SRC-5 | Content hits with snippet and location: page (PDF) or chapter + CFI (EPUB). | M |
 | F-SRC-6 | Language-dependent stemming for German and English. | S |
@@ -329,7 +329,7 @@ Requirements for the MCP server:
 
 | View | Content | Prio |
 |---|---|---|
-| **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting; paging with page numbers and a page size (F-WEB-6) | M |
+| **Library** | Grid (covers) or list; faceted filters for tags, author, publisher, language, year, format, reading status; sorting; paging with page numbers and a page size (F-WEB-6) | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle and an Everything / Titles only scope toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |

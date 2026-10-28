@@ -13,7 +13,7 @@ Feature: The library as a shelf
       | Behavioral Patterns   | A batch job runs to completion. A daemon service runs on every node of the cluster.                     |
     And the sidecar "library/Ibryam/Kubernetes Patterns/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements", "authors": ["Bilgin Ibryam"], "language": "en", "year": 2019, "description": "Design patterns for containers", "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements", "authors": ["Bilgin Ibryam"], "language": "en", "publisher": "O'Reilly Media", "year": 2019, "description": "Design patterns for containers", "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
       """
     And a sample PDF "library/Alander/Event Sourcing in Practice/es.pdf" with the title "Event Sourcing in Practice", the author "Jördis Ålander" and the pages:
       | text                                                                                              |
@@ -21,14 +21,14 @@ Feature: The library as a shelf
       | A projection builds a read model from the event stream. Kubernetes is only mentioned once here.  |
     And the sidecar "library/Alander/Event Sourcing in Practice/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "publisher": "Manning Publications", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
       """
     And a sample EPUB "library/Weiss/Verteilte Systeme/vs.epub" with the title "Verteilte Systeme verstehen", the authors "Lukas Weiß" and the chapters:
       | title   | text                                                                        |
       | Konsens | Ein Konsensprotokoll sorgt dafür, dass alle Knoten denselben Zustand sehen. |
     And the sidecar "library/Weiss/Verteilte Systeme/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "year": 2015, "tags": ["architektur/verteilte-systeme", "architektur/ddd"], "files": [{ "name": "vs.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "publisher": "Manning Publications", "year": 2015, "tags": ["architektur/verteilte-systeme", "architektur/ddd"], "files": [{ "name": "vs.epub" }] }
       """
     And I have run shelf with arguments "reindex --library library"
     And the web server is running on the library "library"
@@ -70,6 +70,17 @@ Feature: The library as a shelf
     Then the list "Books" has 1 items
     And the first item of the list "Books" is "Kubernetes Patterns"
 
+  Scenario: A publisher facet combines with other facets
+    Given I open "/library" in the browser
+    When I click the "Publisher: Manning Publications" button
+    Then the list "Books" has 2 items
+    When I click the "Language: en" button
+    Then the list "Books" has 1 items
+    And the first item of the list "Books" is "Event Sourcing in Practice"
+    And the "Publisher: Manning Publications" button is pressed
+    And the "Remove filter Publisher: Manning Publications" button is shown
+    And the browser address contains "publisher"
+
   Scenario Outline: Every facet filters
     Given I open "/library" in the browser
     When I click the "<facet>" button
@@ -84,6 +95,8 @@ Feature: The library as a shelf
       | Year: 2019                         | 1     | Kubernetes Patterns         |
       | Format: epub                       | 2     | Kubernetes Patterns         |
       | Reading status: read               | 1     | Kubernetes Patterns         |
+      | Publisher: Manning Publications    | 2     | Event Sourcing in Practice  |
+      | Publisher: O'Reilly Media          | 1     | Kubernetes Patterns         |
 
   Scenario Outline: The books can be sorted, and the order turned around
     Given I open "/library" in the browser

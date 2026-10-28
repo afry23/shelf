@@ -13,7 +13,7 @@ Feature: Searching the library
       | Behavioral Patterns   | A batch job runs to completion. A daemon service runs on every node of the cluster.        |
     And the sidecar "library/Ibryam/Kubernetes Patterns/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements for Designing Cloud Native Applications", "authors": ["Bilgin Ibryam"], "language": "en", "year": 2019, "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements for Designing Cloud Native Applications", "authors": ["Bilgin Ibryam"], "language": "en", "publisher": "O'Reilly Media", "year": 2019, "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
       """
     And a sample PDF "library/Alander/Event Sourcing in Practice/es.pdf" with the title "Event Sourcing in Practice", the author "Jördis Ålander" and the pages:
       | text                                                                                          |
@@ -21,21 +21,21 @@ Feature: Searching the library
       | A projection builds a read model from the event stream. Kubernetes is only mentioned once here. |
     And the sidecar "library/Alander/Event Sourcing in Practice/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "publisher": "Manning Publications", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
       """
     And a sample EPUB "library/Weiss/Verteilte Systeme/vs.epub" with the title "Verteilte Systeme verstehen", the authors "Lukas Weiß" and the chapters:
       | title      | text                                                                                   |
       | Konsens    | Ein Konsensprotokoll sorgt dafür, dass alle Knoten denselben Zustand sehen.              |
     And the sidecar "library/Weiss/Verteilte Systeme/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "year": 2015, "tags": ["architektur/verteilte-systeme"], "readStatus": "reading", "files": [{ "name": "vs.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "publisher": "Verlag Zürich", "year": 2015, "tags": ["architektur/verteilte-systeme"], "readStatus": "reading", "files": [{ "name": "vs.epub" }] }
       """
     And a sample PDF "library/Mueller/Cloud Native/cn.pdf" with the title "Cloud Native", the author "Anna Müller" and the pages:
       | text                                             |
       | Serverless functions scale down to zero instances. |
     And the sidecar "library/Mueller/Cloud Native/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000004", "title": "Cloud Native", "authors": ["Anna Müller"], "language": "en", "year": 2017, "tags": ["cloud/aws"], "files": [{ "name": "cn.pdf" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000004", "title": "Cloud Native", "authors": ["Anna Müller"], "language": "en", "publisher": "O'Reilly Media", "year": 2017, "tags": ["cloud/aws"], "files": [{ "name": "cn.pdf" }] }
       """
     And I have run shelf with arguments "reindex --library library"
 
@@ -125,6 +125,14 @@ Feature: Searching the library
       | status:read            | Kubernetes Patterns                                            |
       | status:reading         | Verteilte Systeme verstehen                                    |
       | status:unread          | Event Sourcing in Practice; Cloud Native                       |
+      | publisher:manning      | Event Sourcing in Practice                                     |
+      | publisher:MANNING      | Event Sourcing in Practice                                     |
+      | publisher:manni*       | Event Sourcing in Practice                                     |
+      | publisher:reilly       | Kubernetes Patterns; Cloud Native                              |
+      | publisher:\"Manning Publications\" | Event Sourcing in Practice                           |
+      | publisher:\"Publications Manning\" |                                                      |
+      | publisher:zurich       | Verteilte Systeme verstehen                                    |
+      | publisher:springer     |                                                                |
 
   Scenario Outline: Filters combine with each other and with words
     When I run shelf with arguments "search <query> --library library"
@@ -137,6 +145,10 @@ Feature: Searching the library
       | cloud year:>2017                   | Kubernetes Patterns; Event Sourcing in Practice   |
       | tag:cloud lang:en format:epub      | Kubernetes Patterns                               |
       | tag:cloud year:>2030               |                                                   |
+      | publisher:reilly format:pdf        | Cloud Native                                      |
+      | publisher:reilly lang:en tag:devops | Kubernetes Patterns                              |
+      | publisher:reilly publisher:manning |                                                   |
+      | publisher:reilly cloud year:>2018  | Kubernetes Patterns                               |
 
   Scenario Outline: Negation removes works
     When I run shelf with arguments "search <query> --library library"
@@ -147,6 +159,7 @@ Feature: Searching the library
       | cloud -azure           | Kubernetes Patterns; Cloud Native                             |
       | tag:cloud -tag:azure   | Kubernetes Patterns; Cloud Native                             |
       | -tag:cloud lang:en     |                                                               |
+      | lang:en -publisher:reilly | Event Sourcing in Practice                                 |
       | kubernetes -sidecar    | Event Sourcing in Practice                                    |
       | -year:2015 tag:architektur | Event Sourcing in Practice                                |
       | -azure                 | Kubernetes Patterns; Verteilte Systeme verstehen; Cloud Native |

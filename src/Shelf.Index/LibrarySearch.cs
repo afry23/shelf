@@ -46,7 +46,7 @@ public static class LibrarySearch
     // Candidates examined per source; far more than a person reads, bounded so that a one-letter query stays fast.
     private const int MaxCandidates = 500;
 
-    private const string MetadataRank = "bm25(works_fts, 10.0, 5.0, 8.0, 1.0, 3.0, 2.0, 2.0)";
+    private const string MetadataRank = "bm25(works_fts, 10.0, 5.0, 8.0, 1.0, 3.0, 2.0, 2.0, 1.0)";
 
     // The columns that hold the text as written; the stem columns are only reached by the stemmed form of a word.
     private const string ExactColumns = "{title subtitle authors description tags}";
@@ -361,6 +361,7 @@ public static class LibrarySearch
                     {
                         FieldKind.Author => "authors",
                         FieldKind.Title => "{title subtitle}",
+                        FieldKind.Publisher => "publisher",
                         _ => "tags",
                     };
                     filter.Add($"w.seq {not}IN (SELECT rowid FROM works_fts WHERE works_fts MATCH {{0}})", $"{columns} : {Phrase(text.Term)}");

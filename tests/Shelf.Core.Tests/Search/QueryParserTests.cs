@@ -21,6 +21,7 @@ public sealed class QueryParserTests
 
     [Theory]
     [InlineData("tag:a -tag:b", 2)]
+    [InlineData("publisher:manning -publisher:x", 2)]
     [InlineData("year:2015 -year:2016", 2)]
     public void Filters_keep_their_order_and_negation(string text, int count)
     {
@@ -93,8 +94,8 @@ public sealed class QueryParserTests
     [Fact]
     public void Describe_of_a_query_with_everything()
     {
-        var query = QueryParser.Parse("kube* \"a b\" -x tag:t lang:EN year:2010..2012");
+        var query = QueryParser.Parse("kube* \"a b\" -x tag:t lang:EN year:2010..2012 publisher:\"O'Reilly\"");
 
-        Assert.Equal("include: kube*, \"a b\"; exclude: x; filters: tag:t, lang:en, year:2010..2012", query.Describe());
+        Assert.Equal("include: kube*, \"a b\"; exclude: x; filters: tag:t, lang:en, year:2010..2012, publisher:\"O'Reilly\"", query.Describe());
     }
 }

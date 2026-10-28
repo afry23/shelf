@@ -45,6 +45,7 @@ export interface FacetValue {
 export interface Facets {
   tags: FacetValue[];
   authors: FacetValue[];
+  publishers: FacetValue[];
   languages: FacetValue[];
   years: FacetValue[];
   formats: FacetValue[];

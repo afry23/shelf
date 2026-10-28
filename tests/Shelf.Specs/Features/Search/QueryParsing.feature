@@ -24,6 +24,11 @@ Feature: The search query language
       | title:kube*                                  | filters: title:kube*                                         |
       | tag:cloud/azure                              | filters: tag:cloud/azure                                     |
       | -tag:devops                                  | filters: -tag:devops                                         |
+      | publisher:manning                            | filters: publisher:manning                                   |
+      | PUBLISHER:Manning                            | filters: publisher:Manning                                   |
+      | publisher:"Manning Publications"             | filters: publisher:"Manning Publications"                    |
+      | publisher:manni*                             | filters: publisher:manni*                                    |
+      | -publisher:manning                           | filters: -publisher:manning                                  |
       | lang:DE                                      | filters: lang:de                                             |
       | format:PDF                                   | filters: format:pdf                                          |
       | status:Unread                                | filters: status:unread                                       |

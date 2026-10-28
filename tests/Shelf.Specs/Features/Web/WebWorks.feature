@@ -13,7 +13,7 @@ Feature: The library and its works over HTTP
       | Behavioral Patterns   | A batch job runs to completion. A daemon service runs on every node of the cluster.                     |
     And the sidecar "library/Ibryam/Kubernetes Patterns/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements", "authors": ["Bilgin Ibryam"], "language": "en", "year": 2019, "description": "Design patterns for containers", "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000001", "title": "Kubernetes Patterns", "subtitle": "Reusable Elements", "authors": ["Bilgin Ibryam"], "language": "en", "publisher": "O'Reilly Media", "year": 2019, "description": "Design patterns for containers", "tags": ["cloud/kubernetes", "devops"], "readStatus": "read", "files": [{ "name": "kp.epub" }] }
       """
     And a sample PDF "library/Alander/Event Sourcing in Practice/es.pdf" with the title "Event Sourcing in Practice", the author "Jördis Ålander" and the pages:
       | text                                                                                              |
@@ -21,14 +21,14 @@ Feature: The library and its works over HTTP
       | A projection builds a read model from the event stream. Kubernetes is only mentioned once here.  |
     And the sidecar "library/Alander/Event Sourcing in Practice/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000002", "title": "Event Sourcing in Practice", "authors": ["Jördis Ålander"], "language": "en", "publisher": "Manning Publications", "year": 2021, "tags": ["architektur/ddd", "cloud/azure"], "files": [{ "name": "es.pdf" }] }
       """
     And a sample EPUB "library/Weiss/Verteilte Systeme/vs.epub" with the title "Verteilte Systeme verstehen", the authors "Lukas Weiß" and the chapters:
       | title   | text                                                                        |
       | Konsens | Ein Konsensprotokoll sorgt dafür, dass alle Knoten denselben Zustand sehen. |
     And the sidecar "library/Weiss/Verteilte Systeme/book.json" is replaced by:
       """
-      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "year": 2015, "tags": ["architektur/verteilte-systeme", "architektur/ddd"], "files": [{ "name": "vs.epub" }] }
+      { "schema": 1, "id": "01J9Z3K0000000000000000003", "title": "Verteilte Systeme verstehen", "authors": ["Lukas Weiß"], "language": "de", "publisher": "Manning Publications", "year": 2015, "tags": ["architektur/verteilte-systeme", "architektur/ddd"], "files": [{ "name": "vs.epub" }] }
       """
     And I have run shelf with arguments "reindex --library library"
     And the web server is running on the library "library"
@@ -75,6 +75,11 @@ Feature: The library and its works over HTTP
       | lang%3Aen+year%3A2021 | 1   |
       | author%3Aibryam     | 1     |
       | title%3Averteilte   | 1     |
+      | publisher%3Amanning | 2     |
+      | publisher%3Areilly  | 1     |
+      | publisher%3A%22Manning+Publications%22+lang%3Aen | 1 |
+      | publisher%3Amanning+format%3Aepub | 1 |
+      | -publisher%3Amanning | 1    |
 
   Scenario: A filter that matches nothing gives an empty list
     When I request "GET /api/v1/works?q=lang%3Afr"
@@ -142,6 +147,10 @@ Feature: The library and its works over HTTP
     And the JSON array "facets.years" of the response has 3 entries
     And the JSON field "facets.authors[0].value" of the response is "Bilgin Ibryam"
     And the JSON array "facets.authors" of the response has 3 entries
+    And the JSON field "facets.publishers[0].value" of the response is "Manning Publications"
+    And the JSON field "facets.publishers[0].count" of the response is 2
+    And the JSON field "facets.publishers[1].value" of the response is "O'Reilly Media"
+    And the JSON array "facets.publishers" of the response has 2 entries
 
   Scenario: The facets count only the works that the filter lets through
     When I request "GET /api/v1/works?q=lang%3Ade"

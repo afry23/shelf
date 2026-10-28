@@ -117,6 +117,19 @@ public sealed class LibraryBrowseTests : IDisposable
     }
 
     [Fact]
+    public void The_publisher_facet_counts_the_works_of_the_filtered_set_and_skips_works_without_one()
+    {
+        Work("A", "One", "Ann");
+        Work("B", "Two", "Bob");
+        Work("C", "Three", "Cy");
+        IndexDatabase.Execute(_connection, $"UPDATE works SET publisher = 'Manning' WHERE id IN ('{Id("A")}', '{Id("B")}')");
+
+        var page = Browse();
+
+        Assert.Equal([new FacetCount("Manning", 2)], page.Facets.Publishers);
+    }
+
+    [Fact]
     public void A_work_with_several_files_of_one_format_counts_once_in_the_format_facet()
     {
         Work("A", "One", "Ann", format: "pdf");
