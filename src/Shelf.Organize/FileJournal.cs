@@ -95,6 +95,45 @@ public sealed class FileJournal
     }
 
     /// <summary>
+    /// Copies a file from outside the journal (anywhere on disk) to a new path that must not exist yet. Like
+    /// <see cref="Create"/>, undo deletes the copy again, if it is unchanged by then. The content is streamed, not held in memory.
+    /// </summary>
+    public MoveStatus CreateFrom(string path, string source)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        var relative = LibraryPaths.Relative(_root, full);
+        if (File.Exists(full) || Directory.Exists(full))
+        {
+            return MoveStatus.Collision;
+        }
+
+        if (!File.Exists(source))
+        {
+            return MoveStatus.Missing;
+        }
+
+        EnsureParents(System.IO.Path.GetDirectoryName(full)!);
+        var op = new JournalOp(JournalOpKind.Create, string.Empty, relative, LibraryPaths.Hash(source), JournalOpStatus.Pending);
+        _data.Ops.Add(op);
+        Save();
+        var temporary = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.Copy(source, temporary);
+            File.Move(temporary, full);
+        }
+        catch
+        {
+            File.Delete(temporary);
+            throw;
+        }
+
+        _data.Ops[^1] = op with { Status = JournalOpStatus.Done };
+        Save();
+        return MoveStatus.Moved;
+    }
+
+    /// <summary>
     /// Replaces the content of a file. The old file is kept next to the journal (<c>&lt;timestamp&gt;.backup/</c>), so
     /// undo can bring back its exact bytes.
     /// </summary>

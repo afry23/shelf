@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Shelf.Index;
@@ -14,6 +15,9 @@ internal static class Api
 {
     private const int DefaultSearchLimit = 20;
     private const int DefaultSimilarLimit = 10;
+
+    /// <summary>The largest file that can be uploaded (Kestrel's own limit is 30 MB, too small for a scanned book).</summary>
+    private const long MaxUploadBytes = 2L * 1024 * 1024 * 1024;
 
     public static void Map(RouteGroupBuilder api)
     {
@@ -139,6 +143,37 @@ internal static class Api
                 Run(WebJsonContext.Default.SplitOutcome, () => library.Service.SplitFile(id)))
             .WithName("SplitFile")
             .Produces<SplitOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/works", (
+                [FromServices] LibraryHandle library,
+                HttpRequest request,
+                CancellationToken cancellationToken) =>
+            Receive(library, request, WebJsonContext.Default.CreateWorkOutcome, cancellationToken, file =>
+                library.Service.CreateWork(file, QueryValues(request.Query))))
+            .WithName("CreateWork")
+            .Accepts<byte[]>("application/octet-stream")
+            .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/works/{id}/files", (
+                [FromServices] LibraryHandle library,
+                string id,
+                HttpRequest request,
+                CancellationToken cancellationToken) =>
+            Receive(library, request, WebJsonContext.Default.AddFileOutcome, cancellationToken, file =>
+                library.Service.AddFile(
+                    RequireId(id),
+                    file,
+                    request.Query["replace"].ToString() is { Length: > 0 } replace ? replace : null,
+                    QueryFlag(request.Query, "carryNotes"))))
+            .WithName("AddFile")
+            .Accepts<byte[]>("application/octet-stream")
+            .Produces<AddFileOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/files/{id}/move", ([FromServices] LibraryHandle library, string id, [FromBody] MoveRequest body) =>
+                Run(WebJsonContext.Default.MoveFileOutcome, () => MoveFile(library.Service, id, body)))
+            .WithName("MoveFile")
+            .Accepts<MoveRequest>("application/json")
+            .Produces<MoveFileOutcome>(StatusCodes.Status200OK);
 
         api.MapDelete("/files/{id}", ([FromServices] LibraryHandle library, string id) =>
                 Run(WebJsonContext.Default.DeleteOutcome, () => library.Service.DeleteFile(id)))
@@ -532,6 +567,80 @@ internal static class Api
         var hasNote = patch.ContainsKey("note");
         var hasColor = patch.ContainsKey("color");
         return new AnnotationChanges(hasNote, OptionalText(patch["note"], "note"), hasColor, OptionalText(patch["color"], "color"));
+    }
+
+    /// <summary>
+    /// Saves the body of the request (a file; <c>?name=</c> is its name) and hands it to <paramref name="call"/>. The body
+    /// is the file itself, not a form: the browser sends it as it is, and no memory is held for it.
+    /// </summary>
+    private static async Task<IResult> Receive<T>(
+        LibraryHandle library,
+        HttpRequest request,
+        JsonTypeInfo<T> info,
+        CancellationToken cancellationToken,
+        Func<ReceivedFile, T> call)
+    {
+        ReceivedFile file;
+        try
+        {
+            if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+            {
+                limit.MaxRequestBodySize = MaxUploadBytes;
+            }
+
+            var name = request.Query["name"].ToString();
+            file = await library.Service.ReceiveAsync(request.Body, name.Length > 0 ? name : throw new LibraryException("name is required: the file name of the upload (?name=)"), cancellationToken);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+
+        using (file)
+        {
+            return Run(info, () => call(file));
+        }
+    }
+
+    private static bool QueryFlag(IQueryCollection query, string name) =>
+        query[name].ToString() switch
+        {
+            "" => false,
+            "true" => true,
+            "false" => false,
+            _ => throw new LibraryException($"{name} must be true or false"),
+        };
+
+    /// <summary>The <c>title</c>, <c>author</c> (repeatable) and <c>year</c> of the query; what is missing is left to the file.</summary>
+    private static WorkValues QueryValues(IQueryCollection query)
+    {
+        var year = query["year"].ToString();
+        return new WorkValues(
+            query["title"].ToString() is { Length: > 0 } title ? title : null,
+            query["author"].Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a!).ToArray() is { Length: > 0 } authors ? authors : null,
+            year.Length == 0 ? null : int.TryParse(year, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : throw new LibraryException("year must be a whole number"));
+    }
+
+    private static MoveFileOutcome MoveFile(LibraryService service, string fileId, MoveRequest body)
+    {
+        var to = body.To is null ? null : RequireWorkId(body.To, "to");
+        var isNew = OptionalFlag(body.New, "new") ?? false;
+        if ((to is null) == !isNew || (to is not null && isNew))
+        {
+            throw new LibraryException("give either to (the ID of a work) or new (true)");
+        }
+
+        var title = OptionalText(body.Title, "title");
+        int? year = body.Year is null ? null : OptionalWhole(body.Year, "year") ?? throw new LibraryException("year must be a whole number");
+        string[]? authors = null;
+        if (body.Authors is { } node)
+        {
+            authors = node is JsonArray array && array.All(a => a is not null && a.GetValueKind() == System.Text.Json.JsonValueKind.String)
+                ? [.. array.Select(a => a!.GetValue<string>()).Where(a => !string.IsNullOrWhiteSpace(a))]
+                : throw new LibraryException("authors must be a list of names");
+        }
+
+        return service.MoveFile(fileId, to, new WorkValues(string.IsNullOrWhiteSpace(title) ? null : title, authors is { Length: > 0 } ? authors : null, year));
     }
 
     private static IResult Run<T>(JsonTypeInfo<T> info, Func<T> call, int status = StatusCodes.Status200OK)

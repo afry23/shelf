@@ -141,6 +141,9 @@ public sealed record MergeRequest(JsonNode? From);
 /// <summary>The body of <c>POST /works/{id}/enrich</c> and <c>/enrich/apply</c>; every field is optional. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record EnrichRequest(JsonNode? Source, JsonNode? Pick, JsonNode? Overwrite, JsonNode? Cover);
 
+/// <summary>The body of <c>POST /files/{id}/move</c>: <c>to</c> (the ID of the work that receives the file) or <c>new</c> (true: a work of its own, described by the optional <c>title</c>, <c>authors</c> and <c>year</c>). Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record MoveRequest(JsonNode? To, JsonNode? New, JsonNode? Title, JsonNode? Authors, JsonNode? Year);
+
 /// <summary>The body of <c>POST /tags/rename</c> and <c>/tags/merge</c>: the tag, and the name it gets (<c>to</c>) or the tag it goes into (<c>into</c>).</summary>
 public sealed record TagMoveRequest(JsonNode? From, JsonNode? To, JsonNode? Into);
 

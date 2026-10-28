@@ -254,6 +254,21 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all F-ANN requirements, the complete BDD suite is green, `shelf reindex` restores the mirror from the files, the CSP is unchanged.
 
+### M7 – Work Files by Hand
+
+**Goal:** New versions of a book, files in the wrong work, and works without an import can be handled by hand, in the CLI and the web UI.
+
+**Status:** planned; slice plan: [m7-work-files](slices/m7-work-files.md).
+
+| Area | Content | PRD |
+|---|---|---|
+| Add / replace | `shelf add`, upload in the work details, old file to the trash on `--replace` | F-GRP-7 |
+| Move | `shelf move`, move button in the work details, undoable | F-GRP-8 |
+| Create | `shelf create`, "New work" in the library view | F-GRP-9 |
+| Web API | `POST /works`, `POST /works/{id}/files`, `POST /files/{id}/move` | F-GRP-7 to F-GRP-9 |
+
+**Exit criteria:** feature files exist for F-GRP-7 to F-GRP-9, the complete BDD suite is green, `shelf reindex` after each operation gives the same index.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

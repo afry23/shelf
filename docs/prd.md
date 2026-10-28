@@ -127,6 +127,9 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 | F-GRP-4 | Manual correction via `shelf merge <work-a> <work-b>` and `shelf split <work> <file>`; the web interface merges works too (probable pairs, work details). | M |
 | F-GRP-5 | Different **editions** are treated as different works but are marked as "related". | S |
 | F-GRP-6 | All thresholds are configurable in `config.toml`. The start values below are calibrated against acceptance criterion 1 before M1 is completed. | M |
+| F-GRP-7 | A file can be added to an existing work by hand: `shelf add <work> <file> [--replace <file>]` and the work details of the web interface (upload). Typical case: a new version of a book that is still being written (a Manning MEAP). With `--replace` the old file goes to `.shelf/trash/` and `shelf undo` brings it back; reading position and notes of the old file are carried over on request (`--carry-notes`). The same SHA-256 as a file already in the library is refused. | M |
+| F-GRP-8 | A single file can be moved to another work or to a new work: `shelf move <work> <file> (--to <work> \| --new)` (dry run unless `--yes`) and the work details of the web interface. Reading position and notes go with the file. A work that loses its last file is removed like in F-DUP-7. `shelf undo` reverts the move. | M |
+| F-GRP-9 | A work can be created by hand, without grouping: `shelf create <file> [--title ...]` and "New work" in the web interface. Given values replace the metadata read from the file. A work always has at least one file, so it is created together with its first file (F-LIB-4). | M |
 
 **Confidence per signal (start values):**
 
@@ -256,6 +259,9 @@ shelf tag add|rm|list|rename|merge        Manage tags
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>
+shelf add <work> <file> [--replace <file>] [--carry-notes] [--move]  Add a file to a work (new version); --replace trashes the old file
+shelf create <file> [--title ...] [--author ...] [--year ...] [--move]  Create a work by hand from a file
+shelf move <work> <file> (--to <work> | --new) [--yes]  Move a file to another or a new work (dry run without --yes)
 shelf delete <work> [file] [--yes]      Move a file or a whole work to the trash (dry run without --yes)
 shelf review                              Review uncertain assignments
 shelf organize [--apply] [--pattern ...]  Organize by pattern
@@ -300,7 +306,7 @@ Requirements for the MCP server:
 
 ### 7.3 Web API
 
-- REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, and merging works.
+- REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, merging works, and adding, moving and creating (F-GRP-7 to F-GRP-9; a file is uploaded as the body of the request, its name in `?name=`).
 - Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs.
 - An OpenAPI specification is generated automatically.
 
@@ -322,7 +328,7 @@ Requirements for the MCP server:
 |---|---|---|
 | **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
-| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
+| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
 | **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for probable pairs also "merge the other into this one" (F-GRP-4); for different files of one book also "split into own work" (F-GRP-4) | M |
 | **Review** | Confirm or correct uncertain assignments | S |
