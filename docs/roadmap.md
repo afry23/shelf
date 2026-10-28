@@ -223,7 +223,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 | Area | Should |
 |---|---|
-| Duplicates | F-DUP-3 (probable duplicates, cosine threshold calibrated) |
+| Duplicates | F-DUP-3 (probable duplicates, cosine threshold calibrated), F-DUP-7 (delete a file or a work: `shelf delete`, work details) |
 | Semantic search | F-SEM-6 (similar books) + MCP tool `similar_books` |
 | Search | F-SRC-4 (fuzzy search), F-SRC-6 (stemming DE/EN) |
 | Reader | F-RDR-4 (reading progress), F-RDR-5 (preferred format) |

@@ -1187,6 +1187,60 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>
+    /// Moves a file to the trash (F-DUP-7); the last file of a work takes the work along. Like the duplicate actions, this
+    /// can be undone with <c>shelf undo</c>.
+    /// </summary>
+    /// <exception cref="LibraryException">NotFound: no such work or file.</exception>
+    public DeleteOutcome DeleteFile(string fileId)
+    {
+        // A malformed ID is a bad request; an ID that names nothing is a 404.
+        if (!FileIds.TryParse(fileId, out _, out _))
+        {
+            throw new LibraryException($"'{fileId}' is not the ID of a file (the ID of a work, a tilde and the file name)");
+        }
+
+        var file = ResolveFile(fileId);
+        var work = Find(file.Work.ToString());
+        lock (_writeGate)
+        {
+            try
+            {
+                return Outcome(LibraryDeleter.DeleteFile(root, work, file.Name, root));
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    /// <summary>Moves a work with its files, sidecar, cover and notes to the trash (F-DUP-7). It can be undone with <c>shelf undo</c>.</summary>
+    /// <exception cref="LibraryException">NotFound: no such work.</exception>
+    public DeleteOutcome DeleteWork(string workId)
+    {
+        if (!WorkLookup.LooksLikeId(workId))
+        {
+            throw new LibraryException($"'{workId}' is not the ID of a work");
+        }
+
+        var work = Find(workId);
+        lock (_writeGate)
+        {
+            try
+            {
+                return Outcome(LibraryDeleter.DeleteWork(root, work));
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    private static DeleteOutcome Outcome(DeleteResult result) =>
+        new(result.Work.ToString(), result.Trashed, [.. result.Files], result.WorkRemoved);
+
     // ---- resources ----
 
     /// <summary>Metadata of a work, without the table of contents (see <see cref="GetToc"/>).</summary>

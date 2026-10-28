@@ -314,7 +314,7 @@ public static class LibraryEditor
 
     internal static string SidecarPath(string root, LibraryWork work) => Path.Combine(root, work.Directory, SidecarStore.FileName);
 
-    private static SidecarFile? FindFile(string root, LibraryWork work, WorkSidecar sidecar, string file, string workingDirectory)
+    internal static SidecarFile? FindFile(string root, LibraryWork work, WorkSidecar sidecar, string file, string workingDirectory)
     {
         var byName = sidecar.Files.FirstOrDefault(f => f.Name == file);
         if (byName is not null || (!file.Contains('/', StringComparison.Ordinal) && !file.Contains('\\', StringComparison.Ordinal)))
@@ -375,9 +375,9 @@ public static class LibraryEditor
             : entry with { Work = work, File = file, Candidates = candidates };
     }
 
-    private static ReviewQueue LoadQueue(string root) => ReviewQueue.Load(ReviewQueue.PathFor(root));
+    internal static ReviewQueue LoadQueue(string root) => ReviewQueue.Load(ReviewQueue.PathFor(root));
 
-    private static void SaveQueue(string root, ReviewQueue queue) => queue.Save(ReviewQueue.PathFor(root));
+    internal static void SaveQueue(string root, ReviewQueue queue) => queue.Save(ReviewQueue.PathFor(root));
 
     /// <summary>Brings the index in line with the folders and the review queue file.</summary>
     internal static void Reconcile(string root)

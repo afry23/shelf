@@ -202,6 +202,13 @@ export interface SplitOutcome {
   folder: string;
 }
 
+export interface DeleteOutcome {
+  work: string;
+  trashed: number;
+  files: string[];
+  workRemoved: boolean;
+}
+
 export interface MergeOutcome {
   id: string;
   merged: string;
@@ -409,6 +416,12 @@ export const duplicateAction = (action: 'keep' | 'trash' | 'ignore', fileId: str
 /** Merges the work `source` into `target`; the files of `source` move over and its folder goes. It cannot be undone. */
 export const mergeWorks = (target: string, source: string) =>
   request<MergeOutcome>('POST', `/works/${encodeURIComponent(target)}/merge`, { from: source });
+
+/** Moves a file to the trash; the last file of a work takes the work along. `shelf undo` brings it back. */
+export const deleteFile = (fileId: string) => request<DeleteOutcome>('DELETE', `/files/${encodeURIComponent(fileId)}`);
+
+/** Moves a work with all its files to the trash. `shelf undo` brings it back. */
+export const deleteWork = (workId: string) => request<DeleteOutcome>('DELETE', `/works/${encodeURIComponent(workId)}`);
 
 export interface EnrichChange {
   field: string;

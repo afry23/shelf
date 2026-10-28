@@ -232,6 +232,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-DUP-4 | Deleting always means: move to `.shelf/trash/`. Permanent deletion only via `shelf trash empty`. | M |
 | F-DUP-5 | Interactive mode in the CLI and comparison view in the web UI. | M |
 | F-DUP-6 | Pairs can be marked as "not a duplicate". They are then not suggested again. The marking is stored in `book.json` (across works: on both sides as the other work's ID; within a work: as a file pair). | S |
+| F-DUP-7 | A single file or a whole work can be deleted on purpose: `shelf delete <work> [file]` (dry run unless `--yes`) and the work details in the web interface. It goes to `.shelf/trash/` like every deletion (F-DUP-4) and `shelf undo` brings it back. The last file of a work takes the work along (sidecar, cover, notes). Not offered via MCP. | M |
 
 ## 7. Interfaces
 
@@ -255,6 +256,7 @@ shelf tag add|rm|list|rename|merge        Manage tags
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>
+shelf delete <work> [file] [--yes]      Move a file or a whole work to the trash (dry run without --yes)
 shelf review                              Review uncertain assignments
 shelf organize [--apply] [--pattern ...]  Organize by pattern
 shelf undo                                Revert the last organize, tag or dupes run
@@ -320,7 +322,7 @@ Requirements for the MCP server:
 |---|---|---|
 | **Library** | Grid (covers) or list; faceted filters for tags, author, language, year, format, reading status; sorting | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle; hits with snippet and jump into the reader at the location | M |
-| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
+| **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
 | **Duplicates** | Side-by-side comparison of candidates with actions "keep", "move to trash", "not a duplicate"; for probable pairs also "merge the other into this one" (F-GRP-4); for different files of one book also "split into own work" (F-GRP-4) | M |
 | **Review** | Confirm or correct uncertain assignments | S |

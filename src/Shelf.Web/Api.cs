@@ -140,6 +140,16 @@ internal static class Api
             .WithName("SplitFile")
             .Produces<SplitOutcome>(StatusCodes.Status200OK);
 
+        api.MapDelete("/files/{id}", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.DeleteOutcome, () => library.Service.DeleteFile(id)))
+            .WithName("DeleteFile")
+            .Produces<DeleteOutcome>(StatusCodes.Status200OK);
+
+        api.MapDelete("/works/{id}", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.DeleteOutcome, () => library.Service.DeleteWork(id)))
+            .WithName("DeleteWork")
+            .Produces<DeleteOutcome>(StatusCodes.Status200OK);
+
         api.MapMethods("/works/{id}/cover", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id) =>
                 SendCover(library.Service, id))
             .WithName("GetCover")

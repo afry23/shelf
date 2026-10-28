@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { ApiError, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { ApiError, deleteFile, deleteWork, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
+  import { navigate } from '../router.svelte';
   import { createAnnotations } from '../reader/annotations.svelte';
   import NoteList from '../reader/NoteList.svelte';
 
@@ -181,6 +182,39 @@
       mergeCandidate = null;
       book = { ...(await loadWork(book.id)) };
     } catch (e) {
+      actionError = (e as Error).message;
+    }
+  }
+
+  // ---- delete ----
+
+  // A deletion asks first; it moves to the trash, so shelf undo brings it back.
+  let deleting = $state<{ kind: 'file'; id: string; name: string } | { kind: 'work' } | null>(null);
+  let deleteDone = $state<string | null>(null);
+
+  async function confirmDelete(): Promise<void> {
+    if (!book || !deleting) {
+      return;
+    }
+    const target = deleting;
+    actionError = null;
+    deleteDone = null;
+    try {
+      if (target.kind === 'work') {
+        await deleteWork(book.id);
+        navigate('/library');
+        return;
+      }
+      const outcome = await deleteFile(target.id);
+      deleting = null;
+      if (outcome.workRemoved) {
+        navigate('/library');
+        return;
+      }
+      deleteDone = `Moved ${target.name} to the trash.`;
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      deleting = null;
       actionError = (e as Error).message;
     }
   }
@@ -562,8 +596,18 @@
                   <td>{file.pages ?? ''}</td>
                   <td>
                     {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a> · {/if}<a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
+                    · <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
                   </td>
                 </tr>
+                {#if deleting?.kind === 'file' && deleting.id === file.id}
+                  <tr>
+                    <td colspan="5">
+                      <p>Move {file.name} to the trash?{book.files.length === 1 ? ' It is the last file, so the book goes too.' : ''} shelf undo brings it back.</p>
+                      <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
+                      <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
+                    </td>
+                  </tr>
+                {/if}
               {/each}
             </tbody>
           </table>
@@ -593,6 +637,18 @@
                 {/each}
               </ul>
             {/if}
+          {/if}
+        </section>
+
+        <section>
+          <h2>Delete</h2>
+          {#if deleteDone}<p class="done" role="status">{deleteDone}</p>{/if}
+          {#if deleting?.kind === 'work'}
+            <p>Move {book.title} and its {book.files.length === 1 ? 'file' : `${book.files.length} files`} to the trash? shelf undo brings it back; shelf trash empty deletes for good.</p>
+            <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
+            <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
+          {:else}
+            <button type="button" class="button danger" onclick={() => (deleting = { kind: 'work' })}>Delete this work</button>
           {/if}
         </section>
 
