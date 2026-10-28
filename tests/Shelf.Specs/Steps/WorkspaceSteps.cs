@@ -32,6 +32,18 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         WriteFile(Path.Combine(folder, "book.json"), sidecar.Replace("\r\n", "\n", StringComparison.Ordinal));
     }
 
+    [Given("the folder {string} holds {int} works titled {string} followed by a number")]
+    public void GivenTheFolderHoldsWorks(string folder, int count, string title)
+    {
+        for (var number = 1; number <= count; number++)
+        {
+            var name = $"{title} {number:D3}";
+            var id = "01J9Z4" + number.ToString("D20", System.Globalization.CultureInfo.InvariantCulture);
+            WriteFile(Path.Combine(folder, name, "note.txt"), "data");
+            WriteFile(Path.Combine(folder, name, "book.json"), $$"""{ "schema": 1, "id": "{{id}}", "title": "{{name}}", "authors": ["Filler Author"], "files": [{ "name": "note.txt" }] }""" + "\n");
+        }
+    }
+
     [Given("the sidecar {string} is replaced by:")]
     public void GivenTheSidecarIsReplacedBy(string path, string content) =>
         WriteFile(path, content.Replace("\r\n", "\n", StringComparison.Ordinal));

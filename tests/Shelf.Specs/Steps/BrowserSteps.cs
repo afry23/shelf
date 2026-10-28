@@ -126,6 +126,9 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Given("the {string} button is pressed")]
     public void ThenPressed(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToHaveAttributeAsync("aria-pressed", "true"));
 
+    [Then("the {string} button is current")]
+    public void ThenCurrent(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name, Exact = true }), e => e.ToHaveAttributeAsync("aria-current", "page"));
+
     [Then("the {string} button is not pressed")]
     public void ThenNotPressed(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToHaveAttributeAsync("aria-pressed", "false"));
 

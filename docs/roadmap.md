@@ -269,6 +269,18 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-GRP-7 to F-GRP-9, the complete BDD suite is green, `shelf reindex` after each operation gives the same index.
 
+### M8 – Paged Library
+
+**Goal:** A large library can be browsed page by page in the web UI: page count, jump to a page, choose how many works a page holds.
+
+**Status:** planned.
+
+| Area | Content | PRD |
+|---|---|---|
+| Library view | page numbers with gaps, "Page x of y", previous / next, works per page (20, 40, 60, 80, 100), state in the address | F-WEB-6 |
+
+**Exit criteria:** feature file `UiLibraryPaging.feature` exists, the complete BDD suite is green, the web API is unchanged.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:
