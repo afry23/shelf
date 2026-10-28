@@ -1,4 +1,4 @@
-@F-SRC-1 @F-SRC-5 @F-SEM-1 @F-SEM-5 @PRD-8.2 @M4
+@F-SRC-1 @F-SRC-5 @F-SRC-7 @F-SEM-1 @F-SEM-5 @F-SEM-10 @PRD-8.2 @M4
 Feature: Searching over HTTP
   As the search view of the web interface
   I want one search for words, for meaning and for both
@@ -142,3 +142,33 @@ Feature: Searching over HTTP
     And the JSON array "results" of the response has 3 entries
     And the JSON field "results[0].title" of the response is "Event Sourcing in Practice"
     And the JSON array "results[0].passages" of the response has 2 entries
+
+  Scenario: A full-text search can look at titles only
+    When I request "GET /api/v1/search?q=sidecar&scope=title"
+    Then the response status is 200
+    And the JSON field "total" of the response is 0
+    When I request "GET /api/v1/search?q=kubernetes&scope=title"
+    Then the JSON field "total" of the response is 1
+    And the JSON field "results[0].title" of the response is "Kubernetes Patterns"
+    And the JSON array "results[0].passages" of the response has 0 entries
+
+  Scenario Outline: A semantic or hybrid search can look at titles only
+    When I request "GET /api/v1/search?q=<q>&mode=<mode>&scope=title"
+    Then the response status is 200
+    And the JSON field "level" of the response is "work"
+    And the JSON field "results[0].title" of the response is "<first>"
+
+    Examples:
+      | q              | mode     | first                      |
+      | event+sourcing | semantic | Event Sourcing in Practice |
+      | event+sourcing | hybrid   | Event Sourcing in Practice |
+
+  Scenario Outline: Titles have no passages, and the scope must be known
+    When I request "GET /api/v1/search?q=kubernetes&mode=<mode>&<params>"
+    Then the response status is 400
+
+    Examples:
+      | mode     | params                |
+      | semantic | scope=title&level=chunk |
+      | hybrid   | scope=title&level=chunk |
+      | semantic | scope=authors         |

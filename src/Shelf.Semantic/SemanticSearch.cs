@@ -52,10 +52,13 @@ public static class SemanticSearch
 {
     private const int SnippetLength = 240;
 
-    /// <summary>The works nearest to <paramref name="query"/>, best first.</summary>
-    public static List<SemanticHit> SearchWorks(SqliteConnection connection, VectorStore store, ReadOnlySpan<float> query, int limit)
+    /// <summary>
+    /// The works nearest to <paramref name="query"/>, best first. With <paramref name="titleOnly"/> the title vectors are
+    /// searched (F-SEM-10) instead of the work vectors.
+    /// </summary>
+    public static List<SemanticHit> SearchWorks(SqliteConnection connection, VectorStore store, ReadOnlySpan<float> query, int limit, bool titleOnly = false)
     {
-        var near = store.Nearest(VectorKind.Work, query, limit);
+        var near = store.Nearest(titleOnly ? VectorKind.Title : VectorKind.Work, query, limit);
         if (near.Count == 0)
         {
             return [];
@@ -194,7 +197,7 @@ public static class SemanticSearch
             })];
     }
 
-    public static SemanticCoverage Coverage(SqliteConnection connection, VectorStore? store)
+    public static SemanticCoverage Coverage(SqliteConnection connection, VectorStore? store, bool titleOnly = false)
     {
         using var pending = connection.CreateCommand();
         pending.CommandText = "SELECT count(*) FROM files WHERE text_status = 'done' AND embed_status = 'pending'";
@@ -202,7 +205,7 @@ public static class SemanticSearch
         using var works = connection.CreateCommand();
         works.CommandText = "SELECT count(*) FROM works";
         var total = (long)works.ExecuteScalar()!;
-        var embedded = store?.Count(VectorKind.Work) ?? 0;
+        var embedded = store?.Count(titleOnly ? VectorKind.Title : VectorKind.Work) ?? 0;
         return new SemanticCoverage(files, (int)Math.Max(0, total - embedded));
     }
 

@@ -1,4 +1,4 @@
-@PRD-7.2 @F-SEM-1 @F-SEM-5 @M3
+@PRD-7.2 @F-SEM-1 @F-SEM-5 @F-SEM-10 @F-SRC-7 @M3
 Feature: Searching by meaning through MCP
   As an AI assistant
   I want to find works and passages by what they are about
@@ -185,3 +185,27 @@ Feature: Searching by meaning through MCP
       """
     Then the tool call succeeds
     And no download was started
+
+  Scenario: semantic_search can look at titles only
+    When I call the tool "semantic_search" with the arguments:
+      """
+      { "query": "event sourcing", "titleOnly": true }
+      """
+    Then the tool call succeeds
+    And the result has the string "level" equal to "work"
+    And the result has the string "results[0].title" equal to "Event Sourcing in Practice"
+
+  Scenario: Titles have no passages
+    When I call the tool "semantic_search" with the arguments:
+      """
+      { "query": "event sourcing", "titleOnly": true, "level": "chunk" }
+      """
+    Then the tool call fails
+
+  Scenario: search_books can look at titles only
+    When I call the tool "search_books" with the arguments:
+      """
+      { "query": "sidecar", "titleOnly": true }
+      """
+    Then the tool call succeeds
+    And the result has the number "total" equal to 0

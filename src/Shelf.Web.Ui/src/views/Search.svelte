@@ -1,19 +1,20 @@
 <script lang="ts">
-  import { search, type SearchLevel, type SearchMode, type SearchResponse } from '../api';
+  import { search, type SearchLevel, type SearchMode, type SearchResponse, type SearchScope } from '../api';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural, readLink, snippetParts } from '../format';
   import { param, setParams } from '../router.svelte';
 
   const q = $derived(param('q').trim());
   const mode = $derived<SearchMode>((['semantic', 'hybrid'] as const).find((m) => m === param('mode')) ?? 'fulltext');
-  const level = $derived<SearchLevel>(param('level') === 'chunk' ? 'chunk' : 'work');
+  const scope = $derived<SearchScope>(param('scope') === 'title' ? 'title' : 'all');
+  const level = $derived<SearchLevel>(scope === 'all' && param('level') === 'chunk' ? 'chunk' : 'work');
 
   let result = $state<SearchResponse | null>(null);
   let error = $state<string | null>(null);
   let waiting = $state(false);
 
   $effect(() => {
-    const params = { q, mode, level: mode === 'fulltext' ? undefined : level };
+    const params = { q, mode, level: mode === 'fulltext' ? undefined : level, scope: scope === 'title' ? scope : undefined };
     if (!params.q) {
       result = null;
       error = null;
@@ -59,7 +60,16 @@
       value={mode}
       onchange={(m) => setParams(m === 'fulltext' ? { mode: null, level: null } : { mode: m })}
     />
-    {#if mode !== 'fulltext'}
+    <Segmented
+      label="Search scope"
+      options={[
+        { value: 'all', label: 'Everything' },
+        { value: 'title', label: 'Titles only' },
+      ]}
+      value={scope}
+      onchange={(s) => setParams({ scope: s === 'title' ? s : null, level: null })}
+    />
+    {#if mode !== 'fulltext' && scope === 'all'}
       <Segmented
         label="Search level"
         options={[

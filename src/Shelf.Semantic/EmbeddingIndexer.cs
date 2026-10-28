@@ -43,6 +43,7 @@ public static class EmbeddingIndexer
         }
 
         Execute(connection, $"CREATE TABLE IF NOT EXISTS {VectorTables.WorkHashes}(work_seq INTEGER PRIMARY KEY, hash TEXT NOT NULL)");
+        Execute(connection, $"CREATE TABLE IF NOT EXISTS {VectorTables.TitleHashes}(work_seq INTEGER PRIMARY KEY, hash TEXT NOT NULL)");
         PurgeOrphans(connection, store);
 
         var problems = new List<string>();
@@ -91,7 +92,13 @@ public static class EmbeddingIndexer
             store.Delete(VectorKind.Work, id);
         }
 
+        foreach (var id in store.Ids(VectorKind.Title).Where(id => !works.Contains(id)))
+        {
+            store.Delete(VectorKind.Title, id);
+        }
+
         Execute(connection, $"DELETE FROM {VectorTables.WorkHashes} WHERE work_seq NOT IN (SELECT seq FROM works)");
+        Execute(connection, $"DELETE FROM {VectorTables.TitleHashes} WHERE work_seq NOT IN (SELECT seq FROM works)");
 
         var chunks = new HashSet<long>(Longs(connection, "SELECT id FROM chunks"));
         foreach (var key in store.Ids(VectorKind.Chunk).Where(key => !chunks.Contains(PassageWindows.ChunkOf(key))))
@@ -129,6 +136,18 @@ public static class EmbeddingIndexer
             }
         }
 
+        var titleHashes = new Dictionary<long, string>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"SELECT work_seq, hash FROM {VectorTables.TitleHashes}";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                titleHashes[reader.GetInt64(0)] = reader.GetString(1);
+            }
+        }
+
+        var titleRows = new List<(long Seq, string Text, string Hash)>();
         var rows = new List<(long Seq, string Text, string Hash)>();
         using (var command = connection.CreateCommand())
         {
@@ -142,6 +161,8 @@ public static class EmbeddingIndexer
                     reader.IsDBNull(4) ? null : reader.GetString(4),
                     tags.GetValueOrDefault(reader.GetString(1)) ?? []);
                 rows.Add((reader.GetInt64(0), text, WorkText.Hash(text)));
+                var titleText = WorkText.BuildTitle(reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3));
+                titleRows.Add((reader.GetInt64(0), titleText, WorkText.Hash(titleText)));
             }
         }
 
@@ -157,6 +178,18 @@ public static class EmbeddingIndexer
             store.Put(VectorKind.Work, seq, embedder.EmbedPassage(text));
             Execute(connection, $"INSERT OR REPLACE INTO {VectorTables.WorkHashes}(work_seq, hash) VALUES ($s, $h)", ("$s", seq), ("$h", hash));
             progress?.Invoke(new EmbeddingProgress("works", ++done, changed.Count));
+        }
+
+        // The title vectors (F-SEM-10) are short and cheap; they are not counted as work vectors.
+        foreach (var (seq, text, hash) in titleRows.Where(r => !titleHashes.TryGetValue(r.Seq, out var old) || old != r.Hash))
+        {
+            if (cancellation.IsCancellationRequested)
+            {
+                break;
+            }
+
+            store.Put(VectorKind.Title, seq, embedder.EmbedPassage(text));
+            Execute(connection, $"INSERT OR REPLACE INTO {VectorTables.TitleHashes}(work_seq, hash) VALUES ($s, $h)", ("$s", seq), ("$h", hash));
         }
 
         return done;

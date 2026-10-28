@@ -51,7 +51,12 @@ public static class LibrarySearch
     // The columns that hold the text as written; the stem columns are only reached by the stemmed form of a word.
     private const string ExactColumns = "{title subtitle authors description tags}";
 
-    public static List<SearchHit> Search(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit, int hitsPerWork = DefaultHitsPerWork)
+    /// <summary>
+    /// Searches the library. With <paramref name="titleOnly"/> only the title and the subtitle are looked at (F-SRC-7): the
+    /// words of the query must be in them, the text of the books, the authors, the tags and the description do not count,
+    /// and a hit has no places in the text. Filters and exclusions still act on the whole work.
+    /// </summary>
+    public static List<SearchHit> Search(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit, int hitsPerWork = DefaultHitsPerWork, bool titleOnly = false)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentNullException.ThrowIfNull(query);
@@ -60,7 +65,7 @@ public static class LibrarySearch
 
         var filter = BuildFilter(query);
         var ranked = query.Include.Count > 0
-            ? RankByText(connection, query, filter, limit, hitsPerWork)
+            ? (titleOnly ? RankByTitle(connection, query, filter, limit) : RankByText(connection, query, filter, limit, hitsPerWork))
             : ListByFilter(connection, filter, limit);
         return Load(connection, ranked);
     }
@@ -68,6 +73,88 @@ public static class LibrarySearch
     // ---- ranking ----
 
     private sealed record Ranked(string WorkId, double Score, List<ContentHit> Hits);
+
+    private static List<Ranked> RankByTitle(SqliteConnection connection, SearchQuery query, Filter filter, int limit)
+    {
+        var candidates = new List<(string Id, double Rank)>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"""
+                SELECT w.id, {MetadataRank}
+                FROM works_fts JOIN works w ON w.seq = works_fts.rowid
+                WHERE works_fts MATCH $match {filter.AndSql}
+                ORDER BY 2 LIMIT {MaxCandidates}
+                """;
+            command.Parameters.AddWithValue("$match", string.Join(" AND ", query.Include.Select(t => TitleTerm(t))));
+            filter.Bind(command);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                candidates.Add((reader.GetString(0), reader.GetDouble(1)));
+            }
+        }
+
+        // The stem columns hold the stems of the description and the tags too, so a word that matched by its stem is
+        // checked against the words of the title and the subtitle.
+        var plain = query.Include.Where(t => !t.Quoted && !t.Prefix && t.Text.Length >= 3 && t.Text.All(char.IsLetter)).ToList();
+        var titles = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (plain.Count > 0 && candidates.Count > 0)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT title, subtitle FROM works WHERE id = $id";
+            var id = command.Parameters.Add("$id", SqliteType.Text);
+            foreach (var (work, _) in candidates)
+            {
+                id.Value = work;
+                using var reader = command.ExecuteReader();
+                if (!reader.Read())
+                {
+                    continue;
+                }
+
+                var words = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var word in Stemmer.Words(reader.GetString(0)).Concat(Stemmer.Words(reader.IsDBNull(1) ? null : reader.GetString(1))))
+                {
+                    words.Add(Fold(word));
+                    foreach (var stemmer in new[] { Stemmer.English, Stemmer.German })
+                    {
+                        var stem = Stemmer.Stem(word.ToLowerInvariant(), stemmer);
+                        words.Add(Fold(stem));
+                        words.Add(Fold(Stemmer.Stem(stem, stemmer)));
+                    }
+                }
+
+                titles[work] = words;
+            }
+        }
+
+        return [.. candidates
+            .Where(c => plain.Count == 0 || (titles.TryGetValue(c.Id, out var words) && plain.All(t => TitleHas(words, t))))
+            .Select(c => new Ranked(c.Id, -c.Rank, []))
+            .OrderByDescending(r => r.Score)
+            .ThenBy(r => r.WorkId, StringComparer.Ordinal)
+            .Take(limit)];
+    }
+
+    // Exact in the title columns, or by stem (checked afterwards, see RankByTitle).
+    private static string TitleTerm(SearchTerm term)
+    {
+        var exact = $"{{title subtitle}} : {Phrase(term)}";
+        if (term.Quoted || term.Prefix || term.Text.Length < 3 || !term.Text.All(char.IsLetter))
+        {
+            return exact;
+        }
+
+        var lower = term.Text.ToLowerInvariant();
+        return $"({exact} OR stems_en : {Quote(Stemmer.Stem(lower, Stemmer.English))} OR stems_de : {Quote(Stemmer.Stem(lower, Stemmer.German))})";
+    }
+
+    private static bool TitleHas(HashSet<string> words, SearchTerm term)
+    {
+        var lower = term.Text.ToLowerInvariant();
+        return words.Contains(Fold(lower))
+            || new[] { Stemmer.English, Stemmer.German }.Any(stemmer => words.Contains(Fold(Stemmer.Stem(lower, stemmer))));
+    }
 
     private static List<Ranked> RankByText(SqliteConnection connection, SearchQuery query, Filter filter, int limit, int hitsPerWork)
     {
@@ -352,10 +439,10 @@ public static class LibrarySearch
     /// <summary>
     /// The works with a word in title, subtitle or authors that is close to <b>every</b> plain word of the query,
     /// by the overlap of trigrams, best first. For the fallback when <see cref="Search"/> finds nothing. A quoted
-    /// phrase or a prefix is exact, so a query with one has no fuzzy results; a word of fewer than four letters must
+    /// phrase or a prefix is exact, so a query with one has no fuzzy results; with <paramref name="titleOnly"/> the authors do not count; a word of fewer than four letters must
     /// be the same word. Filters and exclusions apply as in <see cref="Search"/>.
     /// </summary>
-    public static List<SearchHit> SearchFuzzy(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit)
+    public static List<SearchHit> SearchFuzzy(SqliteConnection connection, SearchQuery query, int limit = DefaultLimit, bool titleOnly = false)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentNullException.ThrowIfNull(query);
@@ -381,8 +468,9 @@ public static class LibrarySearch
                 var words = new HashSet<string>(StringComparer.Ordinal);
                 AddWords(words, reader.GetString(1));
                 AddWords(words, reader.IsDBNull(2) ? null : reader.GetString(2));
-                using (var authors = JsonDocument.Parse(reader.GetString(3)))
+                if (!titleOnly)
                 {
+                    using var authors = JsonDocument.Parse(reader.GetString(3));
                     foreach (var author in authors.RootElement.EnumerateArray())
                     {
                         AddWords(words, author.GetString());

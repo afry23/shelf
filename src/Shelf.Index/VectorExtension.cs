@@ -59,23 +59,27 @@ public static class VectorTables
 {
     public const string Works = "vec_works";
     public const string Chunks = "vec_chunks";
+    public const string Titles = "vec_titles";
     public const string Meta = "semantic_meta";
 
     /// <summary>Hash of the text each work vector was made from, so that unchanged works are not embedded again.</summary>
     public const string WorkHashes = "semantic_work_hash";
 
+    /// <summary>The same for the title vectors.</summary>
+    public const string TitleHashes = "semantic_title_hash";
+
     /// <summary>True when a virtual table of sqlite-vec exists: the file cannot be used without the library.</summary>
     public static bool NeedsExtension(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name IN ('vec_works', 'vec_chunks') AND sql LIKE 'CREATE VIRTUAL TABLE%'";
+        command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name IN ('vec_works', 'vec_chunks', 'vec_titles') AND sql LIKE 'CREATE VIRTUAL TABLE%'";
         return (long)command.ExecuteScalar()! > 0;
     }
 
     /// <summary>Drops the vector tables and the bookkeeping. With sqlite-vec tables, the extension must be loaded.</summary>
     public static void Drop(SqliteConnection connection)
     {
-        foreach (var table in new[] { Works, Chunks, Meta, WorkHashes })
+        foreach (var table in new[] { Works, Chunks, Titles, Meta, WorkHashes, TitleHashes })
         {
             IndexDatabase.Execute(connection, $"DROP TABLE IF EXISTS {table}");
         }

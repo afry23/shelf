@@ -23,6 +23,14 @@ public static class WorkText
         return builder.ToString();
     }
 
+    /// <summary>Title and subtitle, one per line: what the title search (F-SEM-10) compares the query with.</summary>
+    public static string BuildTitle(string title, string? subtitle)
+    {
+        var builder = new StringBuilder(title);
+        Append(builder, subtitle);
+        return builder.ToString();
+    }
+
     public static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
     private static void Append(StringBuilder builder, string? line)

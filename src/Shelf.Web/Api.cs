@@ -266,8 +266,8 @@ internal static class Api
             .WithName("Undo")
             .Produces<UndoOutcome>(StatusCodes.Status200OK);
 
-        api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit) =>
-                Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit)))
+        api.MapGet("/search", ([FromServices] LibraryHandle library, string? q, string? mode, string? level, string? limit, string? scope) =>
+                Run(WebJsonContext.Default.SearchResponse, () => Search(library.Service, q, mode ?? "fulltext", level ?? "work", limit, scope ?? "all")))
             .WithName("Search")
             .Produces<SearchResponse>(StatusCodes.Status200OK);
     }
@@ -407,7 +407,7 @@ internal static class Api
             service.PreferredFile(b.Files) is { } preferred ? FileIds.Make(b.Id, preferred) : null,
             b.Toc);
 
-    private static SearchResponse Search(LibraryService service, string? q, string mode, string level, string? limit)
+    private static SearchResponse Search(LibraryService service, string? q, string mode, string level, string? limit, string scope)
     {
         if (string.IsNullOrEmpty(q))
         {
@@ -419,10 +419,16 @@ internal static class Api
             throw new LibraryException("mode must be fulltext, semantic or hybrid.");
         }
 
+        if (scope is not ("all" or "title"))
+        {
+            throw new LibraryException("scope must be all or title.");
+        }
+
+        var titleOnly = scope == "title";
         var count = Whole(limit, $"limit must be between 1 and {LibraryService.MaxLimit}.", DefaultSearchLimit);
         if (mode == "fulltext")
         {
-            var found = service.SearchBooks(q, count);
+            var found = service.SearchBooks(q, count, titleOnly);
             return new SearchResponse(
                 q,
                 mode,
@@ -434,7 +440,7 @@ internal static class Api
                 [.. found.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, [.. r.Passages.Select(p => Passage(r.Id, p))]))]);
         }
 
-        var semantic = service.SemanticSearch(q, level, hybrid: mode == "hybrid", count);
+        var semantic = service.SemanticSearch(q, level, hybrid: mode == "hybrid", count, titleOnly);
 
         // At the level of passages every hit is a passage, and one book can have several: the answer has one result per book,
         // in the order of its best passage, with all its passages.

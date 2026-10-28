@@ -106,6 +106,7 @@ export interface WorkDetail {
 
 export type SearchMode = 'fulltext' | 'semantic' | 'hybrid';
 export type SearchLevel = 'work' | 'chunk';
+export type SearchScope = 'all' | 'title';
 
 export interface Passage {
   fileId: string;
@@ -418,7 +419,7 @@ export const applyOrganize = (pattern: string) => request<OrganizeOutcome>('POST
 
 export const undoLast = () => request<UndoOutcome>('POST', '/undo', {});
 
-export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; limit?: number }) =>
+export const search = (params: { q: string; mode?: SearchMode; level?: SearchLevel; scope?: SearchScope; limit?: number }) =>
   request<SearchResponse>('GET', `/search${query(params)}`);
 
 export const duplicates = () => request<DuplicateList>('GET', '/duplicates');

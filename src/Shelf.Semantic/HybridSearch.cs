@@ -47,11 +47,11 @@ public static class HybridSearch
     // Candidates taken from each side before they are fused; enough that a hit far down one list can still be lifted by the other.
     private const int MinCandidates = 50;
 
-    public static List<SemanticHit> SearchWorks(SqliteConnection connection, VectorStore? store, float[]? query, SearchQuery words, int limit)
+    public static List<SemanticHit> SearchWorks(SqliteConnection connection, VectorStore? store, float[]? query, SearchQuery words, int limit, bool titleOnly = false)
     {
         var candidates = Math.Max(MinCandidates, limit * 3);
-        var text = LibrarySearch.Search(connection, words, candidates, hitsPerWork: 0);
-        var meaning = store is not null && query is not null ? SemanticSearch.SearchWorks(connection, store, query, candidates) : [];
+        var text = LibrarySearch.Search(connection, words, candidates, hitsPerWork: 0, titleOnly);
+        var meaning = store is not null && query is not null ? SemanticSearch.SearchWorks(connection, store, query, candidates, titleOnly) : [];
 
         var works = new Dictionary<Ulid, SemanticWork>();
         foreach (var hit in text)
