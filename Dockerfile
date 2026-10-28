@@ -2,7 +2,7 @@
 
 # shelf serve in a container: one Native AOT executable plus vec0.so (sqlite-vec) next to it.
 #
-#   docker build -t shelf .
+#   docker build --build-arg VERSION=$(git describe --tags) -t shelf .
 #   docker run --rm --entrypoint /app/shelf -v "$PWD/books:/library" shelf init /library   # once
 #   docker run -d -p 8080:8080 -e SHELF_TOKEN=secret -v "$PWD/books:/library" shelf
 #
@@ -12,6 +12,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG TARGETARCH
 ARG NODE_VERSION=26.0.0
+# Version of shelf, e.g. v0.5.2 or 0.5.2 (leading "v" is dropped). .git is not in the build context, so pass it in.
+ARG VERSION=
 
 # Native AOT needs clang and zlib; the UI build needs Node.js (see .node-version).
 RUN apt-get update \
@@ -26,7 +28,8 @@ COPY . .
 
 RUN case "$TARGETARCH" in arm64) RID=linux-arm64 ;; *) RID=linux-x64 ;; esac \
     && tools/fetch-sqlite-vec.sh "$RID" \
-    && dotnet publish src/Shelf.Cli/Shelf.Cli.csproj -c Release -r "$RID" -p:PublishAot=true -o /out
+    && dotnet publish src/Shelf.Cli/Shelf.Cli.csproj -c Release -r "$RID" -p:PublishAot=true \
+       ${VERSION:+-p:Version="${VERSION#v}"} -o /out
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS runtime
 
