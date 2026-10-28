@@ -305,6 +305,32 @@ shelf search 'author:kleppmann year:>2015 "stream processing"'
 
 Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
 
+#### Remote access over HTTP
+
+`shelf mcp --http` serves MCP as Streamable HTTP at `/mcp` instead of stdio. Use it to run shelf on one machine (for example a Raspberry Pi) and connect from another.
+
+On the machine that holds the library:
+
+```sh
+shelf mcp --http --bind 0.0.0.0 --port 8421 --token <secret>
+```
+
+- Any non-loopback `--bind` needs a token (`--token` or `web.token`). Without one, shelf refuses to start.
+- The server is stateless: no session ID, every request stands alone.
+- Clients must send `Authorization: Bearer <secret>`.
+
+On the client machine, for example with Claude Code:
+
+```sh
+claude mcp add --transport http shelf http://raspberrypi.local:8421/mcp --header "Authorization: Bearer <secret>"
+```
+
+Notes:
+
+- The token travels in clear text over plain HTTP. That is fine on a trusted LAN. Beyond that, put a TLS reverse proxy (Caddy, nginx) in front.
+- Clients that only speak stdio (such as Claude Desktop) can use a bridge like `mcp-remote`, or start the server over SSH: `ssh raspberrypi shelf mcp`.
+- Set `mcp.read_only = true` on the server to switch off `add_tags` and `remove_tags` for remote clients.
+
 ## Backup
 
 Back up the whole library folder. That includes the books, the `book.json` and `annotations.json` sidecars, the covers, `.shelf/config.toml`, `.shelf/review.json` and `.shelf/trash/`. The trash holds files you may still want back with `shelf undo`. The sidecars are the source of truth: without them, tags, notes and reading progress are gone.
@@ -344,6 +370,9 @@ No telemetry. Network access happens only for the model download, for `shelf enr
 
 **Can I make the web UI reachable from my network?**
 Yes: `shelf serve --bind 0.0.0.0 --token <secret>`. A token is required for every non-loopback address. Put a TLS reverse proxy in front for anything beyond a trusted LAN.
+
+**Can I use the MCP server from another machine?**
+Yes: `shelf mcp --http --bind 0.0.0.0 --token <secret>` on the machine with the library, then connect to `http://<host>:8421/mcp` with a bearer token. See [Remote access over HTTP](#remote-access-over-http).
 
 **Can I use the same library on two machines?**
 No. A library belongs to one machine. Sync tools (iCloud, Syncthing) are not supported. Use a backup instead.
