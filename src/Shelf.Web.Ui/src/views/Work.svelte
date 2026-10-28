@@ -583,64 +583,25 @@
             </div>
           </form>
         {:else}
-          {#if book.description}<p class="description">{book.description}</p>{/if}
-          <dl class="facts">
-            {#if book.year}<dt>Year</dt><dd>{book.year}</dd>{/if}
-            {#if book.language}<dt>Language</dt><dd>{book.language}</dd>{/if}
-            {#if book.publisher}<dt>Publisher</dt><dd>{book.publisher}</dd>{/if}
-            {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
-            {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
-            {#if book.citeKey}<dt>Cite key</dt><dd>{book.citeKey}</dd>{/if}
-            {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
-            <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
-          </dl>
-          <p><button type="button" class="button" onclick={startEditing}>Edit details</button></p>
+          <div class="about">
+            {#if book.description}<p class="description">{book.description}</p>{/if}
+            <div class="details">
+              <dl class="facts">
+                {#if book.year}<dt>Year</dt><dd>{book.year}</dd>{/if}
+                {#if book.language}<dt>Language</dt><dd>{book.language}</dd>{/if}
+                {#if book.publisher}<dt>Publisher</dt><dd>{book.publisher}</dd>{/if}
+                {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
+                {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
+                {#if book.citeKey}<dt>Cite key</dt><dd>{book.citeKey}</dd>{/if}
+                {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
+                <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
+              </dl>
+              <p><button type="button" class="button" onclick={startEditing}>Edit details</button></p>
+            </div>
+          </div>
         {/if}
 
-        <section>
-          <h2>Details from the internet</h2>
-          {#if onlineDone}<p class="done" role="status">{onlineDone}</p>{/if}
-          {#if !online}
-            <button type="button" class="button" disabled={onlineBusy} onclick={startOnline}>Load details from the internet</button>
-          {:else if online.candidates.length}
-            <p>{online.candidates.length} books match. Which one is this?</p>
-            <ul class="similar" aria-label="Matching books">
-              {#each online.candidates as candidate (candidate.number)}
-                <li>
-                  <span>{candidate.title}</span>
-                  <span class="muted">{authorLine(candidate.authors)}{candidate.publisher ? `, ${candidate.publisher}` : ''}{candidate.year ? ` (${candidate.year})` : ''}</span>
-                  <button type="button" class="button" aria-label={`Use candidate ${candidate.number}`} onclick={() => chooseCandidate(candidate.number)}>Use this one</button>
-                </li>
-              {/each}
-            </ul>
-            <p><button type="button" class="button" onclick={cancelOnline}>Cancel</button></p>
-          {:else}
-            <p class="muted">Details from {online.source} (matched by {online.match})</p>
-            {#each online.warnings as warning (warning)}<p class="muted">{warning}</p>{/each}
-            {#if online.changes.length}
-              <dl class="facts">
-                {#each online.changes as change (change.field)}
-                  <dt>{fieldLabel(change.field)}</dt>
-                  <dd>{change.action === 'overwrite' ? `${change.before ?? ''} → ${change.after}` : change.after}</dd>
-                {/each}
-              </dl>
-            {:else}
-              <p>Nothing to add.</p>
-            {/if}
-            {#if online.kept.length}
-              <p class="muted">Kept: {online.kept.map((k) => `${fieldLabel(k.field)} ${k.current ?? ''} (online: ${k.online})`).join('; ')}</p>
-            {/if}
-            <p class="actions">
-              <button type="button" class="button" aria-pressed={onlineOverwrite} disabled={onlineBusy} onclick={toggleOverwrite}>Overwrite details that are already set</button>
-              {#if online.changes.length}
-                <button type="button" class="button primary" disabled={onlineBusy} onclick={takeOver}>Take over</button>
-              {/if}
-              <button type="button" class="button" onclick={cancelOnline}>Cancel</button>
-            </p>
-          {/if}
-        </section>
-
-        <section>
+        <section class="group">
           <h2>Tags</h2>
           <ul class="tags" aria-label="Tags">
             {#each book.tags as tag (tag)}
@@ -657,22 +618,48 @@
         </section>
 
         {#if notes.items.length}
-          <section>
+          <section class="group">
             <h2>Highlights and notes</h2>
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
           </section>
         {/if}
 
-        <section>
-          <h2>Export</h2>
-          {#if book.citeKey}
-            <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
-          {:else}
-            <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
+        <div class="pair">
+          {#if book.toc.length && tocFile}
+            <section class="group">
+              <h2>Contents</h2>
+              <nav aria-label="Table of contents">
+                <ol class="toc">
+                  {#each book.toc as entry, index (index)}
+                    <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
+                      {#if entry.location}
+                        <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
+                      {:else}
+                        <span>{entry.title}</span>
+                      {/if}
+                    </li>
+                  {/each}
+                </ol>
+              </nav>
+            </section>
           {/if}
-        </section>
+  
+          {#if similarBooks.length}
+            <section class="group">
+              <h2>Similar books</h2>
+              <ul class="similar" aria-label="Similar books">
+                {#each similarBooks as item (item.id)}
+                  <li>
+                    <a href={`/works/${item.id}`}>{item.title}</a>
+                    <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                  </li>
+                {/each}
+              </ul>
+            </section>
+          {/if}
+        </div>
 
-        <section>
+        <section class="group files-group">
           <h2>Files</h2>
           <table class="files">
             <thead><tr><th scope="col">Name</th><th scope="col">Format</th><th scope="col">Size</th><th scope="col">Pages</th><th scope="col"><span class="visually-hidden">Read and download</span></th></tr></thead>
@@ -680,17 +667,18 @@
               {#each book.files as file (file.id)}
                 <tr>
                   <td class="name">{file.name}</td>
-                  <td>{file.format}</td>
-                  <td>{bytes(file.sizeBytes)}</td>
-                  <td>{file.pages ?? ''}</td>
-                  <td>
-                    {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a> · {/if}<a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
-                    · <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
-                    · <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
+                  <td class="format">{file.format}</td>
+                  <td class="size">{bytes(file.sizeBytes)}</td>
+                  <td class="pages">{file.pages ? `${file.pages} pages` : ''}</td>
+                  <td class="row-actions">
+                    {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a>{/if}
+                    <a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
+                    <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
+                    <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
                   </td>
                 </tr>
                 {#if moving?.id === file.id}
-                  <tr>
+                  <tr class="confirm">
                     <td colspan="5">
                       <p>Move {file.name} to which work? Reading position and notes go with it.{book.files.length === 1 ? ' It is the last file, so this book goes too.' : ''} shelf undo brings it back.</p>
                       <input type="search" aria-label="Find the work to move the file to" placeholder="Find a work" bind:value={moveQuery} />
@@ -715,7 +703,7 @@
                   </tr>
                 {/if}
                 {#if deleting?.kind === 'file' && deleting.id === file.id}
-                  <tr>
+                  <tr class="confirm">
                     <td colspan="5">
                       <p>Move {file.name} to the trash?{book.files.length === 1 ? ' It is the last file, so the book goes too.' : ''} shelf undo brings it back.</p>
                       <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
@@ -726,10 +714,9 @@
               {/each}
             </tbody>
           </table>
-        </section>
 
-        <section>
-          <h2>Add a file</h2>
+          <div class="add">
+            <h3>Add a file</h3>
           {#if filesDone}<p class="done" role="status">{filesDone}</p>{/if}
           <p class="muted">A new version of this book, or another format. The file joins this work whatever its own metadata says.</p>
           <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
@@ -745,79 +732,101 @@
             <p><label><input type="checkbox" bind:checked={addCarry} /> Take over reading position and notes</label> <span class="muted">The replaced file goes to the trash; shelf undo brings it back.</span></p>
           {/if}
           <button type="button" class="button" disabled={addBusy} onclick={uploadFile}>{addBusy ? 'Uploading…' : 'Add file'}</button>
+          </div>
         </section>
 
-        <section>
-          <h2>Merge another work</h2>
-          {#if mergeDone}<p class="done" role="status">{mergeDone}</p>{/if}
-          <input type="search" aria-label="Find a work to merge in" placeholder="Find a work to merge in" bind:value={mergeQuery} />
-          {#if mergeFound}
-            {#if mergeFound.length === 0}
-              <p class="muted">No other work found.</p>
-            {:else}
-              <ul class="similar" aria-label="Works to merge in">
-                {#each mergeFound as item (item.id)}
+        <div class="tools">
+          <section class="panel">
+            <h2>Details from the internet</h2>
+            {#if onlineDone}<p class="done" role="status">{onlineDone}</p>{/if}
+            {#if !online}
+              <button type="button" class="button" disabled={onlineBusy} onclick={startOnline}>Load details from the internet</button>
+            {:else if online.candidates.length}
+              <p>{online.candidates.length} books match. Which one is this?</p>
+              <ul class="similar" aria-label="Matching books">
+                {#each online.candidates as candidate (candidate.number)}
                   <li>
-                    <a href={`/works/${item.id}`}>{item.title}</a>
-                    <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                    {#if mergeCandidate?.id === item.id}
-                      <p>Merge {item.title} into {book.title}? Its files move here and its folder goes. A merge cannot be undone with shelf undo.</p>
-                      <button type="button" class="button danger" onclick={() => mergeIn(item)}>Confirm</button>
-                      <button type="button" class="button" onclick={() => (mergeCandidate = null)}>Cancel</button>
-                    {:else}
-                      <button type="button" class="button" onclick={() => (mergeCandidate = item)}>Merge into this book</button>
-                    {/if}
+                    <span>{candidate.title}</span>
+                    <span class="muted">{authorLine(candidate.authors)}{candidate.publisher ? `, ${candidate.publisher}` : ''}{candidate.year ? ` (${candidate.year})` : ''}</span>
+                    <button type="button" class="button" aria-label={`Use candidate ${candidate.number}`} onclick={() => chooseCandidate(candidate.number)}>Use this one</button>
                   </li>
                 {/each}
               </ul>
+              <p><button type="button" class="button" onclick={cancelOnline}>Cancel</button></p>
+            {:else}
+              <p class="muted">Details from {online.source} (matched by {online.match})</p>
+              {#each online.warnings as warning (warning)}<p class="muted">{warning}</p>{/each}
+              {#if online.changes.length}
+                <dl class="facts">
+                  {#each online.changes as change (change.field)}
+                    <dt>{fieldLabel(change.field)}</dt>
+                    <dd>{change.action === 'overwrite' ? `${change.before ?? ''} → ${change.after}` : change.after}</dd>
+                  {/each}
+                </dl>
+              {:else}
+                <p>Nothing to add.</p>
+              {/if}
+              {#if online.kept.length}
+                <p class="muted">Kept: {online.kept.map((k) => `${fieldLabel(k.field)} ${k.current ?? ''} (online: ${k.online})`).join('; ')}</p>
+              {/if}
+              <p class="actions">
+                <button type="button" class="button" aria-pressed={onlineOverwrite} disabled={onlineBusy} onclick={toggleOverwrite}>Overwrite details that are already set</button>
+                {#if online.changes.length}
+                  <button type="button" class="button primary" disabled={onlineBusy} onclick={takeOver}>Take over</button>
+                {/if}
+                <button type="button" class="button" onclick={cancelOnline}>Cancel</button>
+              </p>
             {/if}
-          {/if}
-        </section>
-
-        <section>
-          <h2>Delete</h2>
-          {#if deleteDone}<p class="done" role="status">{deleteDone}</p>{/if}
-          {#if deleting?.kind === 'work'}
-            <p>Move {book.title} and its {book.files.length === 1 ? 'file' : `${book.files.length} files`} to the trash? shelf undo brings it back; shelf trash empty deletes for good.</p>
-            <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
-            <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
-          {:else}
-            <button type="button" class="button danger" onclick={() => (deleting = { kind: 'work' })}>Delete this work</button>
-          {/if}
-        </section>
-
-        {#if similarBooks.length}
-          <section>
-            <h2>Similar books</h2>
-            <ul class="similar" aria-label="Similar books">
-              {#each similarBooks as item (item.id)}
-                <li>
-                  <a href={`/works/${item.id}`}>{item.title}</a>
-                  <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                </li>
-              {/each}
-            </ul>
           </section>
-        {/if}
-
-        {#if book.toc.length && tocFile}
-          <section>
-            <h2>Contents</h2>
-            <nav aria-label="Table of contents">
-              <ol class="toc">
-                {#each book.toc as entry, index (index)}
-                  <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
-                    {#if entry.location}
-                      <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
-                    {:else}
-                      <span>{entry.title}</span>
-                    {/if}
-                  </li>
-                {/each}
-              </ol>
-            </nav>
+  
+          <section class="panel">
+            <h2>Export</h2>
+            {#if book.citeKey}
+              <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
+            {:else}
+              <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
+            {/if}
           </section>
-        {/if}
+  
+          <section class="panel">
+            <h2>Merge another work</h2>
+            {#if mergeDone}<p class="done" role="status">{mergeDone}</p>{/if}
+            <input type="search" aria-label="Find a work to merge in" placeholder="Find a work to merge in" bind:value={mergeQuery} />
+            {#if mergeFound}
+              {#if mergeFound.length === 0}
+                <p class="muted">No other work found.</p>
+              {:else}
+                <ul class="similar" aria-label="Works to merge in">
+                  {#each mergeFound as item (item.id)}
+                    <li>
+                      <a href={`/works/${item.id}`}>{item.title}</a>
+                      <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                      {#if mergeCandidate?.id === item.id}
+                        <p>Merge {item.title} into {book.title}? Its files move here and its folder goes. A merge cannot be undone with shelf undo.</p>
+                        <button type="button" class="button danger" onclick={() => mergeIn(item)}>Confirm</button>
+                        <button type="button" class="button" onclick={() => (mergeCandidate = null)}>Cancel</button>
+                      {:else}
+                        <button type="button" class="button" onclick={() => (mergeCandidate = item)}>Merge into this book</button>
+                      {/if}
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            {/if}
+          </section>
+  
+          <section class="panel danger-zone">
+            <h2>Delete</h2>
+            {#if deleteDone}<p class="done" role="status">{deleteDone}</p>{/if}
+            {#if deleting?.kind === 'work'}
+              <p>Move {book.title} and its {book.files.length === 1 ? 'file' : `${book.files.length} files`} to the trash? shelf undo brings it back; shelf trash empty deletes for good.</p>
+              <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
+              <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
+            {:else}
+              <button type="button" class="button danger" onclick={() => (deleting = { kind: 'work' })}>Delete this work</button>
+            {/if}
+          </section>
+        </div>
       </div>
     </div>
   </div>
@@ -832,7 +841,7 @@
   }
 
   .page {
-    max-width: 62rem;
+    max-width: 76rem;
     margin: 0 auto;
     padding: 1.5rem var(--gutter) 4rem;
   }
@@ -847,16 +856,19 @@
 
   .work {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 1fr);
-    gap: 2.5rem;
+    grid-template-columns: clamp(11rem, 20vw, 15rem) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 3rem);
     align-items: start;
   }
 
+  /* The cover and what you do with the book stay in view while the long page scrolls beside them. */
   .side {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     justify-items: start;
+    position: sticky;
+    top: 1rem;
   }
 
   .control {
@@ -919,10 +931,80 @@
     color: var(--accent);
   }
 
+  /* The groups below answer to the width of the column, not of the window: a tablet with the cover beside the text and a phone
+     with it above get the layout that fits what is left. */
   .body {
     display: grid;
-    gap: 1.5rem;
+    gap: 2rem;
     min-width: 0;
+    container-type: inline-size;
+  }
+
+  .group {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+
+  .about {
+    display: grid;
+    gap: 1.25rem 2.5rem;
+    align-items: start;
+  }
+
+  .details {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+  }
+
+  .pair,
+  .tools {
+    display: grid;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .tools {
+    gap: 1rem;
+  }
+
+  .panel {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1rem;
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+    min-width: 0;
+  }
+
+  .panel h2,
+  .panel :global(p) {
+    margin: 0;
+  }
+
+  .panel .done {
+    margin: 0;
+  }
+
+  .danger-zone {
+    border-color: var(--danger);
+  }
+
+  .add {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 0.6rem;
+    justify-items: start;
+  }
+
+  .add p {
+    margin: 0;
+  }
+
+  .add select {
+    max-width: 100%;
   }
 
   .subtitle {
@@ -1026,6 +1108,30 @@
     overflow-wrap: anywhere;
   }
 
+  .files .size,
+  .files .pages {
+    white-space: nowrap;
+  }
+
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.9rem;
+  }
+
+  .row-actions .button {
+    padding: 0.15rem 0.6rem;
+  }
+
+  .confirm td {
+    display: table-cell;
+  }
+
+  .confirm .button {
+    margin: 0.25rem 0.4rem 0.25rem 0;
+  }
+
   .similar {
     list-style: none;
     margin: 0;
@@ -1077,24 +1183,92 @@
     gap: 0.6rem;
   }
 
-  @media (max-width: 700px) {
+  .pair {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  }
+
+  .tools {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  }
+
+  /* Description and facts side by side once the column has room for both. */
+  @container (min-width: 44rem) {
+    .about {
+      grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+    }
+  }
+
+  /* A table of five columns does not fit a narrow column: each file becomes a block, the name first, the actions last. */
+  @container (max-width: 38rem) {
+    .files thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+
+    .files,
+    .files tbody {
+      display: block;
+    }
+
+    .files tr:not(.confirm) {
+      display: grid;
+      grid-template-columns: auto auto 1fr;
+      gap: 0.15rem 0.9rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .files tr:not(.confirm) td {
+      border: 0;
+      padding: 0;
+    }
+
+    .files .name,
+    .files .row-actions {
+      grid-column: 1 / -1;
+    }
+
+    .files .format,
+    .files .size,
+    .files .pages {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .files .row-actions {
+      margin-top: 0.35rem;
+    }
+
+    .files .confirm,
+    .files .confirm td {
+      display: block;
+    }
+
+    .edit {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Cover beside the controls above the text, so that the cover does not push the book out of the first screen. */
+  @media (max-width: 52rem) {
     .work {
       grid-template-columns: minmax(0, 1fr);
       gap: 1.5rem;
     }
 
     .side {
-      grid-template-columns: 9rem minmax(0, 1fr);
+      position: static;
+      grid-template-columns: minmax(7.5rem, 10rem) minmax(0, 1fr);
       grid-template-rows: repeat(4, max-content) 1fr;
+      column-gap: 1.25rem;
       align-items: start;
     }
 
     .cover-box {
       grid-row: span 5;
-    }
-
-    .edit {
-      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>

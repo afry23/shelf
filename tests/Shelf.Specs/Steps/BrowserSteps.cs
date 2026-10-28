@@ -244,6 +244,18 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the {string} panel is hidden")]
     public void ThenPanelHidden(string name) => Assert.True(Gone(Page.Locator($"[aria-label='{name}']")), $"The panel '{name}' is visible.");
 
+    // Where two things stand, judged by their boxes: beside each other share a row, one above the other do not overlap in height.
+    private int[] Box(string text) =>
+        Page.GetByText(text, new() { Exact = true }).First.EvaluateAsync<int[]>("e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; }").GetAwaiter().GetResult();
+
+    [Then("{string} stands beside {string}")]
+    public void ThenBeside(string first, string second) =>
+        Assert.True(Poll(() => { var (a, b) = (Box(first), Box(second)); return a[1] < b[3] && b[1] < a[3] && (a[2] <= b[0] || b[2] <= a[0]); }), $"'{first}' does not stand beside '{second}'. {Dump()}");
+
+    [Then("{string} stands above {string}")]
+    public void ThenAbove(string first, string second) =>
+        Assert.True(Poll(() => Box(first)[3] <= Box(second)[1]), $"'{first}' does not stand above '{second}'. {Dump()}");
+
     [Then("the page has no sideways scroll")]
     public void ThenNoSidewaysScroll()
     {
