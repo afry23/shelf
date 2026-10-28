@@ -132,6 +132,9 @@ public sealed record DuplicateOutcome(int Trashed, string[] WorksRemoved);
 public sealed record SplitOutcome(string Work, string NewWork, string File, string Folder);
 
 /// <summary>A merge of two works: the work that stays, the work that went into it, the files that moved and the folder of the merged work when it still holds files that shelf does not know.</summary>
+/// <summary>What deleting a file or a work did: the files moved to the trash, and whether the work went along.</summary>
+public sealed record DeleteOutcome(string Work, int Trashed, string[] Files, bool WorkRemoved);
+
 public sealed record MergeOutcome(string Id, string Merged, int MovedFiles, string? LeftoverFolder);
 
 public sealed record TagChange(string Id, string Title, string[] Tags, int Changed);

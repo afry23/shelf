@@ -25,6 +25,7 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(PairRequest))]
 [JsonSerializable(typeof(MergeRequest))]
 [JsonSerializable(typeof(MergeOutcome))]
+[JsonSerializable(typeof(DeleteOutcome))]
 [JsonSerializable(typeof(CiteKeySuggestion))]
 [JsonSerializable(typeof(EnrichRequest))]
 [JsonSerializable(typeof(EnrichPreviewResult))]
