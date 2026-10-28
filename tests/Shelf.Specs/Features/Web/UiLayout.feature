@@ -92,6 +92,24 @@ Feature: The interface fits the screen and the system
     When I click the "Delete kp.epub" button
     Then the page shows the text "Move kp.epub to the trash?"
 
+  Scenario Outline: The filters use the width they are given
+    Given the browser window is <width> x <height> pixels
+    When I open "/library" in the browser
+    And I click the "Show filters" button
+    Then "Authors" <placement> "Language"
+
+    Examples:
+      | width | height | placement     |
+      | 820   | 1180   | stands beside |
+      | 390   | 844    | stands above  |
+
+  Scenario: The page numbers stay within a phone
+    Given the browser window is 390 x 844 pixels
+    When I open "/library" in the browser
+    Then the "Previous page" button is shown
+    And the "Next page" button is shown
+    And the page has no sideways scroll
+
   Scenario: The shelf shows a different number of covers per row as the window changes
     Given the browser window is 1280 x 900 pixels
     When I open "/library" in the browser
