@@ -72,6 +72,26 @@ Feature: The interface fits the screen and the system
       | 820   | 1180   | /duplicates                       |
       | 390   | 844    | /library                          |
 
+  Scenario Outline: The page of a book groups its parts to fit the window
+    Given the browser window is <width> x <height> pixels
+    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Then "Design patterns for containers" <description> "Year"
+    And "Details from the internet" <tools> "Export"
+    And "Files" stands above "Add a file"
+
+    Examples:
+      | width | height | description   | tools         |
+      | 1280  | 900    | stands beside | stands beside |
+      | 820   | 1180   | stands beside | stands beside |
+      | 390   | 844    | stands above  | stands above  |
+
+  Scenario: A file of a book stays usable on a phone
+    Given the browser window is 390 x 844 pixels
+    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Then the page has no sideways scroll
+    When I click the "Delete kp.epub" button
+    Then the page shows the text "Move kp.epub to the trash?"
+
   Scenario: The shelf shows a different number of covers per row as the window changes
     Given the browser window is 1280 x 900 pixels
     When I open "/library" in the browser
