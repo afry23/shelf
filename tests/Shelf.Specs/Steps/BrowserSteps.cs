@@ -191,6 +191,18 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the list {string} has {int} items")]
     public void ThenListCount(string list, int count) => Expect(Items(list), e => e.ToHaveCountAsync(count));
 
+    [Then("every row of the shelf {string} is full")]
+    public void ThenShelfFull(string list)
+    {
+        var script = "(label) => { const ul = document.querySelector(`[aria-label='${label}']`); if (!ul) { return [0, 1]; } const columns = getComputedStyle(ul).gridTemplateColumns.split(' ').length; return [ul.children.length, columns]; }";
+        int[] counts = [];
+        Assert.True(Poll(() =>
+        {
+            counts = Page.EvaluateAsync<int[]>(script, list).GetAwaiter().GetResult();
+            return counts[0] > 0 && counts[0] % counts[1] == 0;
+        }), $"The shelf holds {counts[0]} books in rows of {counts[1]}.");
+    }
+
     [Then("the first item of the list {string} is {string}")]
     public void ThenFirstItem(string list, string title) => Expect(Items(list).First, e => e.ToContainTextAsync(title));
 

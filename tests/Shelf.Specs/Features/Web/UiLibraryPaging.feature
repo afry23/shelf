@@ -93,3 +93,29 @@ Feature: The library is paged
       | 0     | 1–20 of 200  |
       | -5    | 1–20 of 200  |
       | 500   | 1–100 of 200 |
+
+  Scenario Outline: The shelf is full on every page, whatever the width of the window
+    Given the browser window is <width> x 900 pixels
+    When I open "/library" in the browser
+    Then every row of the shelf "Books" is full
+    And the list "Books" has <items> items
+    And the page shows the text "Page 1 of <pages>"
+
+    Examples:
+      | width | items | pages |
+      | 1280  | 20    | 10    |
+      | 1100  | 20    | 10    |
+      | 1500  | 18    | 12    |
+      | 1900  | 18    | 12    |
+
+  Scenario: The chosen page size is a whole number of rows
+    Given the browser window is 1500 x 900 pixels
+    And I open "/library" in the browser
+    When I choose "96" in the "Works per page" list
+    Then every row of the shelf "Books" is full
+    And the list "Books" has 96 items
+    And the browser address contains "limit=100"
+
+  Scenario: The list view needs no rows and keeps the plain sizes
+    When I open "/library?view=list" in the browser
+    Then the list "Books" has 20 items
