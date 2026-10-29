@@ -97,6 +97,7 @@
   let chosen = $state('');
 
   const tabs = $derived([
+    ...(book?.description ? [{ id: 'description', label: 'Description' }] : []),
     ...((book?.toc.length && tocFile) || similarBooks.length ? [{ id: 'contents', label: 'Contents' }] : []),
     ...(notes.items.length ? [{ id: 'notes', label: 'Highlights and notes', count: notes.items.length }] : []),
     { id: 'files', label: 'Files', count: book?.files.length },
@@ -602,20 +603,17 @@
             </div>
           </form>
         {:else}
-          <div class="about">
-            {#if book.description}<p class="description">{book.description}</p>{/if}
-            <div class="details">
-              <dl class="facts">
-                {#if book.year}<dt>Year</dt><dd>{book.year}</dd>{/if}
-                {#if book.language}<dt>Language</dt><dd>{book.language}</dd>{/if}
-                {#if book.publisher}<dt>Publisher</dt><dd>{book.publisher}</dd>{/if}
-                {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
-                {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
-                {#if book.citeKey}<dt>Cite key</dt><dd>{book.citeKey}</dd>{/if}
-                {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
-                <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
-              </dl>
-            </div>
+          <div class="details">
+            <dl class="facts">
+              {#if book.year}<dt>Year</dt><dd>{book.year}</dd>{/if}
+              {#if book.language}<dt>Language</dt><dd>{book.language}</dd>{/if}
+              {#if book.publisher}<dt>Publisher</dt><dd>{book.publisher}</dd>{/if}
+              {#if book.series}<dt>Series</dt><dd>{book.series}{book.seriesIndex !== null ? ` ${book.seriesIndex}` : ''}</dd>{/if}
+              {#if book.edition}<dt>Edition</dt><dd>{book.edition}</dd>{/if}
+              {#if book.citeKey}<dt>Cite key</dt><dd>{book.citeKey}</dd>{/if}
+              {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
+              <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
+            </dl>
           </div>
           <p class="detail-actions">
             <button type="button" class="button" onclick={startEditing}>Edit details</button>
@@ -685,7 +683,9 @@
         </section>
 
         <Tabs label="The book" {tabs} {active} onselect={openTab}>
-          {#if active === 'contents'}
+          {#if active === 'description'}
+            <p class="description">{book.description}</p>
+          {:else if active === 'contents'}
             <div class="pair">
               {#if book.toc.length && tocFile}
                 <section class="group">
@@ -969,12 +969,6 @@
     padding-top: 1rem;
   }
 
-  .about {
-    display: grid;
-    gap: 1.25rem 2.5rem;
-    align-items: start;
-  }
-
   .details {
     display: grid;
     gap: 0.75rem;
@@ -1222,13 +1216,6 @@
 
   .pair {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
-  }
-
-  /* Description and facts side by side once the column has room for both. */
-  @container (min-width: 44rem) {
-    .about {
-      grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
-    }
   }
 
   /* A table of five columns does not fit a narrow column: each file becomes a block, the name first, the actions last. */

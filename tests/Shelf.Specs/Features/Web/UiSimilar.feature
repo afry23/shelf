@@ -40,7 +40,7 @@ Feature: Similar books in the book view
 
   Scenario: The most similar book is listed first, and the book itself is not
     Given the web server is running on the library "library"
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open "/works/01J9Z3K0000000000000000001#contents" in the browser
     Then the page shows the text "Similar books"
     And the list "Similar books" has 2 items
     And the first item of the list "Similar books" is "Cloud Patterns"
@@ -48,16 +48,17 @@ Feature: Similar books in the book view
 
   Scenario: A click on a similar book opens that book
     Given the web server is running on the library "library"
-    And I open "/works/01J9Z3K0000000000000000001" in the browser
+    And I open "/works/01J9Z3K0000000000000000001#contents" in the browser
     When I click the "Cloud Patterns" link
     Then the browser address contains "/works/01J9Z3K0000000000000000004"
     And the heading "Cloud Patterns" is shown
-    And the list "Similar books" has 2 items
+    When I open the "Contents" tab
+    Then the list "Similar books" has 2 items
 
   Scenario: Without embeddings the book view has no such section
     Given I have run shelf with arguments "reindex --library library"
     And the web server is running on the library "library"
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open "/works/01J9Z3K0000000000000000001#contents" in the browser
     Then the heading "Kubernetes Patterns" is shown
     And the page does not show the text "Similar books"
     And the browser reported no errors

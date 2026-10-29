@@ -56,12 +56,17 @@
 </div>
 
 <style>
+  .tabs {
+    min-width: 0;
+  }
+
   /* One rule under the tabs; the open tab sits on it with a heavier line in the accent, like a bookmark in the book. */
   .list {
     display: flex;
     gap: 0.25rem;
-    border-bottom: 1px solid var(--line);
+    box-shadow: inset 0 -1px 0 var(--line);
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: thin;
   }
 
@@ -75,7 +80,6 @@
     border: 0;
     border-bottom: 2px solid transparent;
     border-radius: 0;
-    margin-bottom: -1px;
     padding: 0.55rem 0.9rem;
     color: var(--muted);
   }
