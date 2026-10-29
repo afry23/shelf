@@ -85,6 +85,8 @@ public sealed class SettingsSteps
             "grouping.probable_hamming" => grouping.ProbableHamming.ToString(CultureInfo.InvariantCulture),
             "grouping.probable_cosine" => grouping.ProbableCosine.ToString(CultureInfo.InvariantCulture),
             "organize.pattern" => Settings().Organize.Pattern.Text,
+            "organize.paper_pattern" => Settings().Organize.PaperPattern.Text,
+            "fetch.unpaywall_email" => Settings().Fetch.UnpaywallEmail ?? string.Empty,
             "semantic.model" => Settings().Semantic.Model,
             "reader.preferred_format" => Settings().Reader.PreferredFormat,
             "mcp.read_only" => Settings().Mcp.ReadOnly ? "true" : "false",

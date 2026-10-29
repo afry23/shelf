@@ -15,9 +15,16 @@ public sealed record GroupingSettings(double AutoMerge, double Review, int MaxHa
 }
 
 /// <summary>How <c>shelf organize</c> names folders and files (F-ORG-1, F-ORG-2).</summary>
-public sealed record OrganizeSettings(PathPattern Pattern)
+public sealed record OrganizeSettings(PathPattern Pattern, PathPattern PaperPattern)
 {
-    public static OrganizeSettings Default { get; } = new(PathPattern.Default);
+    public static OrganizeSettings Default { get; } = new(PathPattern.Default, PathPattern.PaperDefault);
+}
+
+/// <summary>How <c>shelf fetch</c> finds a PDF (F-PAP-8).</summary>
+/// <param name="UnpaywallEmail">The e-mail address that Unpaywall asks for with every request; without it Unpaywall is not asked.</param>
+public sealed record FetchSettings(string? UnpaywallEmail)
+{
+    public static FetchSettings Default { get; } = new((string?)null);
 }
 
 /// <summary>The embedding model for semantic search (F-SEM-1, F-SEM-8).</summary>
@@ -75,6 +82,8 @@ public sealed class ShelfSettings
     private const string ProbableHammingKey = "grouping.probable_hamming";
     private const string ProbableCosineKey = "grouping.probable_cosine";
     private const string PatternKey = "organize.pattern";
+    private const string PaperPatternKey = "organize.paper_pattern";
+    private const string UnpaywallEmailKey = "fetch.unpaywall_email";
     private const string ModelKey = "semantic.model";
     private const string McpMaxCharsKey = "mcp.max_chars";
     private const string McpReadOnlyKey = "mcp.read_only";
@@ -85,12 +94,13 @@ public sealed class ShelfSettings
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
         OrganizeSettings organize,
+        FetchSettings fetch,
         SemanticSettings semantic,
         McpSettings mcp,
         ReaderSettings reader,
@@ -101,6 +111,7 @@ public sealed class ShelfSettings
     {
         Grouping = grouping;
         Organize = organize;
+        Fetch = fetch;
         Semantic = semantic;
         Mcp = mcp;
         Reader = reader;
@@ -113,6 +124,8 @@ public sealed class ShelfSettings
     public GroupingSettings Grouping { get; }
 
     public OrganizeSettings Organize { get; }
+
+    public FetchSettings Fetch { get; }
 
     public SemanticSettings Semantic { get; }
 
@@ -132,7 +145,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, SemanticSettings.Default, McpSettings.Default, ReaderSettings.Default, WebSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, FetchSettings.Default, SemanticSettings.Default, McpSettings.Default, ReaderSettings.Default, WebSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -155,6 +168,8 @@ public sealed class ShelfSettings
         var probableHamming = GroupingSettings.Default.ProbableHamming;
         var probableCosine = GroupingSettings.Default.ProbableCosine;
         var pattern = PathPattern.Default;
+        var paperPattern = PathPattern.PaperDefault;
+        var unpaywallEmail = FetchSettings.Default.UnpaywallEmail;
         var model = SemanticSettings.Default.Model;
         var maxChars = McpSettings.DefaultMaxChars;
         var readOnly = false;
@@ -172,7 +187,9 @@ public sealed class ShelfSettings
             autoHamming = ReadHamming(layer, AutoHammingKey) ?? autoHamming;
             probableHamming = ReadHamming(layer, ProbableHammingKey) ?? probableHamming;
             probableCosine = ReadThreshold(layer, ProbableCosineKey) ?? probableCosine;
-            pattern = ReadPattern(layer) ?? pattern;
+            pattern = ReadPattern(layer, PatternKey) ?? pattern;
+            paperPattern = ReadPattern(layer, PaperPatternKey) ?? paperPattern;
+            unpaywallEmail = ReadEmail(layer, UnpaywallEmailKey) ?? unpaywallEmail;
             model = ReadModel(layer) ?? model;
             maxChars = ReadMaxChars(layer) ?? maxChars;
             readOnly = layer.GetBoolean(McpReadOnlyKey) ?? readOnly;
@@ -202,7 +219,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern), new SemanticSettings(model), new McpSettings(maxChars, readOnly), new ReaderSettings(preferredFormat), web, libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern, paperPattern), new FetchSettings(unpaywallEmail), new SemanticSettings(model), new McpSettings(maxChars, readOnly), new ReaderSettings(preferredFormat), web, libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -270,6 +287,29 @@ public sealed class ShelfSettings
         return new WebSettings((int?)port ?? WebSettings.DefaultPort, bind ?? WebSettings.DefaultBind, string.IsNullOrEmpty(token) ? null : token);
     }
 
+    private static string? ReadEmail(ConfigDocument document, string key)
+    {
+        var text = document.GetString(key);
+        if (text is null)
+        {
+            return null;
+        }
+
+        var at = text.IndexOf('@', StringComparison.Ordinal);
+        if (text.Length == 0)
+        {
+            throw new ConfigException($"{document.SourceName}: {key}: must not be empty", document.SourceName, key: key);
+        }
+
+        // Unpaywall only needs something it can write to; a full address check would reject valid ones.
+        if (at < 1 || at == text.Length - 1 || text.Any(char.IsWhiteSpace))
+        {
+            throw new ConfigException($"{document.SourceName}: {key}: must be an e-mail address", document.SourceName, key: key);
+        }
+
+        return text;
+    }
+
     private static string? ReadModel(ConfigDocument document)
     {
         var name = document.GetString(ModelKey);
@@ -281,9 +321,9 @@ public sealed class ShelfSettings
         return name;
     }
 
-    private static PathPattern? ReadPattern(ConfigDocument document)
+    private static PathPattern? ReadPattern(ConfigDocument document, string key)
     {
-        var text = document.GetString(PatternKey);
+        var text = document.GetString(key);
         if (text is null)
         {
             return null;
@@ -295,7 +335,7 @@ public sealed class ShelfSettings
         }
         catch (PatternException e)
         {
-            throw new ConfigException($"{document.SourceName}: {PatternKey}: {e.Message}", document.SourceName, key: PatternKey);
+            throw new ConfigException($"{document.SourceName}: {key}: {e.Message}", document.SourceName, key: key);
         }
     }
 
