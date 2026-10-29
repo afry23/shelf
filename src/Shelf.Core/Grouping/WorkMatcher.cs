@@ -4,10 +4,21 @@ using Shelf.Core.Model;
 namespace Shelf.Core.Grouping;
 
 /// <summary>What is compared when files are grouped into works: title, author surnames, year, ISBN, text fingerprint.</summary>
-public sealed record WorkSignature(string? TitleNorm, IReadOnlyList<string> SurnameKeys, int? Year, string? Isbn13)
+/// <param name="Doi">The DOI of a paper, lower case (F-PAP-9).</param>
+/// <param name="ArxivId">The arXiv ID of a paper without its version (F-PAP-9).</param>
+public sealed record WorkSignature(string? TitleNorm, IReadOnlyList<string> SurnameKeys, int? Year, string? Isbn13, string? Doi = null, string? ArxivId = null)
 {
-    public static WorkSignature Create(string? title, IEnumerable<string> authors, int? year, string? isbn13) =>
-        new(string.IsNullOrWhiteSpace(title) ? null : TitleNormalizer.Normalize(title), AuthorNames.SurnameKeys(authors), year, isbn13);
+    public static WorkSignature Create(string? title, IEnumerable<string> authors, int? year, string? isbn13, string? doi = null, string? arxivId = null) =>
+        new(
+            string.IsNullOrWhiteSpace(title) ? null : TitleNormalizer.Normalize(title),
+            AuthorNames.SurnameKeys(authors),
+            year,
+            isbn13,
+            string.IsNullOrWhiteSpace(doi) ? null : PaperIds.Normalize(doi),
+            string.IsNullOrWhiteSpace(arxivId) ? null : arxivId.Trim());
+
+    /// <summary>The file or work carries a DOI or an arXiv ID.</summary>
+    public bool HasPaperId => Doi is not null || ArxivId is not null;
 }
 
 /// <summary>A file that wants a work. <paramref name="Format"/> is the lower-case extension without the dot (epub, pdf).</summary>
@@ -48,7 +59,8 @@ public enum GroupingAction
 public sealed record GroupingMatch(Ulid WorkId, double Confidence, IReadOnlyList<string> Signals)
 {
     /// <summary>The match is probably another edition of the same book (F-GRP-5): the year or the ISBN differs.</summary>
-    public bool IsOtherEdition => Signals.Contains(WorkMatcher.OtherYearSignal) || Signals.Contains(WorkMatcher.IsbnDiffersSignal);
+    public bool IsOtherEdition => Signals.Contains(WorkMatcher.OtherYearSignal) || Signals.Contains(WorkMatcher.IsbnDiffersSignal)
+        || Signals.Contains(WorkMatcher.PaperIdsDifferSignal);
 }
 
 public sealed record GroupingDecision(GroupingAction Action, Ulid? WorkId, double Confidence, IReadOnlyList<GroupingMatch> Matches);
@@ -74,6 +86,7 @@ public sealed class WorkMatcher
     public const double TitleAuthorOtherYearConfidence = 0.6;
     public const string OtherYearSignal = "title and author match, year differs";
     public const string IsbnDiffersSignal = "ISBN differs";
+    public const string PaperIdsDifferSignal = "title and author match, DOI or arXiv ID differs";
     public const string OtherFormatSignal = "title and author match, other format";
     public const double FingerprintNearConfidence = 0.9;
     public const double FingerprintFarConfidence = 0.6;
@@ -85,6 +98,8 @@ public sealed class WorkMatcher
     private readonly List<WorkCandidate> _candidates = [];
     private readonly Dictionary<string, List<WorkCandidate>> _byIsbn = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<WorkCandidate>> _byTitle = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<WorkCandidate>> _byDoi = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<WorkCandidate>> _byArxiv = new(StringComparer.Ordinal);
 
     public WorkMatcher(GroupingSettings settings, IEnumerable<WorkCandidate> candidates)
     {
@@ -110,6 +125,16 @@ public sealed class WorkMatcher
         {
             Index(_byTitle, title, candidate);
         }
+
+        if (candidate.Signature.Doi is { } doi)
+        {
+            Index(_byDoi, doi, candidate);
+        }
+
+        if (candidate.Signature.ArxivId is { } arxiv)
+        {
+            Index(_byArxiv, arxiv, candidate);
+        }
     }
 
     /// <summary>Remembers the fingerprint of a file that was merged into a work, for the files that follow.</summary>
@@ -123,7 +148,7 @@ public sealed class WorkMatcher
     public GroupingDecision Decide(IncomingFile file)
     {
         ArgumentNullException.ThrowIfNull(file);
-        var stages = new[] { ByIsbn(file), ByTitleAndAuthor(file), ByFingerprint(file) };
+        var stages = new[] { ByPaperId(file), ByIsbn(file), ByTitleAndAuthor(file), ByFingerprint(file) };
 
         foreach (var stage in stages)
         {
@@ -163,6 +188,27 @@ public sealed class WorkMatcher
             .OrderByDescending(m => m.Confidence)
             .ThenBy(m => m.WorkId)];
 
+    // Papers are identified by DOI or arXiv ID before anything else (F-PAP-9). The versions of an arXiv paper share the ID
+    // without the version, so they are one work.
+    private List<GroupingMatch> ByPaperId(IncomingFile file)
+    {
+        var matches = new List<GroupingMatch>();
+        if (file.Signature.Doi is { } doi && _byDoi.TryGetValue(doi, out var sameDoi))
+        {
+            matches.AddRange(Allowed(sameDoi, file).Select(c => new GroupingMatch(c.Id, IsbnConfidence, [$"same DOI {doi}"])));
+        }
+
+        if (file.Signature.ArxivId is { } arxiv && _byArxiv.TryGetValue(arxiv, out var sameArxiv))
+        {
+            matches.AddRange(Allowed(sameArxiv, file).Select(c => new GroupingMatch(c.Id, IsbnConfidence, [$"same arXiv ID {arxiv}"])));
+        }
+
+        return matches;
+    }
+
+    private static bool SharesPaperId(WorkSignature a, WorkSignature b) =>
+        (a.Doi is not null && a.Doi == b.Doi) || (a.ArxivId is not null && a.ArxivId == b.ArxivId);
+
     private List<GroupingMatch> ByIsbn(IncomingFile file)
     {
         if (file.Signature.Isbn13 is not { } isbn || !_byIsbn.TryGetValue(isbn, out var found))
@@ -201,6 +247,14 @@ public sealed class WorkMatcher
             else
             {
                 ApplyGuards(candidate, file, signals, ref confidence);
+            }
+
+            // Both are papers with identifiers and no identifier is shared: a
+            // preprint and the published version, or two versions of a paper. Two works that are related (F-PAP-9).
+            if (signature.HasPaperId && candidate.Signature.HasPaperId && !SharesPaperId(signature, candidate.Signature))
+            {
+                signals.Add(PaperIdsDifferSignal);
+                confidence = Math.Min(confidence, TitleAuthorOtherYearConfidence);
             }
 
             matches.Add(new GroupingMatch(candidate.Id, confidence, signals));

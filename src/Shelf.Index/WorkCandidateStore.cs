@@ -83,7 +83,7 @@ public static class WorkCandidateStore
         var candidates = new List<WorkCandidate>();
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT id, title_norm, authors_json, year, isbn13 FROM works ORDER BY seq";
+            command.CommandText = "SELECT id, title_norm, authors_json, year, isbn13, doi, arxiv_id FROM works ORDER BY seq";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -93,7 +93,9 @@ public static class WorkCandidateStore
                     reader.GetString(1),
                     AuthorNames.SurnameKeys(authors),
                     reader.IsDBNull(3) ? null : reader.GetInt32(3),
-                    reader.IsDBNull(4) ? null : reader.GetString(4));
+                    reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : reader.GetString(6));
                 candidates.Add(new WorkCandidate(Ulid.Parse(id), signature, fingerprints.GetValueOrDefault(id), notDuplicates.GetValueOrDefault(id), formats.GetValueOrDefault(id)));
             }
         }
