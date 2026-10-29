@@ -250,6 +250,37 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
                 h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
     }
 
+    /// <summary>The tags that the works most like a work carry and the work does not, best first (F-TAG-6). Nothing is changed.</summary>
+    /// <exception cref="LibraryException">Invalid: the limit is out of range. NotFound: no such work.</exception>
+    public TagSuggestionsResult SuggestTags(string id, int limit = 10)
+    {
+        if (limit is < 1 or > MaxLimit)
+        {
+            throw new LibraryException($"limit must be between 1 and {MaxLimit}.");
+        }
+
+        var work = Find(id);
+        using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
+        VectorStore? store;
+        try
+        {
+            store = VectorStore.OpenExisting(connection);
+        }
+        catch (VectorStoreException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        var suggestions = store is null ? null : Shelf.Semantic.SemanticSearch.SuggestTags(connection, store, work.Id.ToString(), limit);
+        var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+        return new TagSuggestionsResult(
+            work.Id.ToString(),
+            work.Title,
+            suggestions?.Count ?? 0,
+            Shelf.Semantic.SemanticSearch.SimilarNote(suggestions is null ? null : [], store, coverage),
+            [.. (suggestions ?? []).Select(t => new TagSuggestionItem(t.Tag, t.Works, t.Score))]);
+    }
+
     public SimilarBooksResult SimilarBooks(
         string id,
         int limit = 10)

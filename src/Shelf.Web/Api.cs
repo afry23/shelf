@@ -48,6 +48,11 @@ internal static class Api
             .WithName("SimilarWorks")
             .Produces<SimilarResponse>(StatusCodes.Status200OK);
 
+        api.MapGet("/works/{id}/tag-suggestions", ([FromServices] LibraryHandle library, string id, string? limit) =>
+                Run(WebJsonContext.Default.TagSuggestionsResponse, () => TagSuggestions(library.Service, RequireId(id), limit)))
+            .WithName("TagSuggestions")
+            .Produces<TagSuggestionsResponse>(StatusCodes.Status200OK);
+
         api.MapMethods("/works/{id}", ["PATCH"], ([FromServices] LibraryHandle library, string id, [FromBody] JsonObject patch) =>
                 Run(WebJsonContext.Default.WorkDetail, () => Detail(library.Service, library.Service.EditMetadata(RequireId(id), patch))))
             .WithName("EditWork")
@@ -509,6 +514,12 @@ internal static class Api
             similar.Total,
             similar.Note,
             [.. similar.Results.Select(r => new SearchItem(r.Id, r.Title, r.Authors, r.Year, r.Language, r.Formats, r.Score, []))]);
+    }
+
+    private static TagSuggestionsResponse TagSuggestions(LibraryService service, string id, string? limit)
+    {
+        var result = service.SuggestTags(id, Whole(limit, $"limit must be between 1 and {LibraryService.MaxLimit}.", DefaultSimilarLimit));
+        return new TagSuggestionsResponse(result.Id, result.Title, result.Total, result.Note, result.Suggestions);
     }
 
     private static Passage Passage(string work, PassageRef p) =>

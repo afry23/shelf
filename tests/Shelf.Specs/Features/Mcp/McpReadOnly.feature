@@ -55,6 +55,7 @@ Feature: A read-only MCP server
       | search_books         |
       | semantic_search      |
       | similar_books        |
+      | suggest_tags         |
     And every tool is marked read-only
     And the server instructions mention "read-only"
 

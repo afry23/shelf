@@ -125,6 +125,17 @@ public sealed record SimilarBooksResult(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SemanticItem[] Results);
 
+/// <summary>A tag that the works most like a work carry (F-TAG-6): in how many of them, and their share of the similarity (0 to 1).</summary>
+public sealed record TagSuggestionItem(string Tag, int Works, double Score);
+
+/// <summary>The tags that the works most like the work <paramref name="Id"/> carry and the work does not, best first (F-TAG-6).</summary>
+public sealed record TagSuggestionsResult(
+    string Id,
+    string Title,
+    int Total,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    TagSuggestionItem[] Suggestions);
+
 /// <summary>The tags of a work after they were set, and how many were added and removed.</summary>
 /// <summary>The cite key that author, year and title of a work suggest; null if the first author is not known.</summary>
 public sealed record CiteKeySuggestion(string Id, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? CiteKey);

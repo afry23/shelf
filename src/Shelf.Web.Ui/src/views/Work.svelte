@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -70,6 +70,30 @@
       .catch(() => {
         if (current) {
           similarBooks = [];
+        }
+      });
+    return () => {
+      current = false;
+    };
+  });
+
+  // The tags of the works most like this one (F-TAG-6). Like the similar books, they need the embeddings; without them the section stays away.
+  let suggestedTags = $state<TagSuggestion[]>([]);
+  const offeredTags = $derived(suggestedTags.filter((s) => !book?.tags.includes(s.tag)));
+
+  $effect(() => {
+    const wanted = id;
+    let current = true;
+    suggestedTags = [];
+    loadTagSuggestions(wanted)
+      .then((result) => {
+        if (current) {
+          suggestedTags = result.suggestions;
+        }
+      })
+      .catch(() => {
+        if (current) {
+          suggestedTags = [];
         }
       });
     return () => {
@@ -680,6 +704,23 @@
           <datalist id="tag-suggestions">
             {#each suggestions as tag (tag)}<option value={tag}></option>{/each}
           </datalist>
+          {#if offeredTags.length}
+            <div class="offered">
+              <h3>Suggested tags</h3>
+              <ul aria-label="Suggested tags">
+                {#each offeredTags as suggestion (suggestion.tag)}
+                  <li>
+                    <button
+                      type="button"
+                      aria-label={`Add tag ${suggestion.tag}`}
+                      title={`In ${suggestion.works} of the most similar books`}
+                      onclick={() => changeTags([...book!.tags, suggestion.tag])}>+ {suggestion.tag}</button
+                    >
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
         </section>
 
         <Tabs label="The book" {tabs} {active} onselect={openTab}>
@@ -1116,6 +1157,39 @@
 
   .tag-input {
     width: min(16rem, 100%);
+  }
+
+  .offered {
+    margin-top: 0.75rem;
+  }
+
+  .offered h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.875rem;
+    font-weight: normal;
+    color: var(--muted);
+  }
+
+  .offered ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .offered button {
+    background: transparent;
+    border: 1px dashed var(--line);
+    border-radius: 999px;
+    padding: 0.1rem 0.75rem;
+    color: var(--muted);
+  }
+
+  .offered button:hover {
+    color: var(--ink);
+    border-style: solid;
   }
 
   .files {
