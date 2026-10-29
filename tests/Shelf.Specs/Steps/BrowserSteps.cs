@@ -403,6 +403,20 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the title of the page is not {string}")]
     public void ThenTitleIsNot(string title) => Assert.NotEqual(title, Page.TitleAsync().GetAwaiter().GetResult());
 
+    [Then("the clipboard holds {string}")]
+    public void ThenClipboardHolds(string text)
+    {
+        var expected = text.Replace("\\n", "\n", StringComparison.Ordinal);
+        var held = string.Empty;
+        Assert.True(
+            Poll(() =>
+            {
+                held = Page.EvaluateAsync<string>("() => navigator.clipboard.readText()").GetAwaiter().GetResult();
+                return held == expected;
+            }),
+            $"The clipboard holds '{held}', not '{expected}'.");
+    }
+
     [Then("the browser reported no errors")]
     public void ThenNoErrors()
     {
@@ -579,6 +593,7 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
             ColorScheme = _dark ? ColorScheme.Dark : ColorScheme.Light,
             ViewportSize = new ViewportSize { Width = _viewport.Width, Height = _viewport.Height },
             Locale = "en-US",
+            Permissions = ["clipboard-read", "clipboard-write"],
         }).GetAwaiter().GetResult();
         var page = _context.NewPageAsync().GetAwaiter().GetResult();
         page.SetDefaultTimeout(Timeout);

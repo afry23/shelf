@@ -11,6 +11,7 @@
   import NotesPanel from './NotesPanel.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
+  import { createQuoteCopy } from './quote.svelte';
   import SelectionBar from './SelectionBar.svelte';
 
   let { book, file }: { book: WorkDetail; file: WorkFile } = $props();
@@ -42,6 +43,7 @@
   }
   const annotations = createAnnotations(() => ({ file: file.id }));
   let notesOpen = $state(false);
+  const quote = createQuoteCopy(() => file.id);
   let pending = $state<Pending | null>(null);
   let markerColor = $state<AnnotationColor>('yellow');
   let selectedNote = $state<string | null>(null);
@@ -327,7 +329,10 @@
     <button type="button" class="button" aria-expanded={notesOpen} disabled={pages === 0} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
 
     {#if pending}
-      <SelectionBar bind:color={markerColor} onhighlight={highlight} />
+      <SelectionBar bind:color={markerColor} onhighlight={highlight} citable={!!book.citeKey} oncite={() => pending && quote.copy(pending.text, `page=${pending.page}`)} />
+    {/if}
+    {#if quote.message}
+      <span class="quote-status" class:failed={quote.message.failed} role={quote.message.failed ? 'alert' : 'status'}>{quote.message.text}</span>
     {/if}
   {/snippet}
 
@@ -349,6 +354,15 @@
 </ReaderFrame>
 
 <style>
+  .quote-status {
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .quote-status.failed {
+    color: var(--danger);
+  }
+
   /* The areas of the highlights lie over the page and under the pointer: the text below stays selectable. */
   .pages :global(.shelf-marks) {
     position: absolute;

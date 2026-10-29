@@ -44,6 +44,17 @@ public sealed record AnnotationView(
     string UpdatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double[][]? Rects = null);
 
+/// <summary>
+/// A passage as a quote (F-ANN-8): <paramref name="Text"/> is the Markdown block quote with the citation, <paramref name="Place"/> the
+/// place for people ("page 12") or null, <paramref name="Bibtex"/> the entry of the work.
+/// </summary>
+public sealed record PassageCitation(
+    string Id,
+    string CiteKey,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Place,
+    string Text,
+    string Bibtex);
+
 /// <summary>A work as a Markdown file: the name (the cite key) and the text.</summary>
 public sealed record MarkdownExport(string FileName, string Content);
 

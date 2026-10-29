@@ -44,6 +44,7 @@ Feature: A read-only MCP server
     And the MCP server is running on the library "library"
     Then the server offers exactly the tools:
       | tool                 |
+      | cite_passage         |
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |

@@ -128,6 +128,13 @@ internal static class Api
             .Produces<AnnotationView>(StatusCodes.Status201Created)
             .Produces<AnnotationView>(StatusCodes.Status200OK);
 
+        // A read: the passage comes in the body because it can be long; nothing is stored.
+        api.MapPost("/files/{id}/quote", ([FromServices] LibraryHandle library, string id, [FromBody] QuoteRequest body) =>
+                Run(WebJsonContext.Default.PassageCitation, () =>
+                    library.Service.QuotePassage(id, OptionalText(body.Quote, "quote") ?? string.Empty, OptionalText(body.Locator, "locator"))))
+            .WithName("QuotePassage")
+            .Produces<PassageCitation>(StatusCodes.Status200OK);
+
         api.MapMethods("/files/{id}/annotations/{annotation}", ["PATCH"], ([FromServices] LibraryHandle library, string id, string annotation, [FromBody] JsonObject patch) =>
                 Run(WebJsonContext.Default.AnnotationView, () => library.Service.UpdateAnnotation(id, annotation, Changes(patch))))
             .WithName("EditAnnotation")

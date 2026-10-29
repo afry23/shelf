@@ -44,6 +44,7 @@ Feature: The MCP server over Streamable HTTP
       | add_bookmark         |
       | add_note             |
       | add_tags             |
+      | cite_passage         |
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
@@ -92,6 +93,7 @@ Feature: The MCP server over Streamable HTTP
     And the MCP server is running over HTTP on the library "library"
     Then the server offers exactly the tools:
       | tool                 |
+      | cite_passage         |
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
