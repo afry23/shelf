@@ -40,7 +40,7 @@ public sealed record WorkListEntry(
 /// <summary>A value of a facet and the number of works of the filtered set that have it.</summary>
 public sealed record FacetCount(string Value, int Count);
 
-/// <summary>Counts over the filtered set, for the filter panel. Tags, authors and publishers are cut at <see cref="LibraryBrowse.FacetLimit"/> values.</summary>
+/// <summary>Counts over the filtered set, for the filter panel. Tags, authors, publishers and series are cut at <see cref="LibraryBrowse.FacetLimit"/> values.</summary>
 public sealed record BrowseFacets(
     IReadOnlyList<FacetCount> Tags,
     IReadOnlyList<FacetCount> Authors,
@@ -48,7 +48,9 @@ public sealed record BrowseFacets(
     IReadOnlyList<FacetCount> Languages,
     IReadOnlyList<FacetCount> Years,
     IReadOnlyList<FacetCount> Formats,
-    IReadOnlyList<FacetCount> Statuses);
+    IReadOnlyList<FacetCount> Statuses,
+    IReadOnlyList<FacetCount> Series,
+    IReadOnlyList<FacetCount> Types);
 
 /// <param name="Total">Works that pass the filter, whatever the page.</param>
 public sealed record BrowsePage(int Total, IReadOnlyList<WorkListEntry> Items, BrowseFacets Facets);
@@ -179,6 +181,10 @@ public static class LibraryBrowse
         var formats = Counts(connection, filter, $"SELECT f.format, COUNT(DISTINCT f.work_id) FROM files f WHERE f.work_id IN ({selection}) GROUP BY f.format ORDER BY 2 DESC, 1");
         var statuses = Counts(connection, filter, $"SELECT w.read_status, COUNT(*) FROM works w WHERE w.id IN ({selection}) GROUP BY 1 ORDER BY 2 DESC, 1");
 
+        // A series written in two cases is one series (the filter ignores case); the spelling that sorts first is shown.
+        var series = Counts(connection, filter, $"SELECT MIN(w.series), COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.series IS NOT NULL GROUP BY lower(w.series) ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
+        var types = Counts(connection, filter, $"SELECT w.kind, COUNT(*) FROM works w WHERE w.id IN ({selection}) GROUP BY 1 ORDER BY 2 DESC, 1");
+
         // Authors are in a JSON column of the work; counting them here keeps the schema as it is.
         var authors = new Dictionary<string, int>(StringComparer.Ordinal);
         using (var command = Command(connection, $"SELECT w.authors_json FROM works w WHERE w.id IN ({selection})", filter))
@@ -200,7 +206,9 @@ public static class LibraryBrowse
             languages,
             years,
             formats,
-            statuses);
+            statuses,
+            series,
+            types);
     }
 
     private static List<FacetCount> Counts(SqliteConnection connection, LibrarySearch.Filter filter, string sql)

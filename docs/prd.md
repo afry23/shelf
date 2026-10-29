@@ -206,7 +206,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 |---|---|---|
 | F-SRC-1 | Full-text index over metadata and book content using SQLite FTS5. | M |
 | F-SRC-2 | Ranking with BM25. Metadata fields (title, author) are weighted higher than content. | M |
-| F-SRC-3 | Query language: free text, phrases `"..."`, field filters (`author:`, `title:`, `tag:`, `publisher:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`), negation `-tag:x`, prefix `kube*`. | M |
+| F-SRC-3 | Query language: free text, phrases `"..."`, field filters (`author:`, `title:`, `tag:`, `publisher:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`, `type:paper`, `series:"The Pragmatic Programmer"`), negation `-tag:x`, prefix `kube*`. | M |
 | F-SRC-4 | Fuzzy search for typos in title and author via trigrams. | S |
 | F-SRC-5 | Content hits with snippet and location: page (PDF) or chapter + CFI (EPUB). | M |
 | F-SRC-6 | Language-dependent stemming for German and English. | S |
@@ -346,12 +346,13 @@ Requirements for the MCP server:
 | F-WEB-4 | Responsive for desktop and tablet, light and dark mode. | M |
 | F-WEB-5 | Keyboard control: `/` focuses the search, `j`/`k` navigates, `Enter` opens. | S |
 | F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. | M |
+| F-WEB-7 | The filter panel of the library view also has **series** and **type** (book or paper), with counts like the other facets, and the query language has the filter `series:` (the whole name of a series, ignoring case; a series written in two cases is one facet value). | S |
 
 ### 8.2 Views
 
 | View | Content | Prio |
 |---|---|---|
-| **Library** | Grid (covers) or list; faceted filters for tags, author, publisher, language, year, format, reading status; sorting; paging with page numbers and a page size (F-WEB-6) | M |
+| **Library** | Grid (covers) or list; faceted filters for tags, author, publisher, language, year, format, reading status, series, type (F-WEB-7); sorting; paging with page numbers and a page size (F-WEB-6) | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle and an Everything / Titles only scope toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |

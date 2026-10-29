@@ -492,7 +492,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
         if (parsed.Include.Count > 0)
         {
-            throw new LibraryException("the list takes filters only (tag: author: title: lang: year: format: status:); use search for words");
+            throw new LibraryException("the list takes filters only (tag: author: title: publisher: lang: year: format: status: type: series:); use search for words");
         }
 
         try

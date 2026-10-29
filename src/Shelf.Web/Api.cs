@@ -788,7 +788,7 @@ internal static class Api
         new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus, w.HasCover);
 
     private static Facets Facets(BrowseFacets f) =>
-        new(Values(f.Tags), Values(f.Authors), Values(f.Publishers), Values(f.Languages), Values(f.Years), Values(f.Formats), Values(f.Statuses));
+        new(Values(f.Tags), Values(f.Authors), Values(f.Publishers), Values(f.Languages), Values(f.Years), Values(f.Formats), Values(f.Statuses), Values(f.Series), Values(f.Types));
 
     private static FacetValue[] Values(IReadOnlyList<FacetCount> counts) => [.. counts.Select(c => new FacetValue(c.Value, c.Count))];
 }
