@@ -115,6 +115,49 @@ public sealed class OnlineSourcesTests
         Assert.Equal("image/png", cover?.ContentType);
     }
 
+    // The answer of export.arxiv.org as it really is (captured 2026-10-29, shortened): the ID of an entry is a link.
+    private const string ArxivAnswer = """
+        <?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+          <id>https://arxiv.org/api/zUwBFJ+vAUSpXAR7QFveSY/bZos</id>
+          <title>arXiv Query: search_query=&amp;id_list=1706.03762&amp;start=0&amp;max_results=10</title>
+          <entry>
+            <id>http://arxiv.org/abs/1706.03762v7</id>
+            <title>Attention Is All You
+        Need</title>
+            <summary>The dominant sequence
+        transduction models.</summary>
+            <published>2017-06-12T17:57:34Z</published>
+            <arxiv:journal_ref>Advances in NeurIPS 30</arxiv:journal_ref>
+            <arxiv:doi>10.48550/arXiv.1706.03762</arxiv:doi>
+            <author><name>Ashish Vaswani</name></author>
+            <author><name>Noam Shazeer</name></author>
+          </entry>
+        </feed>
+        """;
+
+    [Fact]
+    public void Arxiv_reads_the_entry_of_the_real_answer()
+    {
+        var http = new StubHttp(ArxivAnswer, contentType: "application/atom+xml");
+        var paper = Assert.Single(new ArxivSource(http).FindByArxivId("1706.03762", None));
+        Assert.Equal("1706.03762", paper.ArxivId);
+        Assert.Equal("Attention Is All You Need", paper.Title);
+        Assert.Equal(["Ashish Vaswani", "Noam Shazeer"], paper.Authors);
+        Assert.Equal(2017, paper.Year);
+        Assert.Equal("Advances in NeurIPS 30", paper.Venue);
+        Assert.Equal("10.48550/arxiv.1706.03762", paper.Doi);
+        Assert.Equal("The dominant sequence transduction models.", paper.Abstract);
+        Assert.Contains("id_list=1706.03762", http.Urls[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Arxiv_reads_the_ID_of_an_old_style_entry()
+    {
+        var http = new StubHttp(ArxivAnswer.Replace("abs/1706.03762v7", "abs/hep-th/9901001v2", StringComparison.Ordinal), contentType: "application/atom+xml");
+        Assert.Equal("hep-th/9901001", Assert.Single(new ArxivSource(http).FindByArxivId("hep-th/9901001", None)).ArxivId);
+    }
+
     private sealed class StubHttp(string body, HttpStatusCode status = HttpStatusCode.OK, string contentType = "application/json") : IHttpGetter
     {
         public List<string> Urls { get; } = [];

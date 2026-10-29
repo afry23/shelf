@@ -1,11 +1,12 @@
 using Shelf.Core.Model;
 using Shelf.Index;
+using Shelf.Organize;
 
 namespace Shelf.Library;
 
 public sealed partial class LibraryService
 {
-    private static readonly string[] SourceNames = ["openlibrary", "google"];
+    private static readonly string[] SourceNames = ["openlibrary", "google", "crossref", "arxiv"];
 
     /// <summary>
     /// Asks the online sources what they know about a work and shows what would change; nothing is written (F-IMP-6). Several
@@ -70,11 +71,39 @@ public sealed partial class LibraryService
         }
     }
 
+    /// <summary>
+    /// Loads a paper by DOI or arXiv ID: metadata and open-access PDF, as <c>shelf fetch</c> does (F-PAP-8). Only on request.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: the text is neither a DOI nor an arXiv ID. Conflict: the paper is in the library, no source knows it, or no PDF is found.</exception>
+    public FetchPaperOutcome FetchPaper(string paper, CancellationToken cancellation)
+    {
+        if (PaperIds.Parse(paper) is not { } reference)
+        {
+            throw new LibraryException($"'{paper}' is neither a DOI nor an arXiv ID");
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                var result = LibraryPapers.Fetch(root, reference, metadataSources ?? [], settings.Fetch, cancellation);
+
+                // A paper without a cover is no reason to fail a work that was made.
+                LibraryCovers.FillWorks(root, [result.Work]);
+                return new FetchPaperOutcome(result.Work.ToString(), result.Title, result.File, result.Folder, result.Source, [.. result.Warnings]);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message, LibraryErrorKind.Conflict);
+            }
+        }
+    }
+
     private EnrichmentPreview Lookup(LibraryWork work, string? source, bool overwrite, int? pick, CancellationToken cancellation)
     {
         if (source is not null && !SourceNames.Contains(source))
         {
-            throw new LibraryException("source must be openlibrary or google");
+            throw new LibraryException("source must be openlibrary, google, crossref or arxiv");
         }
 
         if (pick is < 1)

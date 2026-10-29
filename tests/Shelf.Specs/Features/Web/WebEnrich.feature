@@ -159,7 +159,7 @@ Feature: Loading book metadata from the internet over HTTP
 
     Examples:
       | body                | message                                |
-      | { "source": "bing" } | source must be openlibrary or google   |
+      | { "source": "bing" } | source must be openlibrary, google, crossref or arxiv   |
       | { "pick": 0 }       | pick must be 1 or greater              |
 
   Scenario: An unknown work is not found

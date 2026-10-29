@@ -20,9 +20,16 @@ public static class ConfigTemplate
         # probable_cosine = 0.95
 
         # How shelf organize names folders and files. Placeholders: {author_sort}, {author}, {title},
-        # {year}, {series}, {series_index}, {language}, {first_tag}, {ext}. The last part must end with ".{ext}".
+        # {year}, {series}, {series_index}, {language}, {first_tag}, {cite_key}, {ext}. The last part must end with ".{ext}".
         # [organize]
         # pattern = "{author_sort}/{title} ({year})/{title}.{ext}"
+        # Papers have a pattern of their own; {cite_key} is the title if a paper has no key.
+        # paper_pattern = "papers/{year}/{cite_key}/{cite_key}.{ext}"
+
+        # shelf fetch looks for a free PDF of a paper at Unpaywall if arXiv has none. Unpaywall asks for an
+        # e-mail address with every request; without one it is not asked. Only shelf fetch and "Add paper" go online.
+        # [fetch]
+        # unpaywall_email = "you@example.org"
 
         # The reader of the web interface: the format that "Read" opens when a work has an EPUB and a PDF.
         # [reader]

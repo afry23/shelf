@@ -218,7 +218,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 |---|---|---|
 | F-SEM-1 | Local embeddings with a multilingual model via ONNX Runtime, default `multilingual-e5-small`. No network access at runtime. | M |
 | F-SEM-2 | Content is split into chunks of approx. 400–600 tokens with overlap. Each chunk stores its location (page or CFI). | M |
-| F-SEM-3 | Additionally, there is one embedding per work built from title, description, table of contents, and tags for work-level searches. | M |
+| F-SEM-3 | Additionally, there is one embedding per work built from title, description, abstract (papers, F-PAP-7), table of contents, and tags for work-level searches. | M |
 | F-SEM-4 | Vector storage in SQLite via the `sqlite-vec` extension, i.e. no additional database. | M |
 | F-SEM-5 | Hybrid search: FTS and vector results are combined via Reciprocal Rank Fusion. | S |
 | F-SEM-6 | "Similar books" for a given work. | S |
@@ -239,6 +239,23 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-DUP-6 | Pairs can be marked as "not a duplicate". They are then not suggested again. The marking is stored in `book.json` (across works: on both sides as the other work's ID; within a work: as a file pair). | S |
 | F-DUP-7 | A single file or a whole work can be deleted on purpose: `shelf delete <work> [file]` (dry run unless `--yes`) and the work details in the web interface. It goes to `.shelf/trash/` like every deletion (F-DUP-4) and `shelf undo` brings it back. The last file of a work takes the work along (sidecar, cover, notes). Not offered via MCP. | M |
 
+### 6.9 Scientific Papers
+
+A work is a **book** (default) or a **paper**. Papers are identified by DOI or arXiv ID instead of ISBN and are cited through BibTeX. Everything else (files, tags, annotations, search) works as for books.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-PAP-1 | `book.json` has an optional field `kind` (`book` or `paper`; a missing field means `book`, `schema` stays 1). Papers add the optional fields DOI, arXiv ID, PMID, venue, volume, issue, pages, abstract and keywords; the authors stay a list of names. | M |
+| F-PAP-2 | On import, the DOI is detected by regex in the PDF info dictionary, XMP and the first page, the arXiv ID in the file name (`2301.12345v2.pdf`, `hep-th/9901001.pdf`) and the first page. A work with a DOI or arXiv ID gets `kind: paper`. | M |
+| F-PAP-3 | `shelf enrich` also works for papers: by DOI Crossref is asked, by arXiv ID the arXiv API, without either by title and author (same exact-match rule as F-IMP-6). Preview unless `--apply`, only empty fields are filled unless `--overwrite`, only on explicit command. Title, authors, venue, year and abstract are taken over. | M |
+| F-PAP-4 | A cite key is generated as `<first author surname><year><first significant title word>` in lower case, ASCII only (`vaswani2017attention`), with a letter suffix on a clash. Existing cite keys are never changed. | M |
+| F-PAP-5 | Export as BibTeX, CSL-JSON and RIS for one work or for the result of a query: `shelf export --format bibtex [query]`; in the web interface a download on the work page ("Cite as", `GET /api/v1/works/{id}/citation?format=`) and in the library view ("Export citations" for the filter shown, `GET /api/v1/citations?format=&query=`); MCP tool `export_citations` (`query`, `format`, `id`; always offered, it only reads). `shelf export` gives a work without a cite key one first; the web interface and MCP write nothing and leave such a work out (response headers `X-Shelf-Works` and `X-Shelf-Skipped`, field `skipped`), `shelf citekeys` gives the keys. | M |
+| F-PAP-6 | `shelf import-bib <file>` reads BibTeX (entries in braces or parentheses, values in braces, quotes, numbers or `@string` macros, LaTeX accents) and assigns the entries to existing works by DOI, then arXiv ID, then exact normalized title + author surname. A preview unless `--apply`. It fills empty fields (authors, year, venue, publisher, volume, issue, pages, DOI, arXiv ID, ISBN, abstract, keywords) and the cite key; a differing value stays unless `--overwrite` (with `--apply`). The title is never changed. A cite key that is not valid or belongs to another work is not used and reported. Entries without a work, or with several, are listed. Nothing goes online. | S |
+| F-PAP-7 | Search filters `type:paper`, `doi:`, `arxiv:`, `venue:`; the abstract is part of the full-text index and of the work-level embedding. | M |
+| F-PAP-8 | `shelf fetch <doi or arXiv ID>` and "Add paper" in the library view of the web interface (REST `POST /api/v1/works/fetch`) load the metadata (F-PAP-3) and the open-access PDF and create the work. All usual spellings are accepted (`1706.03762`, `arXiv:1706.03762v5`, `https://arxiv.org/abs/…`, `10.48550/arXiv.…`, `doi:…`, `https://doi.org/…`). The PDF comes from arXiv first; for a DOI, [Unpaywall](https://unpaywall.org) is asked next for a legal free copy (the best location first, at most three tries, only a file that really is a PDF counts). Unpaywall asks for an e-mail address with every request, so it is used only if `fetch.unpaywall_email` is set (global or library config); without it the error names the key. A paper without a free PDF creates nothing. A paper that is in the library already (same DOI or arXiv ID) is not loaded again. Only on explicit command. (`shelf add` stays what it is, F-GRP-7.) | S |
+| F-PAP-9 | In the grouping cascade (F-GRP-1) DOI and arXiv ID (without the version) come first. Versions of an arXiv paper are one work; a preprint and its published version are two works marked "related" (F-GRP-5). | S |
+| F-PAP-10 | `shelf organize` names a paper by its own pattern, `organize.paper_pattern` in the config or `--paper-pattern` (default `papers/{year}/{cite_key}/{cite_key}.{ext}`); `organize.pattern` and `--pattern` stay the pattern of books. The new placeholder `{cite_key}` is the cite key of the work, the title if there is none; it works in both patterns. A paper without a year goes straight to `papers/<cite key>`. | S |
+
 ## 7. Interfaces
 
 ### 7.1 CLI
@@ -257,6 +274,9 @@ shelf model install [<folder>]            Install the embedding model (download,
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
+shelf fetch <doi or arXiv ID>                 Load a paper (metadata + open-access PDF) as a new work
+shelf export [query] [--format bibtex|csl-json|ris] [--out file]  Citations of all works or of a search result
+shelf import-bib <file> [--apply] [--overwrite]  Take over DOIs, venues and cite keys from a BibTeX file (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)

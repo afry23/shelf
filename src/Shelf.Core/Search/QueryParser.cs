@@ -139,6 +139,10 @@ public static partial class QueryParser
             "year" => FieldKind.Year,
             "format" => FieldKind.Format,
             "status" => FieldKind.Status,
+            "type" => FieldKind.Type,
+            "doi" => FieldKind.Doi,
+            "arxiv" => FieldKind.Arxiv,
+            "venue" => FieldKind.Venue,
             _ => null,
         };
         if (kind is null)
@@ -176,6 +180,16 @@ public static partial class QueryParser
                 return status is "unread" or "reading" or "read"
                     ? new ValueFilter(FieldKind.Status, status, negated)
                     : throw new QueryException($"status: '{value}' is not one of unread, reading, read");
+            case FieldKind.Type:
+                var type = value.ToLowerInvariant();
+                return type is "book" or "paper"
+                    ? new ValueFilter(FieldKind.Type, type, negated)
+                    : throw new QueryException($"type: '{value}' is not one of book, paper");
+            case FieldKind.Doi:
+                // "doi:10.1145/x", "doi:https://doi.org/10.1145/x": the DOI itself is what counts.
+                return new ValueFilter(FieldKind.Doi, (PaperIds.FindDoi(value) ?? value).ToLowerInvariant(), negated);
+            case FieldKind.Arxiv:
+                return new ValueFilter(FieldKind.Arxiv, PaperIds.FindArxivId(value) ?? value, negated);
             default:
                 return new ValueFilter(kind.Value, value.ToLowerInvariant(), negated);
         }

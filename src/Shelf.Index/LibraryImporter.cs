@@ -180,7 +180,7 @@ public static class LibraryImporter
             }
 
             var metadata = analysis.Book!.Metadata;
-            var signature = WorkSignature.Create(metadata.Title, metadata.Authors, metadata.Year, metadata.Isbn13);
+            var signature = WorkSignature.Create(metadata.Title, metadata.Authors, metadata.Year, metadata.Isbn13, metadata.Doi, metadata.ArxivId);
             var name = Path.GetFileName(source);
             var decision = matcher.Decide(new IncomingFile(name, signature, analysis.Fingerprint, IndexWriter.FormatOf(name)));
 
@@ -273,7 +273,7 @@ public static class LibraryImporter
                 Description = metadata.Description,
                 Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
                 Files = [new SidecarFile(name)],
-            };
+            }.From(metadata);
 
             if (CiteKeyOf(sidecar) is { } citeKey)
             {

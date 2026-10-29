@@ -95,6 +95,24 @@ internal static class Api
             .WithName("ExportWork")
             .Produces(StatusCodes.Status200OK, contentType: "text/markdown");
 
+        api.MapGet("/citations", (
+                [FromServices] LibraryHandle library,
+                HttpContext http,
+                [FromQuery] string? format,
+                [FromQuery] string? query) =>
+            Citations(http, () => library.Service.ExportCitations(query, format ?? "bibtex")))
+            .WithName("ExportCitations")
+            .Produces(StatusCodes.Status200OK);
+
+        api.MapGet("/works/{id}/citation", (
+                [FromServices] LibraryHandle library,
+                HttpContext http,
+                string id,
+                [FromQuery] string? format) =>
+            Citations(http, () => library.Service.ExportCitations(null, format ?? "bibtex", RequireId(id))))
+            .WithName("ExportWorkCitation")
+            .Produces(StatusCodes.Status200OK);
+
         api.MapPost("/files/{id}/annotations", ([FromServices] LibraryHandle library, string id, [FromBody] AnnotationRequest body) =>
                 Run(WebJsonContext.Default.AnnotationView, () => library.Service.AddAnnotation(id, Draft(body)), StatusCodes.Status201Created))
             .WithName("AddAnnotation")
@@ -153,6 +171,13 @@ internal static class Api
             .WithName("CreateWork")
             .Accepts<byte[]>("application/octet-stream")
             .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);
+
+        api.MapPost("/works/fetch", ([FromServices] LibraryHandle library, [FromBody] FetchRequest? body) =>
+                Run(WebJsonContext.Default.FetchPaperOutcome, () =>
+                    library.Service.FetchPaper(OptionalText(body?.Paper, "paper") ?? throw new LibraryException("paper is required"), CancellationToken.None)))
+            .WithName("FetchPaper")
+            .Accepts<FetchRequest>("application/json")
+            .Produces<FetchPaperOutcome>(StatusCodes.Status200OK);
 
         api.MapPost("/works/{id}/files", (
                 [FromServices] LibraryHandle library,
@@ -657,6 +682,32 @@ internal static class Api
             return status == StatusCodes.Status204NoContent
                 ? Results.NoContent()
                 : Results.Json(result, info, statusCode: status);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+        catch (IndexException e)
+        {
+            return new ProblemResult(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    // The citations as a download; how many works it holds and how many were left out (no cite key) are in headers, because the body is the file.
+    private static IResult Citations(HttpContext http, Func<CitationsExport> call)
+    {
+        try
+        {
+            var export = call();
+            http.Response.Headers["X-Shelf-Works"] = export.Works.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            http.Response.Headers["X-Shelf-Skipped"] = export.Skipped.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var type = export.Format switch
+            {
+                "csl-json" => "application/vnd.citationstyles.csl+json; charset=utf-8",
+                "ris" => "application/x-research-info-systems; charset=utf-8",
+                _ => "text/x-bibtex; charset=utf-8",
+            };
+            return Results.File(Encoding.UTF8.GetBytes(export.Content), type, export.FileName);
         }
         catch (LibraryException e)
         {

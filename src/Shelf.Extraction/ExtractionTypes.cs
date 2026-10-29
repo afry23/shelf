@@ -86,6 +86,12 @@ public sealed record BookMetadata
     /// <summary>ISBN-13: from the metadata first, from the first and last pages second.</summary>
     public string? Isbn13 { get; init; }
 
+    /// <summary>DOI of a paper: from the metadata first, from the first pages second (F-PAP-2).</summary>
+    public string? Doi { get; init; }
+
+    /// <summary>arXiv ID without version: from the file name first, from the metadata and the first pages second (F-PAP-2).</summary>
+    public string? ArxivId { get; init; }
+
     public string? Series { get; init; }
 
     public double? SeriesIndex { get; init; }

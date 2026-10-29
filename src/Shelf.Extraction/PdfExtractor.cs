@@ -19,6 +19,9 @@ internal static class PdfExtractor
     private const int IsbnHeadPages = 5;
     private const int IsbnTailPages = 3;
 
+    // DOI and arXiv ID sit on the title page or the page header of the first pages (F-PAP-2).
+    private const int PaperHeadPages = 2;
+
     // An outline that cannot be read only means that no page is recognised by its section title.
     private static List<TocEntry> OutlineOf(PdfDocument document)
     {
@@ -47,6 +50,7 @@ internal static class PdfExtractor
         List<string> xmpCreators = [];
         string? xmpLanguage = null;
         string? xmpIsbn = null;
+        string? xmpDoi = null;
         if (document.TryGetXmpMetadata(out var xmp))
         {
             using var stream = new MemoryStream(xmp.GetXmlBytes().ToArray());
@@ -56,10 +60,13 @@ internal static class PdfExtractor
             xmpCreators = [.. Items(xml, "creator").Select(TextHelpers.Clean).OfType<string>()];
             xmpLanguage = TextHelpers.Clean(Items(xml, "language").FirstOrDefault());
             xmpIsbn = Items(xml, "identifier").Select(Isbn.FromIdentifier).FirstOrDefault(i => i is not null);
+            xmpDoi = Items(xml, "identifier").Concat(Items(xml, "source")).Select(PaperIds.FindDoi).FirstOrDefault(d => d is not null);
         }
 
         var segments = new List<TextSegment>();
         string? textIsbn = null;
+        string? textDoi = null;
+        string? textArxiv = null;
         if (withText)
         {
             var pageWords = new List<(int Number, List<string> Words)>();
@@ -69,6 +76,13 @@ internal static class PdfExtractor
                 if (words.Count == 0 || string.IsNullOrWhiteSpace(string.Join(' ', words)))
                 {
                     continue;
+                }
+
+                if (number <= PaperHeadPages)
+                {
+                    var pageText = string.Join(' ', words);
+                    textDoi ??= PaperIds.FindDoi(pageText);
+                    textArxiv ??= PaperIds.FindArxivId(pageText);
                 }
 
                 if (textIsbn is null && (number <= IsbnHeadPages || number > pages - IsbnTailPages))
@@ -96,6 +110,7 @@ internal static class PdfExtractor
             ? xmpCreators
             : SplitAuthors(info.Author);
         var infoIsbn = Isbn.Find(string.Join(' ', info.Keywords ?? string.Empty, info.Subject ?? string.Empty));
+        var infoText = string.Join(' ', info.Keywords ?? string.Empty, info.Subject ?? string.Empty);
         var metadata = new BookMetadata
         {
             Title = title,
@@ -104,6 +119,8 @@ internal static class PdfExtractor
             AuthorsOrigin = authors.Count == 0 ? MetadataOrigin.None : MetadataOrigin.FileContent,
             Language = xmpLanguage,
             Isbn13 = xmpIsbn ?? infoIsbn ?? textIsbn,
+            Doi = xmpDoi ?? PaperIds.FindDoi(infoText) ?? textDoi,
+            ArxivId = PaperIds.FindArxivId(Path.GetFileName(path)) ?? PaperIds.FindArxivId(infoText) ?? textArxiv,
         };
         return new ExtractedBook(metadata, pages, segments);
     }

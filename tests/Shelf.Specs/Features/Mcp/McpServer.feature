@@ -42,6 +42,7 @@ Feature: The MCP server
       | tool                 |
       | add_note             |
       | add_tags             |
+      | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
       | get_annotations      |
@@ -116,6 +117,7 @@ Feature: The MCP server
       | get_book             | { "id": "01J9Z3K0000000000000000001" }            |
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
       | list_tags            | {}                                                |
+      | export_citations     | {}                                                |
       | find_duplicates      | {}                                                |
       | find_probable_duplicates | {}                                            |
       | propose_organization | {}                                                |
@@ -149,4 +151,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_note, add_tags, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"
+    Then the tool names sorted are "add_note, add_tags, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"

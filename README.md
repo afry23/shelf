@@ -197,6 +197,8 @@ Missing files are fine. Unknown keys produce a warning on stderr. Invalid values
 | `grouping.probable_hamming` | `3` | both | Distance for probable duplicates across works |
 | `grouping.probable_cosine` | `0.95` | both | Embedding similarity for probable duplicates |
 | `organize.pattern` | `{author_sort}/{title} ({year})/{title}.{ext}` | both | Folder and file naming for `shelf organize` |
+| `organize.paper_pattern` | `papers/{year}/{cite_key}/{cite_key}.{ext}` | both | Folder and file naming of papers for `shelf organize` |
+| `fetch.unpaywall_email` | none | both | E-mail address that Unpaywall asks for; without it `shelf fetch` does not ask Unpaywall |
 | `semantic.model` | `multilingual-e5-small` | both | Embedding model (changing it re-triggers embeddings) |
 | `reader.preferred_format` | `epub` | both | Format the web reader opens (`epub` or `pdf`) |
 | `mcp.read_only` | `false` | both | Disable the MCP write tools |
@@ -207,7 +209,7 @@ Missing files are fine. Unknown keys produce a warning on stderr. Invalid values
 | `default_library` | none | global | Library name used outside any library folder |
 | `[[libraries]]` | none | global | Named libraries (`name`, `path`) |
 
-Pattern placeholders: `{author_sort}`, `{author}`, `{title}`, `{year}`, `{series}`, `{series_index}`, `{language}`, `{first_tag}`, `{ext}`. The last path part must end with `.{ext}`.
+Pattern placeholders: `{author_sort}`, `{author}`, `{title}`, `{year}`, `{series}`, `{series_index}`, `{language}`, `{first_tag}`, `{cite_key}` (the title if a work has no cite key), `{ext}`. The last path part must end with `.{ext}`.
 
 ### Example
 
@@ -267,7 +269,10 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf model install [<folder>]` | Install the embedding model (download, or offline from a folder) |
 | `shelf show <work-id\|path>` | Details of a work |
 | `shelf edit <work-id> [--title ...]` | Change metadata |
-| `shelf enrich <work-id> [--apply]` | Load metadata and cover online (preview unless `--apply`) |
+| `shelf enrich <work-id> [--apply]` | Load metadata and cover online (preview unless `--apply`); papers via Crossref and arXiv |
+| `shelf fetch <doi\|arXiv ID>` | Add a paper: metadata and open-access PDF from arXiv, or via Unpaywall for a DOI |
+| `shelf export [query] [--format bibtex\|csl-json\|ris]` | Citations of all works or of a search result |
+| `shelf import-bib <file> [--apply]` | Take over DOIs, venues and cite keys from a BibTeX file (preview unless `--apply`) |
 | `shelf tag add\|rm\|list\|rename\|merge` | Manage tags; `tag add <tag> --query "<search>"` tags in bulk |
 | `shelf dupes [--interactive]` | Find and clean up duplicates |
 | `shelf merge <a> <b>` / `shelf split <work> <file>` | Fix grouping by hand |
@@ -276,7 +281,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf move <work> <file> (--to <work>\|--new)` | Move a file to another work |
 | `shelf delete <work> [file]` | Move a file or work to the trash |
 | `shelf review` | Resolve uncertain assignments |
-| `shelf organize [--apply] [--pattern ...]` | Re-sort the library by pattern |
+| `shelf organize [--apply] [--pattern ...] [--paper-pattern ...]` | Re-sort the library by pattern; papers have a pattern of their own |
 | `shelf undo` | Revert the last organize, tag, dupes or delete run |
 | `shelf trash empty [--yes]` | Delete the trash for good |
 | `shelf notes` | Notes and highlights |
@@ -291,7 +296,7 @@ Run `shelf <command> --help` for all options.
 
 ### Search syntax
 
-Free text, phrases `"..."`, prefixes `kube*`, negation `-tag:x`, and filters: `author:`, `title:`, `tag:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`.
+Free text, phrases `"..."`, prefixes `kube*`, negation `-tag:x`, and filters: `author:`, `title:`, `tag:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`, and for papers `type:paper`, `doi:`, `arxiv:`, `venue:`.
 
 ```sh
 shelf search 'author:kleppmann year:>2015 "stream processing"'
@@ -366,7 +371,7 @@ Only once, to download the model (`shelf model install`). Offline: `shelf model 
 That is expected on thousands of books (CPU only). It runs in the background, can be interrupted, and resumes where it stopped.
 
 **Does shelf send data anywhere?**
-No telemetry. Network access happens only for the model download, for `shelf enrich` (ISBN, title and author of one work go to Open Library and Google Books), and for `shelf import --from rclone:...` (done by your own `rclone`).
+No telemetry. Network access happens only for the model download, for `shelf enrich` (ISBN, title and author of one work go to Open Library and Google Books; for a paper the DOI, arXiv ID, title and author go to Crossref and arXiv), for `shelf fetch` and "Add paper" in the web UI (the DOI or arXiv ID goes to Crossref, arXiv and, if `fetch.unpaywall_email` is set, to Unpaywall together with that address), and for `shelf import --from rclone:...` (done by your own `rclone`). Nothing else goes online, and these commands only when you run them.
 
 **Can I make the web UI reachable from my network?**
 Yes: `shelf serve --bind 0.0.0.0 --token <secret>`. A token is required for every non-loopback address. Put a TLS reverse proxy in front for anything beyond a trusted LAN.

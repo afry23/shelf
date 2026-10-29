@@ -116,4 +116,22 @@ public static class SampleBooks
             IdentitySeed = $"sample-{seed}-{title}",
         });
     }
+
+    /// <summary>
+    /// A PDF of a paper: the first page shows title, author and <paramref name="firstPageLine"/> (an arXiv stamp, a DOI line), followed by the text.
+    /// </summary>
+    public static byte[] PaperPdf(string title, string author, string firstPageLine, int seed = 1, int words = 600)
+    {
+        var lines = new List<string> { title, "by " + author, firstPageLine, string.Empty };
+        DerivedFixtures.AddBody(lines, TextGenerator.Generate(Languages.English, (ulong)seed, words));
+        return PdfWriter.Write(new PdfSpec
+        {
+            Pages = DerivedFixtures.Paginate(lines),
+            HasInfo = true,
+            Title = title,
+            Author = author,
+            HasXmp = true,
+            IdentitySeed = $"paper-{seed}-{title}",
+        });
+    }
 }

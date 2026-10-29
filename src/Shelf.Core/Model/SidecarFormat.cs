@@ -19,6 +19,7 @@ public static class SidecarFormat
         "schema", "id", "title", "subtitle", "authors", "language", "year", "isbn10", "isbn13", "publisher",
         "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "added", "cover",
         "files", "notDuplicates", "related",
+        "kind", "doi", "arxivId", "pmid", "venue", "volume", "issue", "pages", "abstract", "keywords",
     ];
 
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -206,6 +207,30 @@ public static class SidecarFormat
             Optional(w, "edition", sidecar.Edition);
             Optional(w, "citeKey", sidecar.CiteKey);
             Optional(w, "description", sidecar.Description);
+            if (sidecar.Kind == WorkKind.Paper)
+            {
+                w.WriteString("kind", "paper");
+            }
+
+            Optional(w, "doi", sidecar.Doi);
+            Optional(w, "arxivId", sidecar.ArxivId);
+            Optional(w, "pmid", sidecar.Pmid);
+            Optional(w, "venue", sidecar.Venue);
+            Optional(w, "volume", sidecar.Volume);
+            Optional(w, "issue", sidecar.Issue);
+            Optional(w, "pages", sidecar.Pages);
+            Optional(w, "abstract", sidecar.Abstract);
+            if (sidecar.Keywords.Count > 0)
+            {
+                w.WriteStartArray("keywords");
+                foreach (var keyword in sidecar.Keywords)
+                {
+                    w.WriteStringValue(keyword);
+                }
+
+                w.WriteEndArray();
+            }
+
             w.WriteStartArray("tags");
             foreach (var tag in sidecar.Tags)
             {
@@ -356,6 +381,16 @@ public static class SidecarFormat
                 Edition = String(root, "edition", ""),
                 CiteKey = String(root, "citeKey", ""),
                 Description = String(root, "description", ""),
+                Kind = ReadKind(root),
+                Doi = String(root, "doi", ""),
+                ArxivId = String(root, "arxivId", ""),
+                Pmid = String(root, "pmid", ""),
+                Venue = String(root, "venue", ""),
+                Volume = String(root, "volume", ""),
+                Issue = String(root, "issue", ""),
+                Pages = String(root, "pages", ""),
+                Abstract = String(root, "abstract", ""),
+                Keywords = Strings(root, "keywords", ""),
                 Tags = Strings(root, "tags", ""),
                 Rating = Int32(root, "rating", ""),
                 ReadStatus = ReadStatus(root),
@@ -378,6 +413,16 @@ public static class SidecarFormat
             return value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number)
                 ? number
                 : throw Fail(prefix + name, $"expected integer, found {Kind(value)}");
+        }
+
+        private WorkKind ReadKind(JsonElement root)
+        {
+            return String(root, "kind", "") switch
+            {
+                null or "book" => WorkKind.Book,
+                "paper" => WorkKind.Paper,
+                _ => throw Fail("kind", "must be one of book, paper"),
+            };
         }
 
         private ReadStatus ReadStatus(JsonElement root)

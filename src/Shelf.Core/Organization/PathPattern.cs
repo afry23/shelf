@@ -9,6 +9,7 @@ namespace Shelf.Core.Organization;
 /// <param name="Authors">All authors as written; only the first one names folders (F-ORG-4).</param>
 /// <param name="FirstTag">The first tag of the work, if any.</param>
 /// <param name="Extension">The file extension with or without the dot.</param>
+/// <param name="CiteKey">The cite key of the work; <c>{cite_key}</c> is the title if there is none (F-PAP-10).</param>
 public sealed record PatternInput(
     string Title,
     IReadOnlyList<string> Authors,
@@ -17,7 +18,8 @@ public sealed record PatternInput(
     double? SeriesIndex,
     string? Language,
     string? FirstTag,
-    string Extension);
+    string Extension,
+    string? CiteKey = null);
 
 /// <summary>The pattern is not usable; the message names the problem.</summary>
 public sealed class PatternException(string message) : Exception(message);
@@ -37,12 +39,15 @@ public sealed class PatternException(string message) : Exception(message);
 public sealed partial class PathPattern
 {
     public const string DefaultText = "{author_sort}/{title} ({year})/{title}.{ext}";
+
+    /// <summary>The default for papers (F-PAP-10): by year, named after the key that the paper is cited with.</summary>
+    public const string PaperDefaultText = "papers/{year}/{cite_key}/{cite_key}.{ext}";
     public const int EtAlFrom = 4;
     private const string ExtSuffix = ".{ext}";
 
     private static readonly HashSet<string> Placeholders =
     [
-        "author_sort", "author", "title", "year", "series", "series_index", "language", "first_tag", "ext",
+        "author_sort", "author", "title", "year", "series", "series_index", "language", "first_tag", "cite_key", "ext",
     ];
 
     private readonly string[] _folders;
@@ -56,6 +61,8 @@ public sealed partial class PathPattern
     }
 
     public static PathPattern Default { get; } = Parse(DefaultText);
+
+    public static PathPattern PaperDefault { get; } = Parse(PaperDefaultText);
 
     public string Text { get; }
 
@@ -128,6 +135,7 @@ public sealed partial class PathPattern
             ["series_index"] = input.SeriesIndex?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty,
             ["language"] = input.Language ?? string.Empty,
             ["first_tag"] = input.FirstTag ?? string.Empty,
+            ["cite_key"] = string.IsNullOrWhiteSpace(input.CiteKey) ? input.Title : input.CiteKey,
             ["ext"] = extension,
         };
     }

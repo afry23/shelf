@@ -281,6 +281,23 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature file `UiLibraryPaging.feature` exists, the complete BDD suite is green, the web API is unchanged.
 
+### M9 – Papers
+
+**Goal:** Scientific papers are imported, identified by DOI or arXiv ID, enriched online and exported as BibTeX.
+
+**Status:** in progress on `feat/papers`; feature files in `tests/Shelf.Specs/Features/Papers/`. Done: F-PAP-1 to F-PAP-5 (CLI, REST, library and book view, MCP), F-PAP-7 (filters, abstract in the full-text index and in the work embedding), F-PAP-8 (CLI, REST, library view), F-PAP-6 (CLI), F-PAP-9, F-PAP-10. F-PAP-8 also asks Unpaywall.
+
+| Area | Content | PRD |
+|---|---|---|
+| Data model | `kind`, DOI, arXiv ID, PMID, venue, abstract, keywords in `book.json` | F-PAP-1 |
+| Import | DOI and arXiv ID detection, `kind: paper` | F-PAP-2 |
+| Enrich | Crossref and arXiv API, same preview / apply flow as books | F-PAP-3 |
+| Citations | cite key generation, BibTeX / CSL-JSON / RIS export, BibTeX import | F-PAP-4 to F-PAP-6 |
+| Search | `type:`, `doi:`, `arxiv:`, `venue:`, abstract in index and embeddings | F-PAP-7 |
+| Fetch, grouping, layout | `shelf fetch <doi>`, DOI first in the cascade, pattern per kind | F-PAP-8 to F-PAP-10 |
+
+**Exit criteria:** feature files exist for all F-PAP requirements, the complete BDD suite is green, `shelf reindex` restores the paper fields from the sidecars.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

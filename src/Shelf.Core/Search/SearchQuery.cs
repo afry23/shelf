@@ -16,6 +16,10 @@ public enum FieldKind
     Year,
     Format,
     Status,
+    Type,
+    Doi,
+    Arxiv,
+    Venue,
 }
 
 /// <summary>A word, a quoted phrase, or a word with a prefix star. Always compared as whole words after folding case and accents.</summary>

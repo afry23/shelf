@@ -9,6 +9,33 @@ Feature: The organize pattern in the global and the per-library config
     Then the setting "organize.pattern" is "{author_sort}/{title} ({year})/{title}.{ext}"
     And there are no warnings
 
+  Scenario: Without any config file the default pattern for papers applies
+    When shelf resolves the settings
+    Then the setting "organize.paper_pattern" is "papers/{year}/{cite_key}/{cite_key}.{ext}"
+    And there are no warnings
+
+  Scenario Outline: The pattern for papers is read from the config like the pattern for books
+    Given the global config contains the line "<global line>"
+    And the library config contains the line "<library line>"
+    When shelf resolves the settings
+    Then the setting "organize.paper_pattern" is "<expected>"
+    And the setting "organize.pattern" is "{author_sort}/{title} ({year})/{title}.{ext}"
+
+    Examples:
+      | global line                                         | library line                                    | expected                              |
+      | organize.paper_pattern = '{year}/{cite_key}.{ext}'  | # nothing                                       | {year}/{cite_key}.{ext}               |
+      | organize.paper_pattern = '{year}/{cite_key}.{ext}'  | organize.paper_pattern = '{cite_key}.{ext}'     | {cite_key}.{ext}                      |
+
+  Scenario Outline: An invalid pattern for papers is rejected with the key and the file
+    Given the library config contains the line "<line>"
+    When shelf resolves the settings
+    Then resolving the settings fails with an error containing "<message>"
+
+    Examples:
+      | line                                     | message                                                                        |
+      | organize.paper_pattern = '{cite_key}'    | library.toml: organize.paper_pattern: the last part must end with '.{ext}'     |
+      | organize.paper_pattern = '{nope}.{ext}'  | library.toml: organize.paper_pattern: unknown placeholder '{nope}'             |
+
   Scenario Outline: The library config overrides the global config, which overrides the default
     Given the global config contains the line "<global line>"
     And the library config contains the line "<library line>"

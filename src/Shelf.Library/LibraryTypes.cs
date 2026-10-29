@@ -47,6 +47,12 @@ public sealed record AnnotationView(
 /// <summary>A work as a Markdown file: the name (the cite key) and the text.</summary>
 public sealed record MarkdownExport(string FileName, string Content);
 
+/// <summary>
+/// The citations of works (F-PAP-5): the format (<c>bibtex</c>, <c>csl-json</c> or <c>ris</c>), the text, how many works it holds,
+/// the titles of the works left out because they have no cite key, and the file name for a download.
+/// </summary>
+public sealed record CitationsExport(string Format, string Content, int Works, string[] Skipped, string FileName);
+
 /// <summary>The highlights and notes of a work.</summary>
 public sealed record AnnotationList(string Id, string Title, AnnotationView[] Annotations);
 
@@ -249,6 +255,9 @@ public sealed record AddFileOutcome(string Work, string File, string? Replaced);
 
 /// <summary>A work made by hand from a file (F-GRP-9): its ID, the file name and the folder (relative to the library).</summary>
 public sealed record CreateWorkOutcome(string Work, string File, string Folder);
+
+/// <summary>A paper loaded from the internet by its DOI or arXiv ID (F-PAP-8): the work, its title, the file name, the folder, the source that knew it, and what went wrong on the way.</summary>
+public sealed record FetchPaperOutcome(string Work, string Title, string File, string Folder, string Source, string[] Warnings);
 
 /// <summary>A file moved to another work (F-GRP-8): the work it came from, the work that has it now, its name there, and whether the work it came from went along.</summary>
 public sealed record MoveFileOutcome(string Work, string Target, string File, bool WorkRemoved);

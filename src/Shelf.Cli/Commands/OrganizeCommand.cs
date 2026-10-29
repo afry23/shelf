@@ -12,12 +12,17 @@ internal static class OrganizeCommand
         var apply = new Option<bool>("--apply") { Description = "Move the files (without it, only show what would move)" };
         var pattern = new Option<string?>("--pattern")
         {
-            Description = "Path pattern instead of organize.pattern, e.g. '{author_sort}/{title} ({year})/{title}.{ext}'",
+            Description = "Path pattern for books instead of organize.pattern, e.g. '{author_sort}/{title} ({year})/{title}.{ext}'",
+        };
+        var paperPattern = new Option<string?>("--paper-pattern")
+        {
+            Description = "Path pattern for papers instead of organize.paper_pattern, e.g. 'papers/{year}/{cite_key}/{cite_key}.{ext}'; --pattern is for books",
         };
         var library = LibraryContext.CreateOption();
         var command = new Command("organize", "Move the files to the folders and names of the pattern (dry run unless --apply)");
         command.Options.Add(apply);
         command.Options.Add(pattern);
+        command.Options.Add(paperPattern);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
@@ -35,9 +40,23 @@ internal static class OrganizeCommand
                 }
             }
 
+            PathPattern? chosenPaper = null;
+            if (parseResult.GetValue(paperPattern) is { } paperText)
+            {
+                try
+                {
+                    chosenPaper = PathPattern.Parse(paperText);
+                }
+                catch (PatternException e)
+                {
+                    stderr.WriteLine($"error: --paper-pattern: {e.Message}");
+                    return ExitCodes.Usage;
+                }
+            }
+
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var doApply = parseResult.GetValue(apply);
-            var result = LibraryOrganizer.Organize(context.Root, chosen ?? context.Settings.Organize.Pattern, doApply);
+            var result = LibraryOrganizer.Organize(context.Root, chosen ?? context.Settings.Organize.Pattern, doApply, chosenPaper ?? context.Settings.Organize.PaperPattern);
             foreach (var collision in result.Collisions)
             {
                 stderr.WriteLine($"warning: skipped {collision.From} -> {collision.To}: {collision.Reason}");

@@ -39,7 +39,7 @@ public static class LibraryOrganizer
     /// <exception cref="IndexException">There is no usable index.</exception>
     /// <exception cref="JournalException"/>
     /// <exception cref="LibraryEditException"/>
-    public static OrganizeResult Organize(string root, PathPattern pattern, bool apply)
+    public static OrganizeResult Organize(string root, PathPattern pattern, bool apply, PathPattern? paperPattern = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
         ArgumentNullException.ThrowIfNull(pattern);
@@ -51,7 +51,7 @@ public static class LibraryOrganizer
         var unchanged = 0;
         foreach (var (id, directory) in ListWorks(root))
         {
-            var plan = Plan(root, id, directory, pattern, claimed, collisions);
+            var plan = Plan(root, id, directory, pattern, paperPattern ?? PathPattern.PaperDefault, claimed, collisions);
             if (plan is null)
             {
                 continue;
@@ -104,7 +104,7 @@ public static class LibraryOrganizer
         return [.. works.OrderBy(w => w.Item2, StringComparer.Ordinal)];
     }
 
-    private static WorkPlan? Plan(string root, Ulid id, string directory, PathPattern pattern, HashSet<string> claimed, List<OrganizeCollision> collisions)
+    private static WorkPlan? Plan(string root, Ulid id, string directory, PathPattern bookPattern, PathPattern paperPattern, HashSet<string> claimed, List<OrganizeCollision> collisions)
     {
         var sidecarPath = Path.Combine(root, directory, SidecarStore.FileName);
         if (!File.Exists(sidecarPath))
@@ -119,6 +119,8 @@ public static class LibraryOrganizer
             return null;
         }
 
+        // A paper has a pattern of its own (F-PAP-10).
+        var pattern = sidecar.Kind == WorkKind.Paper ? paperPattern : bookPattern;
         string Render(SidecarFile file) => pattern.Render(new PatternInput(
             sidecar.Title,
             sidecar.Authors,
@@ -127,7 +129,8 @@ public static class LibraryOrganizer
             sidecar.SeriesIndex,
             sidecar.Language,
             sidecar.Tags.FirstOrDefault(),
-            Path.GetExtension(file.Name)));
+            Path.GetExtension(file.Name),
+            sidecar.CiteKey));
 
         var newDirectory = DirectoryOf(Render(existing[0]));
         var moves = new List<Move>();
