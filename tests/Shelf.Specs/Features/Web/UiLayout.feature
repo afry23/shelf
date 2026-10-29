@@ -76,8 +76,9 @@ Feature: The interface fits the screen and the system
     Given the browser window is <width> x <height> pixels
     When I open "/works/01J9Z3K0000000000000000001" in the browser
     Then "Design patterns for containers" <description> "Year"
-    And "Details from the internet" <tools> "Export"
-    And "Files" stands above "Add a file"
+    And "Edit details" <tools> "Load details from the internet"
+    When I open the "Files" tab
+    Then "Files" stands above "Add a file"
 
     Examples:
       | width | height | description   | tools         |
@@ -89,7 +90,8 @@ Feature: The interface fits the screen and the system
     Given the browser window is 390 x 844 pixels
     When I open "/works/01J9Z3K0000000000000000001" in the browser
     Then the page has no sideways scroll
-    When I click the "Delete kp.epub" button
+    When I open the "Files" tab
+    And I click the "Delete kp.epub" button
     Then the page shows the text "Move kp.epub to the trash?"
 
   Scenario Outline: The filters use the width they are given

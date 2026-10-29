@@ -132,6 +132,31 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the {string} button is not pressed")]
     public void ThenNotPressed(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToHaveAttributeAsync("aria-pressed", "false"));
 
+    private ILocator Tab(string name) => Page.GetByRole(AriaRole.Tab, new() { Name = name });
+
+    [When("I open the {string} tab")]
+    [Given("I open the {string} tab")]
+    public void WhenIOpenTheTab(string name) => Tab(name).First.ClickAsync().GetAwaiter().GetResult();
+
+    [Then("the {string} tab is selected")]
+    public void ThenTabSelected(string name) => Expect(Tab(name).First, e => e.ToHaveAttributeAsync("aria-selected", "true"));
+
+    [Then("the {string} tab is shown")]
+    public void ThenTabShown(string name) => Assert.True(Wait(Tab(name).First), $"No tab '{name}'. {Dump()}");
+
+    [Then("the {string} tab is not shown")]
+    public void ThenTabNotShown(string name) => Assert.True(Gone(Tab(name)), $"The tab '{name}' is shown. {Dump()}");
+
+    [Then("the tab {string} shows the number {int}")]
+    public void ThenTabNumber(string name, int number) => Expect(Tab(name).First, e => e.ToContainTextAsync(number.ToString()));
+
+    [When("I press the key {string} on the {string} tab")]
+    public void WhenIPressTheKeyOnTheTab(string key, string name)
+    {
+        Tab(name).First.FocusAsync().GetAwaiter().GetResult();
+        Page.Keyboard.PressAsync(key).GetAwaiter().GetResult();
+    }
+
     [Then("the {string} button is shown")]
     public void ThenButtonShown(string name) => Assert.True(Wait(Page.GetByRole(AriaRole.Button, new() { Name = name }).First), $"No button '{name}'. {Dump()}");
 
