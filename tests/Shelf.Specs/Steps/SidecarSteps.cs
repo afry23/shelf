@@ -205,6 +205,27 @@ public sealed class SidecarSteps(ConfigSteps workspace)
         Assert.Contains(text, content, StringComparison.Ordinal);
     }
 
+    [Given("the file {string} soon does not contain {string}")]
+    [Then("the file {string} soon does not contain {string}")]
+    public void ThenTheFileSoonDoesNotContain(string name, string text)
+    {
+        var path = PathOf(name);
+        var limit = DateTime.UtcNow.AddSeconds(10);
+        var content = string.Empty;
+        while (DateTime.UtcNow < limit)
+        {
+            content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+            if (!content.Contains(text, StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        Assert.DoesNotContain(text, content, StringComparison.Ordinal);
+    }
+
     [Then("the file {string} does not contain {string}")]
     public void ThenTheFileDoesNotContain(string name, string text) =>
         Assert.DoesNotContain(text, File.ReadAllText(PathOf(name)), StringComparison.Ordinal);

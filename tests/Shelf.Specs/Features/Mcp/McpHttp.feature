@@ -41,6 +41,7 @@ Feature: The MCP server over Streamable HTTP
     Given the MCP server is running over HTTP on the library "library"
     Then the server offers exactly the tools:
       | tool                 |
+      | add_bookmark         |
       | add_note             |
       | add_tags             |
       | export_citations     |
@@ -55,7 +56,7 @@ Feature: The MCP server over Streamable HTTP
       | search_books         |
       | semantic_search      |
       | similar_books        |
-    And every tool except "add_note", "add_tags" and "remove_tags" is marked read-only
+    And every tool except "add_bookmark", "add_note", "add_tags" and "remove_tags" is marked read-only
     And no tool is marked destructive
     And the server offers the resource templates:
       | uri                   |

@@ -5,6 +5,7 @@
   import { replaceHash, router } from '../router.svelte';
   import { colors, createAnnotations } from './annotations.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import BookmarkButton from './BookmarkButton.svelte';
   import NotesPanel from './NotesPanel.svelte';
   import SelectionBar from './SelectionBar.svelte';
   import { createProgress } from './progress';
@@ -37,6 +38,8 @@
   let error = $state<string | null>(null);
   let percent = $state(0);
   let lastCfi = '';
+  // The place of the reader as a state, for the bookmark button; `lastCfi` is read in handlers only.
+  let here = $state<string | null>(null);
   let contents = $state<Entry[]>([]);
   let contentsOpen = $state(false);
   let size = $state(100);
@@ -121,6 +124,7 @@
         const detail = (event as CustomEvent<{ cfi: string; fraction: number }>).detail;
         percent = Math.round(detail.fraction * 100);
         lastCfi = detail.cfi;
+        here = detail.cfi;
         replaceHash(`#cfi=${detail.cfi}`);
         // Opening where the file was left, or at its start, is not a move.
         if (first && !wanted) {
@@ -345,6 +349,7 @@
       >
     {/if}
 
+    <BookmarkButton store={annotations} fileId={file.id} locator={loading ? null : here} />
     <button type="button" class="button" aria-expanded={notesOpen} disabled={loading} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
 
     {#if pending}

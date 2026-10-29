@@ -114,9 +114,14 @@ internal static class Api
             .Produces(StatusCodes.Status200OK);
 
         api.MapPost("/files/{id}/annotations", ([FromServices] LibraryHandle library, string id, [FromBody] AnnotationRequest body) =>
-                Run(WebJsonContext.Default.AnnotationView, () => library.Service.AddAnnotation(id, Draft(body)), StatusCodes.Status201Created))
+                Run(WebJsonContext.Default.AnnotationView, () =>
+                {
+                    var view = library.Service.AddAnnotation(id, Draft(body), out var created);
+                    return (view, created ? StatusCodes.Status201Created : StatusCodes.Status200OK);
+                }))
             .WithName("AddAnnotation")
-            .Produces<AnnotationView>(StatusCodes.Status201Created);
+            .Produces<AnnotationView>(StatusCodes.Status201Created)
+            .Produces<AnnotationView>(StatusCodes.Status200OK);
 
         api.MapMethods("/files/{id}/annotations/{annotation}", ["PATCH"], ([FromServices] LibraryHandle library, string id, string annotation, [FromBody] JsonObject patch) =>
                 Run(WebJsonContext.Default.AnnotationView, () => library.Service.UpdateAnnotation(id, annotation, Changes(patch))))
@@ -672,6 +677,24 @@ internal static class Api
         }
 
         return service.MoveFile(fileId, to, new WorkValues(string.IsNullOrWhiteSpace(title) ? null : title, authors is { Length: > 0 } ? authors : null, year));
+    }
+
+    // The call says which status fits what it did.
+    private static IResult Run<T>(JsonTypeInfo<T> info, Func<(T Value, int Status)> call)
+    {
+        try
+        {
+            var (value, status) = call();
+            return Results.Json(value, info, statusCode: status);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+        catch (IndexException e)
+        {
+            return new ProblemResult(StatusCodes.Status500InternalServerError, e.Message);
+        }
     }
 
     private static IResult Run<T>(JsonTypeInfo<T> info, Func<T> call, int status = StatusCodes.Status200OK)

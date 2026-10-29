@@ -5,14 +5,15 @@ using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
 
-/// <summary><c>shelf notes list|add|rm|export</c>: the highlights and notes of a work (F-ANN-6). Highlights are made in the reader.</summary>
+/// <summary><c>shelf notes list|add|bookmark|rm|export</c>: the highlights, notes and bookmarks of a work (F-ANN-6, F-RDR-6). Highlights are made in the reader.</summary>
 internal static class NotesCommand
 {
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
-        var command = new Command("notes", "Highlights and notes of a work: list, add, rm, export");
+        var command = new Command("notes", "Highlights, notes and bookmarks of a work: list, add, bookmark, rm, export");
         command.Subcommands.Add(List(json, stdout, stderr, environment));
         command.Subcommands.Add(Add(json, stdout, stderr, environment));
+        command.Subcommands.Add(Bookmark(json, stdout, stderr, environment));
         command.Subcommands.Add(Remove(json, stdout, stderr, environment));
         command.Subcommands.Add(Export(stdout, stderr, environment));
         return command;
@@ -121,6 +122,76 @@ internal static class NotesCommand
         return command;
     }
 
+    private static Command Bookmark(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
+    {
+        var work = WorkSupport.Argument();
+        var locator = new Argument<string>("locator") { Description = "The place: page=N for a PDF, an epubcfi(...) for an EPUB" };
+        var label = new Argument<string?>("label") { Description = "A short label for the bookmark", Arity = ArgumentArity.ZeroOrOne };
+        var file = new Option<string?>("--file") { Description = "The file the bookmark belongs to (needed if the work has more than one)" };
+        var library = LibraryContext.CreateOption();
+        var command = new Command("bookmark", "Set a bookmark at a place in a file of a work");
+        command.Arguments.Add(work);
+        command.Arguments.Add(locator);
+        command.Arguments.Add(label);
+        command.Options.Add(file);
+        command.Options.Add(library);
+        command.SetAction(parseResult =>
+        {
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            var found = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(work));
+            var files = LibraryEditor.Read(context.Root, found).Files;
+            var name = parseResult.GetValue(file);
+            if (name is null)
+            {
+                if (files.Count != 1)
+                {
+                    stderr.WriteLine($"error: {found.Title} has {files.Count} files; name one with --file ({string.Join(", ", files.Select(f => f.Name))})");
+                    return ExitCodes.Usage;
+                }
+
+                name = files[0].Name;
+            }
+            else if (!files.Any(f => f.Name == name))
+            {
+                stderr.WriteLine($"error: {name}: no such file in {found.Title} ({string.Join(", ", files.Select(f => f.Name))})");
+                return ExitCodes.Error;
+            }
+
+            var place = parseResult.GetRequiredValue(locator);
+            var format = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+            if (Locators.Problem(format, place) is { } problem)
+            {
+                stderr.WriteLine($"error: {problem}");
+                return ExitCodes.Usage;
+            }
+
+            var text = parseResult.GetValue(label);
+            var existing = LibraryAnnotations.List(context.Root, found)
+                .FirstOrDefault(a => a.Kind == AnnotationKind.Bookmark && a.File == name && a.Locator == place);
+            var bookmark = existing;
+            if (existing is null)
+            {
+                var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                bookmark = new Annotation(Ulid.New(), name, AnnotationKind.Bookmark, place, null, null, string.IsNullOrWhiteSpace(text) ? null : text, now, now);
+                LibraryAnnotations.Add(context.Root, found, bookmark);
+            }
+
+            if (parseResult.GetValue(json))
+            {
+                stdout.WriteLine(JsonOutput.Object(("id", bookmark!.Id.ToString()), ("file", name)));
+            }
+            else
+            {
+                stdout.WriteLine(existing is null
+                    ? $"Added bookmark {bookmark!.Id} at {Locators.Describe(place)} in {name}"
+                    : $"There is a bookmark at {Locators.Describe(place)} in {name} already: {existing.Id}");
+            }
+
+            return ExitCodes.Success;
+        });
+        return command;
+    }
+
     private static Command Remove(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
         var work = WorkSupport.Argument();
@@ -191,9 +262,12 @@ internal static class NotesCommand
         return command;
     }
 
-    private static string Describe(Annotation a) => a.Kind == AnnotationKind.Note
-        ? $"note ({a.File})"
-        : $"highlight, {Locators.Describe(a.Locator ?? string.Empty)}, {a.Color} ({a.File})";
+    private static string Describe(Annotation a) => a.Kind switch
+    {
+        AnnotationKind.Note => $"note ({a.File})",
+        AnnotationKind.Bookmark => $"bookmark, {Locators.Describe(a.Locator ?? string.Empty)} ({a.File})",
+        _ => $"highlight, {Locators.Describe(a.Locator ?? string.Empty)}, {a.Color} ({a.File})",
+    };
 
     private static string OneLine(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 

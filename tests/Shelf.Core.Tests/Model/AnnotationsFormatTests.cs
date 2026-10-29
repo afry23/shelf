@@ -41,6 +41,31 @@ public sealed class AnnotationsFormatTests
         Assert.Equal(rects, read.Annotations[0].Rects);
     }
 
+    [Fact]
+    public void A_bookmark_with_a_label_survives_a_round_trip()
+    {
+        var bookmark = new Annotation(Ulid.New(), "es.pdf", AnnotationKind.Bookmark, "page=2", null, null, "Read model", Time, Time);
+        var sidecar = new AnnotationsSidecar { Annotations = [bookmark] };
+
+        var text = AnnotationsFormat.Serialize(sidecar);
+        var read = AnnotationsFormat.Parse(text, "x");
+
+        Assert.Contains("\"kind\": \"bookmark\"", text, StringComparison.Ordinal);
+        Assert.Equal(sidecar.Annotations, read.Annotations);
+    }
+
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("page=2", "yellow", null)]
+    [InlineData("page=2", null, "x")]
+    public void A_bookmark_needs_a_locator_and_has_no_color_or_quote(string? locator, string? color, string? quote)
+    {
+        var bookmark = new Annotation(Ulid.New(), "es.pdf", AnnotationKind.Bookmark, locator, quote is null ? null : new AnnotationQuote(quote), color, null, Time, Time);
+        var sidecar = new AnnotationsSidecar { Annotations = [bookmark] };
+
+        Assert.Throws<SidecarException>(() => AnnotationsFormat.Validate(sidecar, "x"));
+    }
+
     [Theory]
     [InlineData(0.9, 0.2, 0.5, 0.1)]
     [InlineData(-0.1, 0.2, 0.5, 0.1)]

@@ -37,6 +37,7 @@ Feature: A read-only MCP server
     Given the MCP server is running on the library "library"
     Then the server offers the tools "add_tags" and "remove_tags"
     And the server offers the tools "add_note" and "get_annotations"
+    And the server offers the tools "add_bookmark" and "get_book"
 
   Scenario Outline: With mcp.read_only they are not offered, in the library config or in the global config
     Given <where> contains the line "mcp.read_only = true"
@@ -72,6 +73,7 @@ Feature: A read-only MCP server
 
     Examples:
       | tool        |
+      | add_bookmark |
       | add_note    |
       | add_tags    |
       | remove_tags |
