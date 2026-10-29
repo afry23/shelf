@@ -86,6 +86,7 @@ Feature: Highlights and notes while reading an EPUB
       """
       { "kind": "note", "note": "Mind the workshop" }
       """
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    And I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open the "Highlights and notes" tab
     Then the page shows the text "Highlights and notes"
     And the page shows the text "Mind the workshop"

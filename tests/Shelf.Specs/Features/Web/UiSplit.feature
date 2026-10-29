@@ -53,6 +53,7 @@ Feature: Splitting a file off a work in the browser
     And I click the "Split into own work" button of the file card "javascript-brain-teasers_P1.0.pdf"
     And I click the "Confirm" button of the file card "javascript-brain-teasers_P1.0.pdf"
     When I click the "Open the new work" link
+    And I open the "Files" tab
     Then the page shows the text "javascript-brain-teasers_P1.0.pdf"
     And the page does not show the text "c-brain-teasers_P1.0.pdf"
     When I click the "Edit details" button

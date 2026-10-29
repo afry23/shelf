@@ -24,6 +24,7 @@ Feature: Deleting files and works in the browser
 
   Scenario: A file is deleted after a confirmation
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I click the "Delete kp.pdf" button
     Then the page shows the text "Move kp.pdf to the trash?"
     When I click the "Confirm" button
@@ -33,6 +34,7 @@ Feature: Deleting files and works in the browser
 
   Scenario: Nothing happens without the confirmation
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I click the "Delete kp.pdf" button
     And I click the "Cancel" button
     Then the page does not show the text "Move kp.pdf to the trash?"
@@ -40,6 +42,7 @@ Feature: Deleting files and works in the browser
 
   Scenario: A work is deleted after a confirmation and the library is shown
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Manage" tab
     When I click the "Delete this work" button
     Then the page shows the text "Move Kubernetes Patterns and its 2 files to the trash?"
     And the page shows the text "shelf undo"

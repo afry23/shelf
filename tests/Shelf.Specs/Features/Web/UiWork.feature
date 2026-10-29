@@ -44,7 +44,6 @@ Feature: A book and its details
     And the page shows the text "Design patterns for containers"
     And the page shows the text "cloud/kubernetes"
     And the page shows the text "devops"
-    And the page shows the text "kp.epub"
 
   Scenario: The table of contents leads into the book
     When I open "/works/01J9Z3K0000000000000000001" in the browser
@@ -60,7 +59,8 @@ Feature: A book and its details
       | 01J9Z3K0000000000000000002 | /read/01J9Z3K0000000000000000002~es.pdf         |
 
   Scenario: Every file can be downloaded
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open the "Files" tab
     Then the link "Download kp.epub" points to an address containing "/api/v1/files/01J9Z3K0000000000000000001~kp.epub?download=true"
 
   Scenario: The cover is shown

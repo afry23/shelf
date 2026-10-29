@@ -25,6 +25,7 @@ Feature: Adding, moving and creating in the browser
 
   Scenario: A new version replaces the old file
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I choose the file "upload/kp-v2.epub" in the "File to add" field
     And I choose "kp-v1.epub" in the "Replaces" list
     And I click the "Add file" button
@@ -34,6 +35,7 @@ Feature: Adding, moving and creating in the browser
 
   Scenario: A file moves to another work
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I click the "Move cnp.pdf" button
     And I fill the "Find the work to move the file to" field with "Cloud Native"
     And I click the "Move here" button
@@ -43,6 +45,7 @@ Feature: Adding, moving and creating in the browser
 
   Scenario: A file becomes a work of its own
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I click the "Move cnp.pdf" button
     And I click the "Make it a work of its own" button
     Then the page shows the text "Made cnp.pdf a work of its own."
@@ -50,6 +53,7 @@ Feature: Adding, moving and creating in the browser
 
   Scenario: Nothing moves when the person cancels
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Files" tab
     When I click the "Move cnp.pdf" button
     And I click the "Cancel" button
     Then the page does not show the text "Move cnp.pdf to which work?"

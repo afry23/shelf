@@ -25,9 +25,11 @@ Feature: Export a book from its page
     And the web server is running on the library "library"
 
   Scenario: A book with a cite key offers the export
-    When I open "/works/01J9Z3K0000000000000000002" in the browser
+    Given I open "/works/01J9Z3K0000000000000000002" in the browser
+    When I open the "Manage" tab
     Then the link "Export Markdown" points to an address containing "/api/v1/works/01J9Z3K0000000000000000002/export.md"
 
   Scenario: A book without a cite key asks for one
-    When I open "/works/01J9Z3K0000000000000000003" in the browser
+    Given I open "/works/01J9Z3K0000000000000000003" in the browser
+    When I open the "Manage" tab
     Then the page shows the text "Set a cite key to export"

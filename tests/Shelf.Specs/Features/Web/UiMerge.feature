@@ -57,18 +57,21 @@ Feature: Merging works in the browser
 
   Scenario: A work is merged into the one that is open
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Manage" tab
     When I fill the "Find a work to merge in" field with "Quickly"
     And I click the "Merge into this book" button
     Then the page shows the text "Merge DDD Quickly into Domain-Driven Design?"
     And the page shows the text "cannot be undone"
     When I click the "Confirm" button
     Then the page shows the text "Merged DDD Quickly into this book: 1 file moved"
-    And the page shows the text "ddd-quickly.epub"
+    When I open the "Files" tab
+    Then the page shows the text "ddd-quickly.epub"
     And the file "library/Evans, Eric/Domain-Driven Design (2003)/ddd-quickly.epub" exists
     And the file "library/Avram, Abel/DDD Quickly/book.json" does not exist
 
   Scenario: The open work is not offered to be merged into itself
     Given I open "/works/01J9Z3K1000000000000000001" in the browser
+    And I open the "Manage" tab
     When I fill the "Find a work to merge in" field with "Domain"
     Then the page shows the text "No other work found"
     And the page does not show the text "Merge into this book"

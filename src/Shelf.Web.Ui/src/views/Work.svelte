@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
-  import { navigate } from '../router.svelte';
+  import { navigate, replaceHash, router } from '../router.svelte';
+  import Tabs from '../components/Tabs.svelte';
   import { createAnnotations } from '../reader/annotations.svelte';
   import NoteList from '../reader/NoteList.svelte';
 
@@ -25,6 +27,7 @@
     editing = false;
     online = null;
     onlineDone = null;
+    chosen = untrack(() => router.hash.slice(1));
     loadWork(wanted)
       .then((result) => {
         if (current) {
@@ -89,6 +92,22 @@
       ? book.files.find((f) => f.format === 'epub')
       : book?.files.find((f) => f.format === 'pdf') ?? book?.files[0],
   );
+
+  // The tabs under the details. A tab without anything to show is left out; the first one is open until the person picks another.
+  let chosen = $state('');
+
+  const tabs = $derived([
+    ...((book?.toc.length && tocFile) || similarBooks.length ? [{ id: 'contents', label: 'Contents' }] : []),
+    ...(notes.items.length ? [{ id: 'notes', label: 'Highlights and notes', count: notes.items.length }] : []),
+    { id: 'files', label: 'Files', count: book?.files.length },
+    { id: 'manage', label: 'Manage' },
+  ]);
+  const active = $derived(tabs.find((tab) => tab.id === chosen)?.id ?? tabs[0].id);
+
+  function openTab(tab: string): void {
+    chosen = tab;
+    replaceHash(`#${tab}`);
+  }
 
   async function patch(changes: Record<string, unknown>): Promise<boolean> {
     if (!book) {
@@ -596,9 +615,57 @@
                 {#if book.isbn13}<dt>ISBN</dt><dd>{book.isbn13}</dd>{/if}
                 <dt>Work ID</dt><dd class="work-id">{book.id}</dd>
               </dl>
-              <p><button type="button" class="button" onclick={startEditing}>Edit details</button></p>
             </div>
           </div>
+          <p class="detail-actions">
+            <button type="button" class="button" onclick={startEditing}>Edit details</button>
+            {#if !online}
+              <button type="button" class="button" disabled={onlineBusy} onclick={startOnline}>Load details from the internet</button>
+            {/if}
+          </p>
+        {/if}
+
+        {#if online || onlineDone}
+          <section class="panel">
+          <h2>Details from the internet</h2>
+          {#if onlineDone}<p class="done" role="status">{onlineDone}</p>{/if}
+          {#if online?.candidates.length}
+            <p>{online.candidates.length} books match. Which one is this?</p>
+            <ul class="similar" aria-label="Matching books">
+              {#each online.candidates as candidate (candidate.number)}
+                <li>
+                  <span>{candidate.title}</span>
+                  <span class="muted">{authorLine(candidate.authors)}{candidate.publisher ? `, ${candidate.publisher}` : ''}{candidate.year ? ` (${candidate.year})` : ''}</span>
+                  <button type="button" class="button" aria-label={`Use candidate ${candidate.number}`} onclick={() => chooseCandidate(candidate.number)}>Use this one</button>
+                </li>
+              {/each}
+            </ul>
+            <p><button type="button" class="button" onclick={cancelOnline}>Cancel</button></p>
+          {:else if online}
+            <p class="muted">Details from {online.source} (matched by {online.match})</p>
+            {#each online.warnings as warning (warning)}<p class="muted">{warning}</p>{/each}
+            {#if online.changes.length}
+              <dl class="facts">
+                {#each online.changes as change (change.field)}
+                  <dt>{fieldLabel(change.field)}</dt>
+                  <dd>{change.action === 'overwrite' ? `${change.before ?? ''} → ${change.after}` : change.after}</dd>
+                {/each}
+              </dl>
+            {:else}
+              <p>Nothing to add.</p>
+            {/if}
+            {#if online.kept.length}
+              <p class="muted">Kept: {online.kept.map((k) => `${fieldLabel(k.field)} ${k.current ?? ''} (online: ${k.online})`).join('; ')}</p>
+            {/if}
+            <p class="actions">
+              <button type="button" class="button" aria-pressed={onlineOverwrite} disabled={onlineBusy} onclick={toggleOverwrite}>Overwrite details that are already set</button>
+              {#if online.changes.length}
+                <button type="button" class="button primary" disabled={onlineBusy} onclick={takeOver}>Take over</button>
+              {/if}
+              <button type="button" class="button" onclick={cancelOnline}>Cancel</button>
+            </p>
+          {/if}
+          </section>
         {/if}
 
         <section class="group">
@@ -617,216 +684,167 @@
           </datalist>
         </section>
 
-        {#if notes.items.length}
-          <section class="group">
-            <h2>Highlights and notes</h2>
+        <Tabs label="The book" {tabs} {active} onselect={openTab}>
+          {#if active === 'contents'}
+            <div class="pair">
+              {#if book.toc.length && tocFile}
+                <section class="group">
+                  <h2>Contents</h2>
+                  <nav aria-label="Table of contents">
+                    <ol class="toc">
+                      {#each book.toc as entry, index (index)}
+                        <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
+                          {#if entry.location}
+                            <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
+                          {:else}
+                            <span>{entry.title}</span>
+                          {/if}
+                        </li>
+                      {/each}
+                    </ol>
+                  </nav>
+                </section>
+              {/if}
+
+              {#if similarBooks.length}
+                <section class="group">
+                  <h2>Similar books</h2>
+                  <ul class="similar" aria-label="Similar books">
+                    {#each similarBooks as item (item.id)}
+                      <li>
+                        <a href={`/works/${item.id}`}>{item.title}</a>
+                        <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                      </li>
+                    {/each}
+                  </ul>
+                </section>
+              {/if}
+            </div>
+          {:else if active === 'notes'}
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
-          </section>
-        {/if}
-
-        <div class="pair">
-          {#if book.toc.length && tocFile}
-            <section class="group">
-              <h2>Contents</h2>
-              <nav aria-label="Table of contents">
-                <ol class="toc">
-                  {#each book.toc as entry, index (index)}
-                    <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
-                      {#if entry.location}
-                        <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
-                      {:else}
-                        <span>{entry.title}</span>
-                      {/if}
-                    </li>
-                  {/each}
-                </ol>
-              </nav>
-            </section>
-          {/if}
-  
-          {#if similarBooks.length}
-            <section class="group">
-              <h2>Similar books</h2>
-              <ul class="similar" aria-label="Similar books">
-                {#each similarBooks as item (item.id)}
-                  <li>
-                    <a href={`/works/${item.id}`}>{item.title}</a>
-                    <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                  </li>
-                {/each}
-              </ul>
-            </section>
-          {/if}
-        </div>
-
-        <section class="group files-group">
-          <h2>Files</h2>
-          <table class="files">
-            <thead><tr><th scope="col">Name</th><th scope="col">Format</th><th scope="col">Size</th><th scope="col">Pages</th><th scope="col"><span class="visually-hidden">Read and download</span></th></tr></thead>
-            <tbody>
-              {#each book.files as file (file.id)}
-                <tr>
-                  <td class="name">{file.name}</td>
-                  <td class="format">{file.format}</td>
-                  <td class="size">{bytes(file.sizeBytes)}</td>
-                  <td class="pages">{file.pages ? `${file.pages} pages` : ''}</td>
-                  <td class="row-actions">
-                    {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a>{/if}
-                    <a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
-                    <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
-                    <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
-                  </td>
-                </tr>
-                {#if moving?.id === file.id}
-                  <tr class="confirm">
-                    <td colspan="5">
-                      <p>Move {file.name} to which work? Reading position and notes go with it.{book.files.length === 1 ? ' It is the last file, so this book goes too.' : ''} shelf undo brings it back.</p>
-                      <input type="search" aria-label="Find the work to move the file to" placeholder="Find a work" bind:value={moveQuery} />
-                      {#if moveFound}
-                        {#if moveFound.length === 0}
-                          <p class="muted">No other work found.</p>
-                        {:else}
-                          <ul class="similar" aria-label="Works to move the file to">
-                            {#each moveFound as item (item.id)}
-                              <li>
-                                <a href={`/works/${item.id}`}>{item.title}</a>
-                                <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                                <button type="button" class="button" onclick={() => moveTo(item)}>Move here</button>
-                              </li>
-                            {/each}
-                          </ul>
-                        {/if}
-                      {/if}
-                      {#if book.files.length > 1}<button type="button" class="button" onclick={() => moveTo(null)}>Make it a work of its own</button>{/if}
-                      <button type="button" class="button" onclick={() => (moving = null)}>Cancel</button>
-                    </td>
-                  </tr>
-                {/if}
-                {#if deleting?.kind === 'file' && deleting.id === file.id}
-                  <tr class="confirm">
-                    <td colspan="5">
-                      <p>Move {file.name} to the trash?{book.files.length === 1 ? ' It is the last file, so the book goes too.' : ''} shelf undo brings it back.</p>
-                      <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
-                      <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
-                    </td>
-                  </tr>
-                {/if}
-              {/each}
-            </tbody>
-          </table>
-
-          <div class="add">
-            <h3>Add a file</h3>
-          {#if filesDone}<p class="done" role="status">{filesDone}</p>{/if}
-          <p class="muted">A new version of this book, or another format. The file joins this work whatever its own metadata says.</p>
-          <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
-          <p>
-            <label>Replaces
-              <select aria-label="Replaces" bind:value={addReplace}>
-                <option value="">nothing, keep all files</option>
-                {#each book.files as file (file.id)}<option value={file.id}>{file.name}</option>{/each}
-              </select>
-            </label>
-          </p>
-          {#if addReplace}
-            <p><label><input type="checkbox" bind:checked={addCarry} /> Take over reading position and notes</label> <span class="muted">The replaced file goes to the trash; shelf undo brings it back.</span></p>
-          {/if}
-          <button type="button" class="button" disabled={addBusy} onclick={uploadFile}>{addBusy ? 'Uploading…' : 'Add file'}</button>
-          </div>
-        </section>
-
-        <div class="tools">
-          <section class="panel">
-            <h2>Details from the internet</h2>
-            {#if onlineDone}<p class="done" role="status">{onlineDone}</p>{/if}
-            {#if !online}
-              <button type="button" class="button" disabled={onlineBusy} onclick={startOnline}>Load details from the internet</button>
-            {:else if online.candidates.length}
-              <p>{online.candidates.length} books match. Which one is this?</p>
-              <ul class="similar" aria-label="Matching books">
-                {#each online.candidates as candidate (candidate.number)}
-                  <li>
-                    <span>{candidate.title}</span>
-                    <span class="muted">{authorLine(candidate.authors)}{candidate.publisher ? `, ${candidate.publisher}` : ''}{candidate.year ? ` (${candidate.year})` : ''}</span>
-                    <button type="button" class="button" aria-label={`Use candidate ${candidate.number}`} onclick={() => chooseCandidate(candidate.number)}>Use this one</button>
-                  </li>
-                {/each}
-              </ul>
-              <p><button type="button" class="button" onclick={cancelOnline}>Cancel</button></p>
-            {:else}
-              <p class="muted">Details from {online.source} (matched by {online.match})</p>
-              {#each online.warnings as warning (warning)}<p class="muted">{warning}</p>{/each}
-              {#if online.changes.length}
-                <dl class="facts">
-                  {#each online.changes as change (change.field)}
-                    <dt>{fieldLabel(change.field)}</dt>
-                    <dd>{change.action === 'overwrite' ? `${change.before ?? ''} → ${change.after}` : change.after}</dd>
-                  {/each}
-                </dl>
-              {:else}
-                <p>Nothing to add.</p>
-              {/if}
-              {#if online.kept.length}
-                <p class="muted">Kept: {online.kept.map((k) => `${fieldLabel(k.field)} ${k.current ?? ''} (online: ${k.online})`).join('; ')}</p>
-              {/if}
-              <p class="actions">
-                <button type="button" class="button" aria-pressed={onlineOverwrite} disabled={onlineBusy} onclick={toggleOverwrite}>Overwrite details that are already set</button>
-                {#if online.changes.length}
-                  <button type="button" class="button primary" disabled={onlineBusy} onclick={takeOver}>Take over</button>
-                {/if}
-                <button type="button" class="button" onclick={cancelOnline}>Cancel</button>
-              </p>
-            {/if}
-          </section>
-  
-          <section class="panel">
-            <h2>Export</h2>
-            {#if book.citeKey}
-              <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
-            {:else}
-              <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
-            {/if}
-          </section>
-  
-          <section class="panel">
-            <h2>Merge another work</h2>
-            {#if mergeDone}<p class="done" role="status">{mergeDone}</p>{/if}
-            <input type="search" aria-label="Find a work to merge in" placeholder="Find a work to merge in" bind:value={mergeQuery} />
-            {#if mergeFound}
-              {#if mergeFound.length === 0}
-                <p class="muted">No other work found.</p>
-              {:else}
-                <ul class="similar" aria-label="Works to merge in">
-                  {#each mergeFound as item (item.id)}
-                    <li>
-                      <a href={`/works/${item.id}`}>{item.title}</a>
-                      <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                      {#if mergeCandidate?.id === item.id}
-                        <p>Merge {item.title} into {book.title}? Its files move here and its folder goes. A merge cannot be undone with shelf undo.</p>
-                        <button type="button" class="button danger" onclick={() => mergeIn(item)}>Confirm</button>
-                        <button type="button" class="button" onclick={() => (mergeCandidate = null)}>Cancel</button>
-                      {:else}
-                        <button type="button" class="button" onclick={() => (mergeCandidate = item)}>Merge into this book</button>
-                      {/if}
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-            {/if}
-          </section>
-  
-          <section class="panel danger-zone">
-            <h2>Delete</h2>
+          {:else if active === 'files'}
             {#if deleteDone}<p class="done" role="status">{deleteDone}</p>{/if}
-            {#if deleting?.kind === 'work'}
-              <p>Move {book.title} and its {book.files.length === 1 ? 'file' : `${book.files.length} files`} to the trash? shelf undo brings it back; shelf trash empty deletes for good.</p>
-              <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
-              <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
-            {:else}
-              <button type="button" class="button danger" onclick={() => (deleting = { kind: 'work' })}>Delete this work</button>
-            {/if}
-          </section>
-        </div>
+            <table class="files">
+              <thead><tr><th scope="col">Name</th><th scope="col">Format</th><th scope="col">Size</th><th scope="col">Pages</th><th scope="col"><span class="visually-hidden">Read and download</span></th></tr></thead>
+              <tbody>
+                {#each book.files as file (file.id)}
+                  <tr>
+                    <td class="name">{file.name}</td>
+                    <td class="format">{file.format}</td>
+                    <td class="size">{bytes(file.sizeBytes)}</td>
+                    <td class="pages">{file.pages ? `${file.pages} pages` : ''}</td>
+                    <td class="row-actions">
+                      {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a>{/if}
+                      <a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
+                      <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
+                      <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>
+                    </td>
+                  </tr>
+                  {#if moving?.id === file.id}
+                    <tr class="confirm">
+                      <td colspan="5">
+                        <p>Move {file.name} to which work? Reading position and notes go with it.{book.files.length === 1 ? ' It is the last file, so this book goes too.' : ''} shelf undo brings it back.</p>
+                        <input type="search" aria-label="Find the work to move the file to" placeholder="Find a work" bind:value={moveQuery} />
+                        {#if moveFound}
+                          {#if moveFound.length === 0}
+                            <p class="muted">No other work found.</p>
+                          {:else}
+                            <ul class="similar" aria-label="Works to move the file to">
+                              {#each moveFound as item (item.id)}
+                                <li>
+                                  <a href={`/works/${item.id}`}>{item.title}</a>
+                                  <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                                  <button type="button" class="button" onclick={() => moveTo(item)}>Move here</button>
+                                </li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        {/if}
+                        {#if book.files.length > 1}<button type="button" class="button" onclick={() => moveTo(null)}>Make it a work of its own</button>{/if}
+                        <button type="button" class="button" onclick={() => (moving = null)}>Cancel</button>
+                      </td>
+                    </tr>
+                  {/if}
+                  {#if deleting?.kind === 'file' && deleting.id === file.id}
+                    <tr class="confirm">
+                      <td colspan="5">
+                        <p>Move {file.name} to the trash?{book.files.length === 1 ? ' It is the last file, so the book goes too.' : ''} shelf undo brings it back.</p>
+                        <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
+                        <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
+                      </td>
+                    </tr>
+                  {/if}
+                {/each}
+              </tbody>
+            </table>
+
+            <div class="add">
+              <h3>Add a file</h3>
+              {#if filesDone}<p class="done" role="status">{filesDone}</p>{/if}
+              <p class="muted">A new version of this book, or another format. The file joins this work whatever its own metadata says.</p>
+              <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
+              <p>
+                <label>Replaces
+                  <select aria-label="Replaces" bind:value={addReplace}>
+                    <option value="">nothing, keep all files</option>
+                    {#each book.files as file (file.id)}<option value={file.id}>{file.name}</option>{/each}
+                  </select>
+                </label>
+              </p>
+              {#if addReplace}
+                <p><label><input type="checkbox" bind:checked={addCarry} /> Take over reading position and notes</label> <span class="muted">The replaced file goes to the trash; shelf undo brings it back.</span></p>
+              {/if}
+              <button type="button" class="button" disabled={addBusy} onclick={uploadFile}>{addBusy ? 'Uploading…' : 'Add file'}</button>
+            </div>
+          {:else}
+            <div class="manage">
+              <section class="panel">
+                <h2>Export</h2>
+                {#if book.citeKey}
+                  <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
+                {:else}
+                  <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
+                {/if}
+              </section>
+              <section class="panel">
+                <h2>Merge another work</h2>
+                {#if mergeDone}<p class="done" role="status">{mergeDone}</p>{/if}
+                <input type="search" aria-label="Find a work to merge in" placeholder="Find a work to merge in" bind:value={mergeQuery} />
+                {#if mergeFound}
+                  {#if mergeFound.length === 0}
+                    <p class="muted">No other work found.</p>
+                  {:else}
+                    <ul class="similar" aria-label="Works to merge in">
+                      {#each mergeFound as item (item.id)}
+                        <li>
+                          <a href={`/works/${item.id}`}>{item.title}</a>
+                          <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                          {#if mergeCandidate?.id === item.id}
+                            <p>Merge {item.title} into {book.title}? Its files move here and its folder goes. A merge cannot be undone with shelf undo.</p>
+                            <button type="button" class="button danger" onclick={() => mergeIn(item)}>Confirm</button>
+                            <button type="button" class="button" onclick={() => (mergeCandidate = null)}>Cancel</button>
+                          {:else}
+                            <button type="button" class="button" onclick={() => (mergeCandidate = item)}>Merge into this book</button>
+                          {/if}
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                {/if}
+              </section>
+              <section class="panel danger-zone">
+                <h2>Delete</h2>
+                {#if deleting?.kind === 'work'}
+                  <p>Move {book.title} and its {book.files.length === 1 ? 'file' : `${book.files.length} files`} to the trash? shelf undo brings it back; shelf trash empty deletes for good.</p>
+                  <button type="button" class="button danger" onclick={confirmDelete}>Confirm</button>
+                  <button type="button" class="button" onclick={() => (deleting = null)}>Cancel</button>
+                {:else}
+                  <button type="button" class="button danger" onclick={() => (deleting = { kind: 'work' })}>Delete this work</button>
+                {/if}
+              </section>
+            </div>
+          {/if}
+        </Tabs>
       </div>
     </div>
   </div>
@@ -957,15 +975,28 @@
     justify-items: start;
   }
 
-  .pair,
-  .tools {
+  .pair {
     display: grid;
     gap: 2rem;
     align-items: start;
   }
 
-  .tools {
+  /* What changes the book as a whole: one column, and the deletion last and set apart. */
+  .manage {
+    display: grid;
     gap: 1rem;
+    max-width: 44rem;
+  }
+
+  .manage .danger-zone {
+    margin-top: 1.5rem;
+  }
+
+  .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0;
   }
 
   .panel {
@@ -1187,10 +1218,6 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
   }
 
-  .tools {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
-  }
-
   /* Description and facts side by side once the column has room for both. */
   @container (min-width: 44rem) {
     .about {
@@ -1249,6 +1276,14 @@
 
     .edit {
       grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* The two buttons under the details do not fit side by side in a phone column. */
+  @container (max-width: 30rem) {
+    .detail-actions {
+      flex-direction: column;
+      align-items: start;
     }
   }
 

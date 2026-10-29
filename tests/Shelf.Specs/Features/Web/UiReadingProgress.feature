@@ -89,7 +89,8 @@ Feature: A book opens where I stopped
     Then the link "Read" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub"
 
   Scenario Outline: Every file of a work can be read, whatever the preferred format
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open the "Files" tab
     Then the link "Read <file>" points to an address containing "/read/01J9Z3K0000000000000000001~<file>"
 
     Examples:
