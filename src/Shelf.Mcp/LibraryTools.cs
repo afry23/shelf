@@ -12,7 +12,7 @@ namespace Shelf.Mcp;
 /// </summary>
 internal sealed class LibraryTools(LibraryService service)
 {
-    [Description("Search titles, authors, tags and the text of the books with the shelf query language: words, \"phrases\", prefix*, -excluded, and author: title: tag: publisher: lang: year: format: status: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
+    [Description("Search titles, authors, tags and the text of the books with the shelf query language: words, \"phrases\", prefix*, -excluded, and author: title: tag: publisher: lang: year: format: status: type: series: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
     public SearchBooksResult SearchBooks(
         [Description("The query, e.g. 'event sourcing tag:architektur year:>=2015'")] string query,
         [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit,

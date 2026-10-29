@@ -50,6 +50,8 @@ export interface Facets {
   years: FacetValue[];
   formats: FacetValue[];
   statuses: FacetValue[];
+  series: FacetValue[];
+  types: FacetValue[];
 }
 
 export interface WorkList {

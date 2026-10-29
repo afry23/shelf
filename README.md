@@ -298,7 +298,7 @@ Run `shelf <command> --help` for all options.
 
 ### Search syntax
 
-Free text, phrases `"..."`, prefixes `kube*`, negation `-tag:x`, and filters: `author:`, `title:`, `tag:`, `lang:`, `year:>2015`, `format:pdf`, `status:unread`, and for papers `type:paper`, `doi:`, `arxiv:`, `venue:`.
+Free text, phrases `"..."`, prefixes `kube*`, negation `-tag:x`, and filters: `author:`, `title:`, `tag:`, `lang:`, `year:>2015`, `format:pdf`, `publisher:`, `status:unread`, `series:"Name of the series"`, and for papers `type:paper`, `doi:`, `arxiv:`, `venue:`.
 
 ```sh
 shelf search 'author:kleppmann year:>2015 "stream processing"'

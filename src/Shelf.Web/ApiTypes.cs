@@ -28,7 +28,9 @@ public sealed record Facets(
     FacetValue[] Languages,
     FacetValue[] Years,
     FacetValue[] Formats,
-    FacetValue[] Statuses);
+    FacetValue[] Statuses,
+    FacetValue[] Series,
+    FacetValue[] Types);
 
 /// <summary>One page of the library, and the counts of every facet over all the works that pass the filter.</summary>
 public sealed record WorkList(int Total, int Offset, int Limit, WorkItem[] Items, Facets Facets);

@@ -143,6 +143,7 @@ public static partial class QueryParser
             "doi" => FieldKind.Doi,
             "arxiv" => FieldKind.Arxiv,
             "venue" => FieldKind.Venue,
+            "series" => FieldKind.Series,
             _ => null,
         };
         if (kind is null)

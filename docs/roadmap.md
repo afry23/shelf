@@ -324,6 +324,19 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all M11 requirements, the complete BDD suite is green.
 
+### M12 – Facets and Reading Statistics
+
+**Goal:** The library view narrows to a series or to papers, and the library shows what was read and when.
+
+**Status:** in progress. Slice plans: [m12-facets](slices/m12-facets.md); done: F-WEB-7.
+
+| Area | Content | PRD |
+|---|---|---|
+| Facets | the filter `series:`, the facets series and type in the filter panel | F-WEB-7 |
+| Statistics | planned | – |
+
+**Exit criteria:** feature files exist for all M12 requirements, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

@@ -1,4 +1,4 @@
-// The filters of the query language (tag: author: publisher: lang: year: format: status:) as buttons: a facet adds one token to `q`, a chip
+// The filters of the query language (tag: author: publisher: lang: year: format: status: series: type:) as buttons: a facet adds one token to `q`, a chip
 // removes one. The server parses `q`; this file only builds and splits tokens.
 
 import type { Facets } from './api';
@@ -13,6 +13,8 @@ export const facetGroups: { key: FacetKey; label: string; field: string }[] = [
   { key: 'years', label: 'Year', field: 'year' },
   { key: 'formats', label: 'Format', field: 'format' },
   { key: 'statuses', label: 'Reading status', field: 'status' },
+  { key: 'series', label: 'Series', field: 'series' },
+  { key: 'types', label: 'Type', field: 'type' },
 ];
 
 /** The words of a query, with a quoted phrase kept together (a quote inside a token such as tag:"a b" does not split it). */
