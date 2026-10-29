@@ -306,6 +306,7 @@
                   <span class="caption">
                     <span class="title">{book.title}</span>
                     {#if book.authors.length}<span class="authors">{authorLine(book.authors)}</span>{/if}
+                    {#if book.year}<span class="year">{book.year}</span>{/if}
                   </span>
                 </a>
               </li>
@@ -548,7 +549,8 @@
     text-decoration-color: var(--accent);
   }
 
-  .authors {
+  .authors,
+  .caption .year {
     display: block;
     color: var(--muted);
     font-size: 0.875rem;
