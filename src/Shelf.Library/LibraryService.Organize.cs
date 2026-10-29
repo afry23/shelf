@@ -43,7 +43,7 @@ public sealed partial class LibraryService
         {
             try
             {
-                var result = LibraryOrganizer.Organize(root, chosen, apply: true);
+                var result = LibraryOrganizer.Organize(root, chosen, apply: true, settings.Organize.PaperPattern);
                 return new OrganizeOutcome(
                     chosen.Text,
                     result.Files,

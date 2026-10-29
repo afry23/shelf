@@ -404,7 +404,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         OrganizeResult result;
         try
         {
-            result = LibraryOrganizer.Organize(root, chosen, apply: false);
+            result = LibraryOrganizer.Organize(root, chosen, apply: false, settings.Organize.PaperPattern);
         }
         catch (Exception e) when (e is IndexException or LibraryEditException)
         {
