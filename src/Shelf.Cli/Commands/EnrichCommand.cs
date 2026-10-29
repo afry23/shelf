@@ -12,7 +12,7 @@ namespace Shelf.Cli.Commands;
 /// </summary>
 internal static class EnrichCommand
 {
-    private static readonly string[] SourceNames = ["openlibrary", "google"];
+    private static readonly string[] SourceNames = ["openlibrary", "google", "crossref", "arxiv"];
 
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
@@ -21,7 +21,7 @@ internal static class EnrichCommand
         var overwrite = new Option<bool>("--overwrite") { Description = "Replace values that are already set (needs --apply)" };
         var pick = new Option<int?>("--pick") { Description = "Candidate to take when several books match the title and author" };
         var noCover = new Option<bool>("--no-cover") { Description = "Do not load the cover" };
-        var source = new Option<string?>("--source") { Description = "Ask only this source: openlibrary or google" };
+        var source = new Option<string?>("--source") { Description = "Ask only this source: openlibrary, google, crossref or arxiv" };
         var library = LibraryContext.CreateOption();
 
         var command = new Command("enrich", "Load the metadata of a work from the internet (preview unless --apply)");
@@ -38,7 +38,7 @@ internal static class EnrichCommand
             var doApply = parseResult.GetValue(apply);
             var doOverwrite = parseResult.GetValue(overwrite);
             var problem =
-                only is not null && !SourceNames.Contains(only) ? "--source must be openlibrary or google"
+                only is not null && !SourceNames.Contains(only) ? "--source must be openlibrary, google, crossref or arxiv"
                 : number is < 1 ? "--pick must be 1 or greater"
                 : doOverwrite && !doApply ? "--overwrite needs --apply"
                 : null;
@@ -191,6 +191,9 @@ internal static class EnrichCommand
                     JsonOutput.Property(writer, "publisher", book.Publisher);
                     JsonOutput.Property(writer, "year", book.Year);
                     JsonOutput.Property(writer, "isbn13", book.Isbn13);
+                    JsonOutput.Property(writer, "doi", book.Doi);
+                    JsonOutput.Property(writer, "arxiv", book.ArxivId);
+                    JsonOutput.Property(writer, "venue", book.Venue);
                     writer.WriteEndObject();
                 }
 
@@ -203,7 +206,8 @@ internal static class EnrichCommand
         for (var i = 0; i < candidates.Count; i++)
         {
             var book = candidates[i];
-            var details = string.Join(", ", new[] { string.Join(" & ", book.Authors), book.Publisher, book.Year?.ToString(CultureInfo.InvariantCulture), book.Isbn13 }.Where(d => !string.IsNullOrEmpty(d)));
+            // What tells two candidates apart: for books the publisher, year and ISBN; for papers also DOI, arXiv ID and venue.
+            var details = string.Join(", ", new[] { string.Join(" & ", book.Authors), book.Publisher, book.Year?.ToString(CultureInfo.InvariantCulture), book.Isbn13, book.Doi, book.ArxivId, book.Venue }.Where(d => !string.IsNullOrEmpty(d)));
             stdout.WriteLine($"{(i + 1).ToString(CultureInfo.InvariantCulture)}. {book.Title} ({details})");
         }
     }

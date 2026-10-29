@@ -27,6 +27,36 @@ public sealed class EnrichSteps(ScenarioEnvironment environment)
             "https://example.invalid/cover"));
     }
 
+    [Given("the online source {string} holds the paper:")]
+    public void GivenTheSourceHoldsThePaper(string name, DataTable table)
+    {
+        var fields = table.Rows.ToDictionary(r => r["field"], r => r["value"], StringComparer.Ordinal);
+        string? Field(string key) => fields.GetValueOrDefault(key);
+        environment.Online.Source(name).Books.Add(new OnlineBook(
+            name,
+            null,
+            Field("title")!,
+            Field("authors") is { } authors ? [.. authors.Split(", ")] : [],
+            Year: Field("year") is { } year ? int.Parse(year, CultureInfo.InvariantCulture) : null,
+            Publisher: Field("publisher"),
+            Doi: Field("doi"),
+            ArxivId: Field("arxiv"),
+            Venue: Field("venue"),
+            Abstract: Field("abstract")));
+    }
+
+    [Given("the online source {string} has a PDF for the arXiv ID {string}")]
+    public void GivenTheSourceHasAPdf(string name, string arxivId) =>
+        environment.Online.Source(name).Pdfs[arxivId] = Shelf.TestData.SampleBooks.PaperPdf("Attention Is All You Need", "Ashish Vaswani", "arXiv:" + arxivId + "v5 [cs.CL]");
+
+    [Given("the online source {string} has a PDF for the DOI {string}")]
+    public void GivenTheSourceHasAPdfForTheDoi(string name, string doi) =>
+        environment.Online.Source(name).DoiPdfs[doi] = Shelf.TestData.SampleBooks.PaperPdf("Deep Residual Learning for Image Recognition", "Kaiming He", "doi:" + doi);
+
+    [Then("the online source {string} was queried")]
+    public void ThenTheSourceWasQueried(string name) =>
+        Assert.Contains(environment.Online.Calls, c => c.StartsWith(name + ":", StringComparison.Ordinal));
+
     [Given("the online source {string} holds no books")]
     public void GivenTheSourceHoldsNoBooks(string name) => environment.Online.Source(name).Books.Clear();
 
@@ -59,7 +89,14 @@ public sealed class FakeOnline
 {
     private readonly List<FakeSource> _sources;
 
-    public FakeOnline() => _sources = [new FakeSource("openlibrary", this), new FakeSource("google", this)];
+    public FakeOnline() => _sources =
+    [
+        new FakeSource("openlibrary", this),
+        new FakeSource("google", this),
+        new FakeSource("crossref", this, forPapers: true),
+        new FakeSource("arxiv", this, forPapers: true),
+        new FakeSource("unpaywall", this, forPapers: true, needsEmail: true),
+    ];
 
     public IReadOnlyList<IMetadataSource> Sources => _sources;
 
@@ -69,13 +106,51 @@ public sealed class FakeOnline
     public FakeSource Source(string name) => _sources.Single(s => s.Name == name);
 }
 
-public sealed class FakeSource(string name, FakeOnline online) : IMetadataSource
+public sealed class FakeSource(string name, FakeOnline online, bool forPapers = false, bool needsEmail = false) : IMetadataSource
 {
+    /// <summary>Like Unpaywall: without an e-mail address in the settings the source is left out.</summary>
+    public IMetadataSource? ForSettings(Shelf.Core.Configuration.FetchSettings settings) =>
+        needsEmail && settings.UnpaywallEmail is null ? null : this;
+
+    /// <summary>PDFs by DOI, in lower case.</summary>
+    public Dictionary<string, byte[]> DoiPdfs { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public string Name => name;
+
+    public bool ForPapers => forPapers;
+
+    public IReadOnlyList<OnlineBook> FindByDoi(string doi, CancellationToken cancellation)
+    {
+        online.Calls.Add($"{name}:doi {doi}");
+        Fail();
+        return [.. Books.Where(b => string.Equals(b.Doi, doi, StringComparison.OrdinalIgnoreCase))];
+    }
+
+    public IReadOnlyList<OnlineBook> FindByArxivId(string arxivId, CancellationToken cancellation)
+    {
+        online.Calls.Add($"{name}:arxiv {arxivId}");
+        Fail();
+        return [.. Books.Where(b => b.ArxivId == arxivId)];
+    }
 
     public List<OnlineBook> Books { get; } = [];
 
     public Dictionary<string, OnlineCover> Covers { get; } = new();
+
+    /// <summary>PDFs by arXiv ID.</summary>
+    public Dictionary<string, byte[]> Pdfs { get; } = new();
+
+    public byte[]? FetchPdf(OnlineBook paper, CancellationToken cancellation)
+    {
+        online.Calls.Add($"{name}:pdf {paper.ArxivId ?? paper.Doi}");
+        Fail();
+        if (paper.ArxivId is { } id && Pdfs.TryGetValue(id, out var byArxiv))
+        {
+            return byArxiv;
+        }
+
+        return paper.Doi is { } doi ? DoiPdfs.GetValueOrDefault(doi) : null;
+    }
 
     public string? FailWith { get; set; }
 

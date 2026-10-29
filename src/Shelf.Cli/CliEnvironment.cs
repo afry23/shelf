@@ -78,13 +78,13 @@ public sealed class CliEnvironment
     /// <summary>How <c>shelf import --from</c> fetches a remote folder; the user's rclone unless the host set another.</summary>
     public IRemoteFetcher RemoteFetcher { get; }
 
-    /// <summary>The online catalogs of <c>shelf enrich</c>, in the order they are asked: Open Library, then Google Books, unless the host set others.</summary>
+    /// <summary>The online catalogs of <c>shelf enrich</c>, in the order they are asked: Open Library, Google Books for books, then Crossref, arXiv, Unpaywall (if it has an e-mail address) for papers, unless the host set others.</summary>
     public IReadOnlyList<IMetadataSource> MetadataSources => _metadataSources ?? DefaultSources();
 
     private static IMetadataSource[] DefaultSources()
     {
         var http = new HttpGetter($"shelf/{VersionInfo.Get()} (+https://github.com/afry23/shelf)");
-        return [new OpenLibrarySource(http), new GoogleBooksSource(http)];
+        return [new OpenLibrarySource(http), new GoogleBooksSource(http), new CrossrefSource(http), new ArxivSource(http), new UnpaywallSource(http, null)];
     }
 
     /// <summary>Opens the embedding model of a folder; ONNX Runtime unless the host set another.</summary>

@@ -5,7 +5,7 @@ namespace Shelf.Library;
 
 public sealed partial class LibraryService
 {
-    private static readonly string[] SourceNames = ["openlibrary", "google"];
+    private static readonly string[] SourceNames = ["openlibrary", "google", "crossref", "arxiv"];
 
     /// <summary>
     /// Asks the online sources what they know about a work and shows what would change; nothing is written (F-IMP-6). Several
@@ -74,7 +74,7 @@ public sealed partial class LibraryService
     {
         if (source is not null && !SourceNames.Contains(source))
         {
-            throw new LibraryException("source must be openlibrary or google");
+            throw new LibraryException("source must be openlibrary, google, crossref or arxiv");
         }
 
         if (pick is < 1)

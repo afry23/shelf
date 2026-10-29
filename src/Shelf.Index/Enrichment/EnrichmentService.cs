@@ -58,16 +58,24 @@ public static class EnrichmentService
         ArgumentNullException.ThrowIfNull(sidecar);
         ArgumentNullException.ThrowIfNull(sources);
         var warnings = new List<string>();
-        var isbn = sidecar.Isbn13 ?? (sidecar.Isbn10 is { } ten ? Isbn.ToIsbn13(ten) : null);
+        var paper = sidecar.Kind == WorkKind.Paper;
+        var isbn = paper ? null : sidecar.Isbn13 ?? (sidecar.Isbn10 is { } ten ? Isbn.ToIsbn13(ten) : null);
+        var identifier = paper ? IdentifierOf(sidecar) : null;
+        var author = sidecar.Authors.FirstOrDefault(a => a != AuthorNames.UnknownAuthor);
         var seen = 0;
+        sources = [.. sources.Where(s => s.ForPapers == paper)];
+
+        // Several papers with the same title are common (reposts of the same preprint). The first source that has several is
+        // remembered and the next source is asked before the user has to choose; a source with a single match decides.
+        (IReadOnlyList<OnlineBook> Clear, string Message)? ambiguous = null;
         foreach (var source in sources)
         {
             IReadOnlyList<OnlineBook> found;
             try
             {
-                found = isbn is not null
-                    ? source.FindByIsbn(isbn, cancellation)
-                    : source.Search(sidecar.Title, sidecar.Authors.FirstOrDefault(), cancellation);
+                found = isbn is not null ? source.FindByIsbn(isbn, cancellation)
+                    : identifier is { } id ? id.Lookup(source, cancellation)
+                    : source.Search(sidecar.Title, author, cancellation);
             }
             catch (MetadataSourceException e)
             {
@@ -86,6 +94,11 @@ public static class EnrichmentService
                 return Build(sidecar, source, found[0], $"ISBN {isbn}", overwrite, warnings);
             }
 
+            if (identifier is { } known)
+            {
+                return Build(sidecar, source, found[0], known.Description, overwrite, warnings);
+            }
+
             var clear = found.Where(b => IsClearMatch(sidecar, b)).ToList();
             if (clear.Count == 0)
             {
@@ -99,9 +112,23 @@ public static class EnrichmentService
                     : throw new EnrichmentException($"--pick {number.ToString(CultureInfo.InvariantCulture)}: there are only {clear.Count.ToString(CultureInfo.InvariantCulture)} candidates", clear, warnings);
             }
 
-            return clear.Count == 1
-                ? Build(sidecar, source, clear[0], "title and author", overwrite, warnings)
-                : throw new EnrichmentException($"{clear.Count.ToString(CultureInfo.InvariantCulture)} candidates; pick one with --pick", clear, warnings);
+            if (clear.Count == 1)
+            {
+                return Build(sidecar, source, clear[0], "title and author", overwrite, warnings);
+            }
+
+            var message = $"{clear.Count.ToString(CultureInfo.InvariantCulture)} candidates; pick one with --pick";
+            if (!paper)
+            {
+                throw new EnrichmentException(message, clear, warnings);
+            }
+
+            ambiguous ??= (clear, message);
+        }
+
+        if (ambiguous is { } several)
+        {
+            throw new EnrichmentException(several.Message, several.Clear, warnings);
         }
 
         throw new EnrichmentException(
@@ -120,6 +147,12 @@ public static class EnrichmentService
         if (written.Count > 0)
         {
             LibraryEditor.Update(root, work, s => written.Aggregate(s, Write));
+        }
+
+        // The cite key is built from author, year and title, which the source may just have filled in (F-PAP-4).
+        if (written.Count > 0 && LibraryEditor.Read(root, work).CiteKey is null)
+        {
+            LibraryCiteKeys.Assign(root, work);
         }
 
         var warnings = new List<string>();
@@ -146,9 +179,19 @@ public static class EnrichmentService
         }
 
         Compare("isbn", sidecar.Isbn13, book.Isbn13);
+        Compare("doi", sidecar.Doi, book.Doi);
+        Compare("arxiv", sidecar.ArxivId, book.ArxivId);
         Compare("title", sidecar.Title, book.Title);
         Compare("subtitle", sidecar.Subtitle, book.Subtitle);
-        Compare("authors", sidecar.Authors.Count == 0 ? null : string.Join(", ", sidecar.Authors), book.Authors.Count == 0 ? null : string.Join(", ", book.Authors));
+
+        // A sidecar needs an author; "Unknown Author" stands for none and is filled like an empty field.
+        var knownAuthors = sidecar.Authors.Where(a => a != AuthorNames.UnknownAuthor).ToList();
+        Compare("authors", knownAuthors.Count == 0 ? null : string.Join(", ", sidecar.Authors), book.Authors.Count == 0 ? null : string.Join(", ", book.Authors));
+        Compare("venue", sidecar.Venue, book.Venue);
+        Compare("volume", sidecar.Volume, book.Volume);
+        Compare("issue", sidecar.Issue, book.Issue);
+        Compare("pages", sidecar.Pages, book.Pages);
+        Compare("abstract", sidecar.Abstract, book.Abstract);
         Compare("publisher", sidecar.Publisher, book.Publisher);
         Compare("year", sidecar.Year?.ToString(CultureInfo.InvariantCulture), book.Year?.ToString(CultureInfo.InvariantCulture));
         Compare("language", sidecar.Language, book.Language);
@@ -162,6 +205,13 @@ public static class EnrichmentService
     private static WorkSidecar Write(WorkSidecar sidecar, FieldChange change) => change.Field switch
     {
         "isbn" => sidecar with { Isbn10 = null, Isbn13 = change.Online },
+        "doi" => sidecar with { Kind = WorkKind.Paper, Doi = change.Online },
+        "arxiv" => sidecar with { Kind = WorkKind.Paper, ArxivId = change.Online },
+        "venue" => sidecar with { Venue = change.Online },
+        "volume" => sidecar with { Volume = change.Online },
+        "issue" => sidecar with { Issue = change.Online },
+        "pages" => sidecar with { Pages = change.Online },
+        "abstract" => sidecar with { Abstract = change.Online },
         "title" => sidecar with { Title = change.Online },
         "subtitle" => sidecar with { Subtitle = change.Online },
         "authors" => sidecar with { Authors = [.. change.Online.Split(", ")] },
@@ -171,6 +221,17 @@ public static class EnrichmentService
         "description" => sidecar with { Description = change.Online },
         _ => sidecar,
     };
+
+    // A paper with a DOI or arXiv ID is looked up by it; the DOI comes first because the publisher's record is the better one.
+    private static PaperIdentifier? IdentifierOf(WorkSidecar sidecar) =>
+        sidecar.Doi is { } doi ? new PaperIdentifier($"DOI {doi}", (s, c) => s.FindByDoi(doi, c))
+        : sidecar.ArxivId is { } arxiv ? new PaperIdentifier($"arXiv {arxiv}", (s, c) => s.FindByArxivId(arxiv, c))
+        : null;
+
+    private sealed record PaperIdentifier(string Description, Func<IMetadataSource, CancellationToken, IReadOnlyList<OnlineBook>> Find)
+    {
+        public IReadOnlyList<OnlineBook> Lookup(IMetadataSource source, CancellationToken cancellation) => Find(source, cancellation);
+    }
 
     private static bool IsClearMatch(WorkSidecar sidecar, OnlineBook book) =>
         TitleNormalizer.Normalize(book.Title) == TitleNormalizer.Normalize(sidecar.Title) && AuthorNames.Match(sidecar.Authors, book.Authors);

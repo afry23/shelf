@@ -216,6 +216,6 @@ Feature: Loading book metadata from the internet
 
     Examples:
       | arguments                                              | message                                  |
-      | enrich 01J9Z3K1 --source bing --library library        | --source must be openlibrary or google   |
+      | enrich 01J9Z3K1 --source bing --library library        | --source must be openlibrary, google, crossref or arxiv   |
       | enrich 01J9Z3K1 --pick 0 --library library             | --pick must be 1 or greater              |
       | enrich 01J9Z3K1 --overwrite --library library          | --overwrite needs --apply                |
