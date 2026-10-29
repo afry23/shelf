@@ -18,7 +18,7 @@ public static class LibraryMcpServer
         "Tools for an e-book library. Use search_books to find works and places in their text by words, semantic_search to find "
         + "them by meaning (also across languages), get_book for the details and table of contents of a work, and read_passage "
         + "to read the text at a location from any of them. Locations such as 'page=12' are given in the results; pass them on "
-        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite. add_tags and remove_tags change the tags of a work and add_note adds a note; nothing else is changed, and no file is deleted or moved.";
+        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite. add_tags and remove_tags change the tags of a work add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
 
     private const string ReadOnlyInstructions =
         "Tools for an e-book library. This server is read-only. Use search_books to find works and places in their text by words, "
@@ -104,6 +104,7 @@ public static class LibraryMcpServer
         if (!readOnly)
         {
             collection.Add(McpServerTool.Create((Func<string, string, string?, AnnotationView>)tools.AddNote, Write("add_note", json)));
+            collection.Add(McpServerTool.Create((Func<string, string, string?, string?, AnnotationView>)tools.AddBookmark, Write("add_bookmark", json)));
             collection.Add(McpServerTool.Create((Func<string, string[], TagChange>)tools.AddTags, Write("add_tags", json)));
             collection.Add(McpServerTool.Create((Func<string, string[], TagChange>)tools.RemoveTags, Write("remove_tags", json)));
         }

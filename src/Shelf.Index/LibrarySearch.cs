@@ -248,7 +248,8 @@ public static class LibrarySearch
                 }
 
                 var locator = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
-                var where = reader.GetString(6) == "note" ? "note" : "highlight, " + Locators.Describe(locator);
+                var kind = reader.GetString(6);
+                var where = kind == "note" ? "note" : kind + ", " + Locators.Describe(locator);
                 hits.Add((
                     reader.GetDouble(1),
                     reader.GetInt64(2),

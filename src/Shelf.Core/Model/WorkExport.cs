@@ -68,7 +68,32 @@ public static partial class WorkExport
         var notes = annotations.Where(a => a.Kind == AnnotationKind.Note).ToList();
         Section(text, "Highlights", highlights);
         Section(text, "Notes", notes);
+        Bookmarks(text, annotations.Where(a => a.Kind == AnnotationKind.Bookmark).ToList());
         return text.ToString();
+    }
+
+    private static void Bookmarks(StringBuilder text, List<Annotation> items)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        text.Append("\n## Bookmarks\n");
+        foreach (var file in items.Select(a => a.File).Distinct(StringComparer.Ordinal))
+        {
+            text.Append("\n### ").Append(OneLine(file)).Append("\n\n");
+            foreach (var a in items.Where(x => x.File == file))
+            {
+                text.Append("- ").Append(Locators.Describe(a.Locator ?? string.Empty));
+                if (a.Note is { Length: > 0 } label)
+                {
+                    text.Append(": ").Append(OneLine(label));
+                }
+
+                text.Append('\n');
+            }
+        }
     }
 
     private static void Section(StringBuilder text, string heading, List<Annotation> items)

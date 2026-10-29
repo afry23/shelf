@@ -22,6 +22,10 @@ People want highlights and notes while they read. Q5 left the format open and pr
 6. **Markdown.** Notes are stored as Markdown text. The UI renders them with `marked` and sanitizes the HTML with `dompurify`. The content security policy stays as it is (no inline script, no eval).
 7. **Export.** A work is exported as one Markdown file: the metadata as YAML front matter, then highlights and notes grouped by file. The file name is the cite key (made safe by `PathSanitizer`); a work without a cite key is refused instead of getting a made-up name. CLI and web share `WorkExport` (`Shelf.Core`).
 
+## Addendum: bookmarks (M10, F-RDR-6)
+
+A bookmark is a third `kind`, `bookmark`: a `locator` and nothing else; its `note` is an optional label. It reuses the file, the mirror and the carry over organize, merge and split. A file has at most one bookmark per locator; setting it again returns the existing one (HTTP 200 instead of 201). The index needs no change (`annotations.kind` is text) and the label is searchable like a note. A `shelf` without this change refuses an `annotations.json` that holds a bookmark (unknown kind); the file is not damaged.
+
 ## Libraries
 
 | # | Candidate | Version | License | GPL-3.0 compatible | Maintenance | Verdict |

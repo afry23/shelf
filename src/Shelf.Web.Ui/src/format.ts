@@ -62,3 +62,13 @@ export function clothOf(id: string): number {
 }
 
 export const authorLine = (authors: string[]) => authors.join(', ');
+
+/** A place in a file for people: "Page 12" for a PDF page, "Section 3" for the third spine item of an EPUB, else "A place in the book". */
+export function placeName(locator: string | null): string {
+  const page = /^page=(\d+)$/.exec(locator ?? '');
+  if (page) {
+    return `Page ${page[1]}`;
+  }
+  const section = /^epubcfi\(\/6\/(\d+)/.exec(locator ?? '');
+  return section && Number(section[1]) >= 2 ? `Section ${Number(section[1]) / 2}` : 'A place in the book';
+}

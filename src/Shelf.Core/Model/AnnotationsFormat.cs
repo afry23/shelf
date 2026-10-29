@@ -160,6 +160,18 @@ public static class AnnotationsFormat
                     }
 
                     break;
+                case AnnotationKind.Bookmark:
+                    if (string.IsNullOrWhiteSpace(a.Locator) || a.Locator.Length > MaxLocatorLength)
+                    {
+                        Fail($"{key}.locator", $"a bookmark needs a locator of at most {MaxLocatorLength} characters");
+                    }
+
+                    if (a.Quote is not null || a.Color is not null)
+                    {
+                        Fail($"{key}.kind", "a bookmark has no quote or color");
+                    }
+
+                    break;
             }
 
             if (a.Rects is { } rects)
@@ -249,7 +261,12 @@ public static class AnnotationsFormat
         return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length) + "\n";
     }
 
-    public static string KindName(AnnotationKind kind) => kind == AnnotationKind.Highlight ? "highlight" : "note";
+    public static string KindName(AnnotationKind kind) => kind switch
+    {
+        AnnotationKind.Highlight => "highlight",
+        AnnotationKind.Bookmark => "bookmark",
+        _ => "note",
+    };
 
     public static bool TryParseKind(string? name, out AnnotationKind kind)
     {
@@ -261,6 +278,9 @@ public static class AnnotationsFormat
                 return true;
             case "note":
                 kind = AnnotationKind.Note;
+                return true;
+            case "bookmark":
+                kind = AnnotationKind.Bookmark;
                 return true;
             default:
                 return false;

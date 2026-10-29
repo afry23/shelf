@@ -638,17 +638,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
-    /// <summary>Why this location is none of a file of this format, or null.</summary>
-    private static string? LocatorProblem(string format, string locator) => format switch
-    {
-        "pdf" => PageLocator().IsMatch(locator)
-            ? null
-            : "locator of a PDF must be page=N, with N a page number from 1",
-        "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
-            ? null
-            : "locator of an EPUB must be an epubcfi(...)",
-        _ => $"files of the format {format} have no reading position",
-    };
+    private static string? LocatorProblem(string format, string locator) => Locators.Problem(format, locator);
 
     // ---- annotations (F-ANN-1 to F-ANN-3) ----
 
@@ -763,29 +753,47 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
     public AnnotationView AddNote(string workId, string text, string? file = null)
     {
         var work = Find(workId);
-        var files = ReadSidecar(work).Files;
-        if (file is null)
-        {
-            if (files.Count != 1)
-            {
-                throw new LibraryException($"'{work.Title}' has {files.Count} files; name one in file ({string.Join(", ", files.Select(f => f.Name))})");
-            }
-
-            file = files[0].Name;
-        }
-
+        file = FileOfWork(work, file);
         return AddAnnotation(FileIds.Make(work.Id.ToString(), file), new AnnotationDraft("note", null, null, null, null, null, text));
     }
 
-    /// <summary>Adds a highlight or a note to a file. A highlight needs a location that fits the format and the marked text.</summary>
-    /// <exception cref="LibraryException">Invalid: the draft is none of a highlight or a note. NotFound: no such file.</exception>
-    public AnnotationView AddAnnotation(string fileId, AnnotationDraft draft)
+    /// <summary>
+    /// Sets a bookmark at a place in a file of the work (F-RDR-6): the named file, else the only file of the work. A bookmark that
+    /// is there already is returned as it is.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: the locator does not fit the format, or the work has several files and none is named. NotFound: no such work or file.</exception>
+    public AnnotationView AddBookmark(string workId, string locator, string? label = null, string? file = null)
+    {
+        var work = Find(workId);
+        file = FileOfWork(work, file);
+        return AddAnnotation(FileIds.Make(work.Id.ToString(), file), new AnnotationDraft("bookmark", locator, null, null, null, null, label));
+    }
+
+    private string FileOfWork(LibraryWork work, string? file)
+    {
+        var files = ReadSidecar(work).Files;
+        if (file is not null)
+        {
+            return file;
+        }
+
+        return files.Count == 1
+            ? files[0].Name
+            : throw new LibraryException($"'{work.Title}' has {files.Count} files; name one in file ({string.Join(", ", files.Select(f => f.Name))})");
+    }
+
+    /// <summary>Adds a highlight, a note or a bookmark to a file. A highlight needs a location that fits the format and the marked text.</summary>
+    /// <exception cref="LibraryException">Invalid: the draft is none of a highlight, a note or a bookmark. NotFound: no such file.</exception>
+    public AnnotationView AddAnnotation(string fileId, AnnotationDraft draft) => AddAnnotation(fileId, draft, out _);
+
+    /// <summary>As above; <paramref name="created"/> is false if the file has a bookmark at that place already and it is returned instead.</summary>
+    public AnnotationView AddAnnotation(string fileId, AnnotationDraft draft, out bool created)
     {
         ArgumentNullException.ThrowIfNull(draft);
         var file = ResolveFile(fileId);
         if (!AnnotationsFormat.TryParseKind(draft.Kind, out var kind))
         {
-            throw new LibraryException("kind is required and must be highlight or note");
+            throw new LibraryException("kind is required and must be highlight, note or bookmark");
         }
 
         var note = string.IsNullOrWhiteSpace(draft.Note) ? null : draft.Note;
@@ -794,7 +802,8 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
             throw new LibraryException($"note must have at most {MaxNoteLength} characters");
         }
 
-        Annotation created;
+        Annotation annotation;
+        created = true;
         var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         if (kind == AnnotationKind.Note)
         {
@@ -808,7 +817,26 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
                 throw new LibraryException("note is required: the text of the note");
             }
 
-            created = new Annotation(Ulid.New(), file.Name, kind, null, null, null, note, now, now);
+            annotation = new Annotation(Ulid.New(), file.Name, kind, null, null, null, note, now, now);
+        }
+        else if (kind == AnnotationKind.Bookmark)
+        {
+            if (draft.QuoteExact is not null || draft.QuotePrefix is not null || draft.QuoteSuffix is not null || draft.Color is not null || draft.Rects is not null)
+            {
+                throw new LibraryException("a bookmark has no quote, color or rects; leave them out or make a highlight");
+            }
+
+            if (string.IsNullOrEmpty(draft.Locator))
+            {
+                throw new LibraryException("locator is required for a bookmark: the place in the file");
+            }
+
+            if (LocatorProblem(file.Format, draft.Locator) is { } bookmarkProblem)
+            {
+                throw new LibraryException(bookmarkProblem);
+            }
+
+            annotation = new Annotation(Ulid.New(), file.Name, kind, draft.Locator, null, null, note, now, now);
         }
         else
         {
@@ -833,7 +861,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
                 throw new LibraryException($"color must be one of {string.Join(", ", AnnotationsSidecar.Colors)}");
             }
 
-            created = new Annotation(
+            annotation = new Annotation(
                 Ulid.New(), file.Name, kind, draft.Locator, new AnnotationQuote(draft.QuoteExact, draft.QuotePrefix, draft.QuoteSuffix), color, note, now, now,
                 Rects(draft.Rects));
         }
@@ -843,7 +871,14 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             try
             {
-                LibraryAnnotations.Add(root, work, created);
+                if (kind == AnnotationKind.Bookmark
+                    && LibraryAnnotations.List(root, work).FirstOrDefault(a => a.Kind == kind && a.File == file.Name && a.Locator == annotation.Locator) is { } there)
+                {
+                    created = false;
+                    return View(work, there);
+                }
+
+                LibraryAnnotations.Add(root, work, annotation);
             }
             catch (Exception e) when (e is SidecarException or IndexException)
             {
@@ -851,7 +886,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
             }
         }
 
-        return View(work, created);
+        return View(work, annotation);
     }
 
     /// <summary>Changes the note or the color of an annotation.</summary>
@@ -889,9 +924,9 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
                     throw new LibraryException("note is required: a note without text is deleted instead");
                 }
 
-                if (existing.Kind == AnnotationKind.Note && changes.ColorGiven)
+                if (existing.Kind != AnnotationKind.Highlight && changes.ColorGiven)
                 {
-                    throw new LibraryException("a note has no color");
+                    throw new LibraryException($"a {AnnotationsFormat.KindName(existing.Kind)} has no color");
                 }
 
                 var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -991,9 +1026,6 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
     private static ReadingPosition Position(FileProgress progress) =>
         new(progress.Locator, progress.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
-
-    [System.Text.RegularExpressions.GeneratedRegex("^page=[1-9][0-9]{0,8}$")]
-    private static partial System.Text.RegularExpressions.Regex PageLocator();
 
     /// <summary>The cover image of a work (F-IMP-5).</summary>
     /// <exception cref="LibraryException">With the kind <see cref="LibraryErrorKind.NotFound"/>: no such work, no cover, or the file is gone.</exception>

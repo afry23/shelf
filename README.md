@@ -284,7 +284,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf organize [--apply] [--pattern ...] [--paper-pattern ...]` | Re-sort the library by pattern; papers have a pattern of their own |
 | `shelf undo` | Revert the last organize, tag, dupes or delete run |
 | `shelf trash empty [--yes]` | Delete the trash for good |
-| `shelf notes` | Notes and highlights |
+| `shelf notes` | Notes, highlights and bookmarks (`list`, `add`, `bookmark`, `rm`, `export`) |
 | `shelf covers` | Cover maintenance |
 | `shelf open <work-id> [--format pdf]` | Open with the default app |
 | `shelf serve [--port] [--bind] [--token]` | Web UI and REST API |

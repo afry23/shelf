@@ -561,12 +561,15 @@ export const citationsUrl = (format: CitationFormat, q?: string) => `/api/v1/cit
 
 export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
 
-/** A highlight (a marked passage, with a color) or a note for a whole file; both can carry a note in Markdown. */
+/**
+ * A highlight (a marked passage, with a color), a note for a whole file, or a bookmark (a place, its note is the label). Highlights
+ * and notes can carry a note in Markdown.
+ */
 export interface Annotation {
   id: string;
   /** The ID of the file the annotation belongs to. */
   file: string;
-  kind: 'highlight' | 'note';
+  kind: 'highlight' | 'note' | 'bookmark';
   locator: string | null;
   quote: { exact: string; prefix: string | null; suffix: string | null } | null;
   color: AnnotationColor | null;
@@ -578,7 +581,7 @@ export interface Annotation {
 }
 
 export interface AnnotationDraft {
-  kind: 'highlight' | 'note';
+  kind: 'highlight' | 'note' | 'bookmark';
   locator?: string;
   quote?: { exact: string; prefix?: string; suffix?: string };
   color?: AnnotationColor;

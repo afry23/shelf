@@ -366,7 +366,7 @@ Requirements for the MCP server:
 | F-RDR-3 | Deep links to locations (`/read/{fileId}#page=42` or `#cfi=...`). Search hits jump directly there. | M |
 | F-RDR-4 | Reading progress is saved per file in `book.json` and resumed on opening. Writes are debounced (e.g. at most every 30 s and on closing the reader). | S |
 | F-RDR-5 | If a work has multiple formats, the preferred format for the reader is configurable (default: EPUB). | S |
-| F-RDR-6 | Bookmarks. | C |
+| F-RDR-6 | Bookmarks: a person sets a bookmark at the place of the reader (a PDF page or an EPUB position), with an optional label, and removes it again. A place has at most one bookmark. Bookmarks are kept in `annotations.json` as an annotation of the kind `bookmark`, are listed in the reader and on the work page, and are available as `shelf notes bookmark`, in the Markdown export and as the MCP tool `add_bookmark` (not with `mcp.read_only`). | S |
 | F-ANN-1 | In the reader a person selects text and creates a **highlight** with a color. Highlights are drawn again when the file is opened. EPUB first, PDF second. | S |
 | F-ANN-2 | A highlight or a whole file can carry a **note in Markdown**. A note without a place in the text (a note for the file) is possible. | S |
 | F-ANN-3 | Highlights and notes are stored in `annotations.json` next to `book.json` (source of truth, same atomic writes). The index mirrors them and `shelf reindex` restores the mirror. They move with the work on organize, merge and split. | S |

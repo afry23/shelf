@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { Annotation, AnnotationColor } from '../api';
+  import { placeName } from '../format';
   import { renderMarkdown } from '../markdown';
   import type { Annotations } from './annotations.svelte';
   import { colors } from './annotations.svelte';
 
-  // The highlights and notes of a file or a work, with the note shown as Markdown and an editor for it. The reader goes to the place
+  // The highlights, notes and bookmarks of a file or a work, with the note shown as Markdown and an editor for it. The reader goes to the place
   // of a highlight (`go`); the book page links to it (`href`).
   let {
     store,
@@ -54,7 +55,7 @@
 </script>
 
 {#if store.items.length === 0}
-  <p class="muted empty">{store.loaded ? 'No highlights or notes yet.' : 'Loading…'}</p>
+  <p class="muted empty">{store.loaded ? 'No highlights, notes or bookmarks yet.' : 'Loading…'}</p>
 {:else}
   <ul class="notes">
     {#each store.items as annotation (annotation.id)}
@@ -66,6 +67,12 @@
             <button type="button" class="quote" style:border-color={colors[annotation.color ?? 'yellow']} onclick={() => go?.(annotation)}>
               {annotation.quote.exact}
             </button>
+          {/if}
+        {:else if annotation.kind === 'bookmark'}
+          {#if href}
+            <a class="quote bookmark" href={href(annotation)}>{placeName(annotation.locator)}</a>
+          {:else}
+            <button type="button" class="quote bookmark" onclick={() => go?.(annotation)}>{placeName(annotation.locator)}</button>
           {/if}
         {:else}
           <p class="kind muted">Note for the file{names[annotation.file] ? ` ${names[annotation.file]}` : ''}</p>
@@ -82,7 +89,7 @@
             <div class="markdown">{@html renderMarkdown(annotation.note)}</div>
           {/if}
           <p class="actions">
-            <button type="button" class="button" onclick={() => edit(annotation)}>{annotation.note ? 'Edit note' : 'Add note'}</button>
+            <button type="button" class="button" onclick={() => edit(annotation)}>{annotation.kind === 'bookmark' ? (annotation.note ? 'Edit label' : 'Add label') : annotation.note ? 'Edit note' : 'Add note'}</button>
             {#if annotation.kind === 'highlight' && annotation.color}
               <span class="swatches" role="group" aria-label="Color">
                 {#each Object.entries(colors) as [name, value] (name)}
@@ -98,7 +105,7 @@
               </span>
             {/if}
             <button type="button" class="button" onclick={() => remove(annotation)}>
-              {annotation.kind === 'highlight' ? 'Delete highlight' : 'Delete note'}
+              {annotation.kind === 'highlight' ? 'Delete highlight' : annotation.kind === 'bookmark' ? 'Delete bookmark' : 'Delete note'}
             </button>
           </p>
         {/if}
@@ -143,6 +150,11 @@
     font-style: italic;
     color: inherit;
     text-decoration: none;
+  }
+
+  .bookmark {
+    font-style: normal;
+    border-color: var(--accent);
   }
 
   .kind {

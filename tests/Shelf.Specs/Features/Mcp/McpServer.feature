@@ -37,9 +37,10 @@ Feature: The MCP server
     Then the server is called "shelf"
     And the server instructions mention "search_books"
 
-  Scenario: The tools are offered, and only three of them change anything
+  Scenario: The tools are offered, and only four of them change anything
     Then the server offers exactly the tools:
       | tool                 |
+      | add_bookmark         |
       | add_note             |
       | add_tags             |
       | export_citations     |
@@ -54,7 +55,7 @@ Feature: The MCP server
       | search_books         |
       | semantic_search      |
       | similar_books        |
-    And every tool except "add_note", "add_tags" and "remove_tags" is marked read-only
+    And every tool except "add_bookmark", "add_note", "add_tags" and "remove_tags" is marked read-only
     And no tool is marked destructive
     And every tool has a description
     And no tool name starts with "delete", "move", "trash" or "apply"
@@ -68,6 +69,7 @@ Feature: The MCP server
     And the tool "get_annotations" requires the arguments "id"
     And the tool "add_note" requires the arguments "id, text"
     And the tool "add_tags" requires the arguments "id, tags"
+    And the tool "add_bookmark" requires the arguments "id, locator"
     And the tool "remove_tags" requires the arguments "id, tags"
     And the tool "list_tags" requires no arguments
     And the tool "find_probable_duplicates" requires no arguments
@@ -84,6 +86,7 @@ Feature: The MCP server
       | get_annotations      |
       | get_book             |
       | get_annotations      |
+      | add_bookmark         |
       | add_note             |
       | read_passage         |
       | add_tags             |
@@ -114,6 +117,7 @@ Feature: The MCP server
       | get_book             | { "id": "01J9Z3K0000000000000000002" }            |
       | get_annotations      | { "id": "01J9Z3K0000000000000000002" }            |
       | add_note             | { "id": "01J9Z3K0000000000000000002", "text": "x" } |
+      | add_bookmark         | { "id": "01J9Z3K0000000000000000002", "locator": "page=1" } |
       | get_book             | { "id": "01J9Z3K0000000000000000001" }            |
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
       | list_tags            | {}                                                |
@@ -151,4 +155,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_note, add_tags, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"
+    Then the tool names sorted are "add_bookmark, add_note, add_tags, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books"

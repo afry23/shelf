@@ -7,6 +7,7 @@
   import { replaceHash, router } from '../router.svelte';
   import { colors, createAnnotations } from './annotations.svelte';
   import Entries, { type Entry } from './Entries.svelte';
+  import BookmarkButton from './BookmarkButton.svelte';
   import NotesPanel from './NotesPanel.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
@@ -322,6 +323,7 @@
       >
     {/if}
 
+    <BookmarkButton store={annotations} fileId={file.id} locator={pages === 0 ? null : `page=${page}`} />
     <button type="button" class="button" aria-expanded={notesOpen} disabled={pages === 0} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
 
     {#if pending}

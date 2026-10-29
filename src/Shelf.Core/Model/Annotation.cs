@@ -2,11 +2,12 @@ using System.Text.Json;
 
 namespace Shelf.Core.Model;
 
-/// <summary>What an annotation is: a marked passage or a note for the whole file (F-ANN-1, F-ANN-2).</summary>
+/// <summary>What an annotation is: a marked passage, a note for the whole file, or a bookmark (F-ANN-1, F-ANN-2, F-RDR-6).</summary>
 public enum AnnotationKind
 {
     Highlight,
     Note,
+    Bookmark,
 }
 
 /// <summary>The marked text with some text around it, so that a highlight can be found again if the location no longer fits.</summary>
@@ -17,7 +18,7 @@ public sealed record AnnotationRect(double X, double Y, double Width, double Hei
 
 /// <summary>
 /// A highlight or a note of one file. A highlight has a locator (an EPUB CFI or <c>page=N</c>), a quote and a color;
-/// a note has neither. Both can carry a note in Markdown. A highlight in a PDF also keeps the areas it marks on the page
+/// a note has neither; a bookmark has a locator and nothing else, its note is the label. Highlights and notes can carry a note in Markdown. A highlight in a PDF also keeps the areas it marks on the page
 /// (<see cref="Rects"/>), because a PDF page has no text positions that a locator could name.
 /// </summary>
 public sealed record Annotation(

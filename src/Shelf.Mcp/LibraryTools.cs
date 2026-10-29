@@ -70,6 +70,14 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The name of the file, if the work has more than one")] string? file = null) =>
         Run(() => service.AddNote(id, text, file));
 
+    [Description("Set a bookmark at a place in a file of a work, with an optional short label. Use a location from get_book, search_books or read_passage ('page=12' for a PDF, an 'epubcfi(...)' for an EPUB). A bookmark that is there already is returned as it is.")]
+    public AnnotationView AddBookmark(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The place in the file, as given by the other tools")] string locator,
+        [Description("A short label for the bookmark")] string? label = null,
+        [Description("The name of the file, if the work has more than one")] string? file = null) =>
+        Run(() => service.AddBookmark(id, locator, label, file));
+
     [Description("The citations of works as BibTeX, CSL-JSON or RIS, for all works, for the works a search finds, or for one work. Works without a cite key are left out and named in 'skipped'. Read-only: nothing is written.")]
     public CitationsExport ExportCitations(
         [Description("Only the works this search finds, in the language of search_books, e.g. 'tag:thesis year:>=2020 type:paper venue:CVPR' (default: all works)")] string? query = null,

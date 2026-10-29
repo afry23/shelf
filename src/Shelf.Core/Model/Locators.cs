@@ -7,7 +7,7 @@ namespace Shelf.Core.Model;
 /// Where a piece of text sits inside a file (F-SRC-5): <c>page=N</c> for a PDF page (1-based) and an
 /// EPUB CFI of the spine item for a chapter. The strings are stored in the index and used by the readers.
 /// </summary>
-public static class Locators
+public static partial class Locators
 {
     /// <summary>
     /// The CFI of a spine item: the package is step 6 of the root, the spine item number n (0-based) is step
@@ -30,6 +30,26 @@ public static class Locators
 
         return $"epubcfi(/6/{2 * (spineIndex + 1)}[{id}]!)";
     }
+
+    /// <summary>Why this location is none of a file of this format (<c>pdf</c> or <c>epub</c>), or null.</summary>
+    public static string? Problem(string format, string locator)
+    {
+        ArgumentNullException.ThrowIfNull(format);
+        ArgumentNullException.ThrowIfNull(locator);
+        return format switch
+        {
+            "pdf" => PageLocator().IsMatch(locator)
+                ? null
+                : "locator of a PDF must be page=N, with N a page number from 1",
+            "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
+                ? null
+                : "locator of an EPUB must be an epubcfi(...)",
+            _ => $"files of the format {format} have no reading position",
+        };
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^page=[1-9][0-9]{0,8}$")]
+    private static partial System.Text.RegularExpressions.Regex PageLocator();
 
     public static string PdfPage(int pageNumber)
     {

@@ -192,7 +192,7 @@ Feature: Highlights and Markdown notes of a file over HTTP
     Examples:
       | file                               | body                                                                                         | reason  |
       | 01J9Z3K0000000000000000002~es.pdf  | {}                                                                                           | kind    |
-      | 01J9Z3K0000000000000000002~es.pdf  | { "kind": "bookmark" }                                                                       | kind    |
+      | 01J9Z3K0000000000000000002~es.pdf  | { "kind": "sticker" }                                                                        | kind    |
       | 01J9Z3K0000000000000000002~es.pdf  | { "kind": "highlight", "quote": { "exact": "x" } }                                           | locator |
       | 01J9Z3K0000000000000000002~es.pdf  | { "kind": "highlight", "locator": "page=0", "quote": { "exact": "x" } }                      | page    |
       | 01J9Z3K0000000000000000001~kp.epub | { "kind": "highlight", "locator": "page=2", "quote": { "exact": "x" } }                      | epubcfi |

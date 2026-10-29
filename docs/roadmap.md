@@ -298,6 +298,19 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all F-PAP requirements, the complete BDD suite is green, `shelf reindex` restores the paper fields from the sidecars.
 
+### M10 – Bookmarks and Tag Suggestions
+
+**Goal:** Places in a book are kept without marking text, and a work gets tag suggestions from the works most like it.
+
+**Status:** in progress. Slice plan: [m10-bookmarks](slices/m10-bookmarks.md); done: F-RDR-6.
+
+| Area | Content | PRD |
+|---|---|---|
+| Bookmarks | third annotation kind in `annotations.json`, reader button, notes panel and work page, `shelf notes bookmark`, Markdown export, MCP `add_bookmark` | F-RDR-6 |
+| Tag suggestions | tags of the most similar works as suggestions in the CLI, API, MCP and work page | F-TAG-6 |
+
+**Exit criteria:** feature files exist for F-RDR-6 and F-TAG-6, the complete BDD suite is green, `shelf reindex` restores the bookmarks.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:
@@ -307,7 +320,6 @@ Could items and deferred decisions:
 | Watch mode | F-LIB-8 |
 | Import from cloud folders via rclone (Google Drive and others) | F-IMP-8 |
 | Tag suggestions based on semantic similarity | F-TAG-6 |
-| Bookmarks | F-RDR-6 |
 | Evaluation of bge-m3 as an alternative embedding model | Q3 |
 | Distribution as `dotnet tool` | 9.2 |
 
