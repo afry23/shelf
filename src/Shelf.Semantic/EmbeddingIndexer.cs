@@ -151,7 +151,7 @@ public static class EmbeddingIndexer
         var rows = new List<(long Seq, string Text, string Hash)>();
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT seq, id, title, subtitle, description FROM works ORDER BY seq";
+            command.CommandText = "SELECT seq, id, title, subtitle, description, abstract FROM works ORDER BY seq";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -159,6 +159,7 @@ public static class EmbeddingIndexer
                     reader.GetString(2),
                     reader.IsDBNull(3) ? null : reader.GetString(3),
                     reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
                     tags.GetValueOrDefault(reader.GetString(1)) ?? []);
                 rows.Add((reader.GetInt64(0), text, WorkText.Hash(text)));
                 var titleText = WorkText.BuildTitle(reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3));

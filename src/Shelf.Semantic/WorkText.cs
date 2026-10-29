@@ -7,14 +7,17 @@ namespace Shelf.Semantic;
 public static class WorkText
 {
     /// <summary>
-    /// Title, subtitle, description and tags, one per line. The table of contents joins them when the extraction
-    /// provides it (the MCP slice); the work is then embedded again because its hash changes.
+    /// Title, subtitle, description, abstract and tags, one per line. The abstract of a paper (F-PAP-7) is its description: it
+    /// says what the paper is about, which its title often does not. The table of contents joins them when the extraction
+    /// provides it (the MCP slice); the work is then embedded again because its hash changes. A work without an abstract
+    /// has the same text, and so the same hash, as before the abstract was added.
     /// </summary>
-    public static string Build(string title, string? subtitle, string? description, IReadOnlyList<string> tags)
+    public static string Build(string title, string? subtitle, string? description, string? abstractText, IReadOnlyList<string> tags)
     {
         var builder = new StringBuilder(title);
         Append(builder, subtitle);
         Append(builder, description);
+        Append(builder, abstractText);
         if (tags.Count > 0)
         {
             Append(builder, "Tags: " + string.Join(", ", tags));
