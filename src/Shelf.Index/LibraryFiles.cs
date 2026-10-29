@@ -342,7 +342,7 @@ public static class LibraryFiles
             Description = metadata.Description,
             Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
             Files = [new SidecarFile(fileName, progress)],
-        };
+        }.From(metadata);
     }
 
     private static byte[] SidecarBytes(WorkSidecar sidecar, string path)

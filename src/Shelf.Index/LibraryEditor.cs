@@ -143,6 +143,16 @@ public static class LibraryEditor
             Edition = t.Edition ?? s.Edition,
             CiteKey = t.CiteKey ?? s.CiteKey,
             Description = t.Description ?? s.Description,
+            Kind = t.Kind == WorkKind.Paper || s.Kind == WorkKind.Paper ? WorkKind.Paper : WorkKind.Book,
+            Doi = t.Doi ?? s.Doi,
+            ArxivId = t.ArxivId ?? s.ArxivId,
+            Pmid = t.Pmid ?? s.Pmid,
+            Venue = t.Venue ?? s.Venue,
+            Volume = t.Volume ?? s.Volume,
+            Issue = t.Issue ?? s.Issue,
+            Pages = t.Pages ?? s.Pages,
+            Abstract = t.Abstract ?? s.Abstract,
+            Keywords = t.Keywords.Count > 0 ? t.Keywords : s.Keywords,
             Rating = t.Rating ?? s.Rating,
             Tags = [.. t.Tags.Concat(s.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             ReadStatus = (ReadStatus)Math.Max((int)t.ReadStatus, (int)s.ReadStatus),
@@ -220,7 +230,7 @@ public static class LibraryEditor
             Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
             Files = [new SidecarFile(name, entry.Progress)],
             NotDuplicates = new NotDuplicates([work.Id], []),
-        };
+        }.From(metadata);
         SidecarStore.Write(Path.Combine(folder, SidecarStore.FileName), created);
         LibraryAnnotations.Carry(root, work, new LibraryWork(id, relativeFolder, title), new Dictionary<string, string> { [entry.Name] = name });
 

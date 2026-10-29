@@ -73,9 +73,9 @@ internal sealed class IndexWriter : IDisposable
     {
         var command = _insertWork ??= Prepare("""
             INSERT INTO works(id, title, title_norm, subtitle, authors_json, author_sort, language, year, isbn13, publisher,
-                              series, series_index, edition, cite_key, description, rating, read_status, cover_path, dir_path, added_at, updated_at)
+                              series, series_index, edition, cite_key, description, kind, doi, arxiv_id, venue, abstract, rating, read_status, cover_path, dir_path, added_at, updated_at)
             VALUES ($id, $title, $titleNorm, $subtitle, $authors, $authorSort, $language, $year, $isbn13, $publisher,
-                    $series, $seriesIndex, $edition, $citeKey, $description, $rating, $status, $cover, $dir, $added, $updated)
+                    $series, $seriesIndex, $edition, $citeKey, $description, $kind, $doi, $arxivId, $venue, $abstract, $rating, $status, $cover, $dir, $added, $updated)
             RETURNING seq
             """);
         BindWork(command, s, dirPath, sidecarModifiedUtc);
@@ -92,6 +92,7 @@ internal sealed class IndexWriter : IDisposable
             UPDATE works SET title = $title, title_norm = $titleNorm, subtitle = $subtitle, authors_json = $authors,
                 author_sort = $authorSort, language = $language, year = $year, isbn13 = $isbn13, publisher = $publisher,
                 series = $series, series_index = $seriesIndex, edition = $edition, cite_key = $citeKey, description = $description,
+                kind = $kind, doi = $doi, arxiv_id = $arxivId, venue = $venue, abstract = $abstract,
                 rating = $rating, read_status = $status, cover_path = $cover, dir_path = $dir, added_at = $added,
                 updated_at = $updated
             WHERE id = $id
@@ -289,6 +290,11 @@ internal sealed class IndexWriter : IDisposable
         Bind(command, "$edition", s.Edition);
         Bind(command, "$citeKey", s.CiteKey);
         Bind(command, "$description", s.Description);
+        Bind(command, "$kind", s.Kind == WorkKind.Paper ? "paper" : "book");
+        Bind(command, "$doi", s.Doi is null ? null : PaperIds.Normalize(s.Doi));
+        Bind(command, "$arxivId", s.ArxivId);
+        Bind(command, "$venue", s.Venue);
+        Bind(command, "$abstract", s.Abstract);
         Bind(command, "$rating", s.Rating);
         Bind(command, "$status", s.ReadStatus.ToString().ToLowerInvariant());
         Bind(command, "$cover", s.Cover is null ? null : JoinRelative(dirPath, s.Cover));
@@ -335,7 +341,10 @@ internal sealed class IndexWriter : IDisposable
         Bind(fts, "$title", s.Title);
         Bind(fts, "$subtitle", s.Subtitle);
         Bind(fts, "$authors", string.Join(' ', s.Authors));
-        Bind(fts, "$description", s.Description);
+
+        // The abstract, keywords and venue of a paper are searched like the description of a book (F-PAP-7).
+        var described = string.Join(' ', new[] { s.Description, s.Abstract, s.Venue, string.Join(' ', s.Keywords) }.Where(t => !string.IsNullOrWhiteSpace(t)));
+        Bind(fts, "$description", described.Length == 0 ? null : described);
         Bind(fts, "$tags", string.Join(' ', s.Tags));
         Bind(fts, "$publisher", s.Publisher);
 
@@ -344,7 +353,7 @@ internal sealed class IndexWriter : IDisposable
         var stemmer = Stemmer.For(s.Language);
         var stems = stemmer is null
             ? null
-            : string.Join(' ', new[] { s.Title, s.Subtitle, s.Description, string.Join(' ', s.Tags) }.SelectMany(Stemmer.Words).SelectMany(w => StemsOf(w, stemmer)));
+            : string.Join(' ', new[] { s.Title, s.Subtitle, described, string.Join(' ', s.Tags) }.SelectMany(Stemmer.Words).SelectMany(w => StemsOf(w, stemmer)));
         Bind(fts, "$stemsEn", stemmer == Stemmer.English ? stems : null);
         Bind(fts, "$stemsDe", stemmer == Stemmer.German ? stems : null);
         NonQuery(fts);

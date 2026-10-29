@@ -373,6 +373,19 @@ public static class LibrarySearch
                 case ValueFilter { Field: FieldKind.Format } format:
                     filter.Add($"{not}EXISTS (SELECT 1 FROM files fx WHERE fx.work_id = w.id AND fx.format = {{0}})", format.Value);
                     break;
+                case ValueFilter { Field: FieldKind.Type } type:
+                    filter.Add($"w.kind {(f.Negated ? "<>" : "=")} {{0}}", type.Value);
+                    break;
+                case ValueFilter { Field: FieldKind.Doi } doi:
+                    filter.Add($"{not}COALESCE(w.doi = {{0}}, 0)", doi.Value);
+                    break;
+                case ValueFilter { Field: FieldKind.Arxiv } arxiv:
+                    filter.Add($"{not}COALESCE(w.arxiv_id = {{0}}, 0)", arxiv.Value);
+                    break;
+                case ValueFilter { Field: FieldKind.Venue } venue:
+                    // Contains, ignoring case: "venue:neurips" finds "Advances in NeurIPS 2017".
+                    filter.Add($"{not}COALESCE(instr(lower(w.venue), {{0}}) > 0, 0)", venue.Value);
+                    break;
                 case ValueFilter status:
                     filter.Add($"w.read_status {(f.Negated ? "<>" : "=")} {{0}}", status.Value);
                     break;

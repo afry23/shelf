@@ -273,7 +273,7 @@ public static class LibraryImporter
                 Description = metadata.Description,
                 Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
                 Files = [new SidecarFile(name)],
-            };
+            }.From(metadata);
 
             if (CiteKeyOf(sidecar) is { } citeKey)
             {
