@@ -156,6 +156,9 @@ public sealed record FetchRequest(JsonNode? Paper);
 /// <summary>The body of <c>POST /works/{id}/enrich</c> and <c>/enrich/apply</c>; every field is optional. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record EnrichRequest(JsonNode? Source, JsonNode? Pick, JsonNode? Overwrite, JsonNode? Cover);
 
+/// <summary>The body of <c>POST /works/{id}/references/fetch</c>: <c>apply</c> stores the list, else nothing is written. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record ReferencesFetchRequest(JsonNode? Apply);
+
 /// <summary>The body of <c>POST /files/{id}/move</c>: <c>to</c> (the ID of the work that receives the file) or <c>new</c> (true: a work of its own, described by the optional <c>title</c>, <c>authors</c> and <c>year</c>). Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record MoveRequest(JsonNode? To, JsonNode? New, JsonNode? Title, JsonNode? Authors, JsonNode? Year);
 

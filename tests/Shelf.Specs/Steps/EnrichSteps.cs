@@ -45,6 +45,21 @@ public sealed class EnrichSteps(ScenarioEnvironment environment)
             Abstract: Field("abstract")));
     }
 
+    [Given("the online source {string} lists these references for the DOI {string}:")]
+    public void GivenTheSourceListsReferences(string name, string doi, DataTable table)
+    {
+        string? Cell(DataTableRow row, string column) => table.Header.Contains(column) && !string.IsNullOrEmpty(row[column]) ? row[column] : null;
+        environment.Online.Source(name).References[doi] =
+        [
+            .. table.Rows.Select(r => new Shelf.Core.Model.Reference(
+                Cell(r, "doi"),
+                Cell(r, "title"),
+                Cell(r, "year") is { } year ? int.Parse(year, CultureInfo.InvariantCulture) : null,
+                Cell(r, "author"),
+                Cell(r, "unstructured"))),
+        ];
+    }
+
     [Given("the online source {string} has a PDF for the arXiv ID {string}")]
     public void GivenTheSourceHasAPdf(string name, string arxivId) =>
         environment.Online.Source(name).Pdfs[arxivId] = Shelf.TestData.SampleBooks.PaperPdf("Attention Is All You Need", "Ashish Vaswani", "arXiv:" + arxivId + "v5 [cs.CL]");
@@ -66,6 +81,9 @@ public sealed class EnrichSteps(ScenarioEnvironment environment)
     [Given("the online source {string} has a cover of type {string} for the ISBN {string}")]
     public void GivenTheSourceHasACover(string name, string type, string isbn) =>
         environment.Online.Source(name).Covers[isbn] = new OnlineCover([0xFF, 0xD8, 0xFF, 0xE0], type);
+
+    [Given("the online questions are forgotten")]
+    public void GivenTheOnlineQuestionsAreForgotten() => environment.Online.Calls.Clear();
 
     [Then("no online source was queried")]
     public void ThenNoSourceWasQueried() => Assert.Empty(environment.Online.Calls);
@@ -124,6 +142,16 @@ public sealed class FakeSource(string name, FakeOnline online, bool forPapers = 
         online.Calls.Add($"{name}:doi {doi}");
         Fail();
         return [.. Books.Where(b => string.Equals(b.Doi, doi, StringComparison.OrdinalIgnoreCase))];
+    }
+
+    /// <summary>The reference lists by DOI (lower case); a DOI that is not here is unknown to the source.</summary>
+    public Dictionary<string, IReadOnlyList<Shelf.Core.Model.Reference>> References { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<Shelf.Core.Model.Reference>? FindReferences(string doi, CancellationToken cancellation)
+    {
+        online.Calls.Add($"{name}:references {doi}");
+        Fail();
+        return References.GetValueOrDefault(doi);
     }
 
     public IReadOnlyList<OnlineBook> FindByArxivId(string arxivId, CancellationToken cancellation)

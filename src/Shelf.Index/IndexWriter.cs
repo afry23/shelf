@@ -196,6 +196,25 @@ internal sealed class IndexWriter : IDisposable
         }
     }
 
+    /// <summary>Gives the work the references of its <c>references.json</c> in the index, and none other. A DOI is kept in lower case.</summary>
+    public void ReplaceReferences(string workId, IEnumerable<Reference> references)
+    {
+        Execute("DELETE FROM work_refs WHERE work_id = $w", ("$w", workId));
+        var position = 0;
+        foreach (var r in references)
+        {
+            Execute(
+                "INSERT INTO work_refs(work_id, position, doi, title, year, author, unstructured) VALUES ($w, $p, $d, $t, $y, $a, $u)",
+                ("$w", workId),
+                ("$p", position++),
+                ("$d", r.Doi is null ? null : PaperIds.Normalize(r.Doi)),
+                ("$t", r.Title),
+                ("$y", r.Year),
+                ("$a", r.Author),
+                ("$u", r.Unstructured));
+        }
+    }
+
     public void UpdateFilePath(long fileId, string relPath) =>
         Execute("UPDATE files SET rel_path = $p WHERE id = $id", ("$p", relPath), ("$id", fileId));
 

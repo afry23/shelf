@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Shelf.Core.Model;
 
 namespace Shelf.Index;
 
@@ -24,6 +25,43 @@ public sealed partial class CrossrefSource(IHttpGetter http) : IMetadataSource
 
         using var document = OnlineParsing.Parse(answer, "DOI lookup");
         return document.RootElement.TryGetProperty("message", out var message) && Read(message) is { } book ? [book] : [];
+    }
+
+    public IReadOnlyList<Reference>? FindReferences(string doi, CancellationToken cancellation)
+    {
+        var path = string.Join('/', doi.Split('/').Select(Uri.EscapeDataString));
+        var answer = http.Get($"https://api.crossref.org/works/{path}", cancellation);
+        if (answer.Status == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        using var document = OnlineParsing.Parse(answer, "reference lookup");
+        if (!document.RootElement.TryGetProperty("message", out var message))
+        {
+            return null;
+        }
+
+        var references = new List<Reference>();
+        foreach (var item in OnlineParsing.Items(message, "reference"))
+        {
+            var referenceDoi = OnlineParsing.Text(item, "DOI")?.Trim().ToLowerInvariant();
+            var title = OnlineParsing.Clean(OnlineParsing.Text(item, "article-title") ?? OnlineParsing.Text(item, "volume-title"));
+            var unstructured = OnlineParsing.Clean(OnlineParsing.Text(item, "unstructured"));
+            if (string.IsNullOrEmpty(referenceDoi) && title is null && unstructured is null)
+            {
+                continue;
+            }
+
+            references.Add(new Reference(
+                string.IsNullOrEmpty(referenceDoi) ? null : referenceDoi,
+                title,
+                int.TryParse(OnlineParsing.Text(item, "year"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var year) ? year : null,
+                OnlineParsing.Clean(OnlineParsing.Text(item, "author")),
+                unstructured));
+        }
+
+        return references;
     }
 
     public IReadOnlyList<OnlineBook> Search(string title, string? author, CancellationToken cancellation)

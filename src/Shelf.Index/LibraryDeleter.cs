@@ -95,6 +95,7 @@ public static class LibraryDeleter
             }
 
             journal.Trash(Path.Combine(directory, AnnotationsFormat.FileName));
+            journal.Trash(Path.Combine(directory, ReferencesFormat.FileName));
             journal.Trash(LibraryEditor.SidecarPath(root, work));
         }
         finally

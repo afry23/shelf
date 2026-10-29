@@ -76,6 +76,10 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The name of the file, if the work has more than one")] string? file = null) =>
         Run(() => service.AddNote(id, text, file));
 
+    [Description("The references of a paper as they were loaded (each with the work of the library it points to, if its DOI is there) and the works of the library that cite the paper. Nobody is asked: if no list was loaded, 'references' is empty; the person loads one with 'shelf refs fetch'.")]
+    public ReferencesResult GetReferences([Description("The ID of a work, or the start of it")] string id) =>
+        Run(() => service.References(id));
+
     [Description("A passage of a book as a Markdown quote with a Pandoc citation of the work and the place, such as '> the passage' followed by '[@alander2021event, p. 12]', and the BibTeX entry of the work. Use the text of the passage and the location from read_passage or search_books. The work needs a cite key. Nothing is changed.")]
     public PassageCitation CitePassage(
         [Description("The ID of a work, or the start of it")] string id,

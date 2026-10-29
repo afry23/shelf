@@ -50,6 +50,7 @@ Feature: The MCP server over Streamable HTTP
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_references       |
       | list_tags            |
       | propose_organization |
       | read_passage         |
@@ -99,6 +100,7 @@ Feature: The MCP server over Streamable HTTP
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_references       |
       | list_tags            |
       | propose_organization |
       | read_passage         |

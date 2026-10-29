@@ -285,7 +285,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** Scientific papers are imported, identified by DOI or arXiv ID, enriched online and exported as BibTeX.
 
-**Status:** in progress on `feat/papers`; feature files in `tests/Shelf.Specs/Features/Papers/`. Done: F-PAP-1 to F-PAP-5 (CLI, REST, library and book view, MCP), F-PAP-7 (filters, abstract in the full-text index and in the work embedding), F-PAP-8 (CLI, REST, library view), F-PAP-6 (CLI), F-PAP-9, F-PAP-10. F-PAP-8 also asks Unpaywall.
+**Status:** done (merged); feature files in `tests/Shelf.Specs/Features/Papers/`. Done: F-PAP-1 to F-PAP-5 (CLI, REST, library and book view, MCP), F-PAP-7 (filters, abstract in the full-text index and in the work embedding), F-PAP-8 (CLI, REST, library view), F-PAP-6 (CLI), F-PAP-9, F-PAP-10. F-PAP-8 also asks Unpaywall.
 
 | Area | Content | PRD |
 |---|---|---|
@@ -315,12 +315,12 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** A passage is quoted with the right citation, and a paper knows which of the works it cites are in the library.
 
-**Status:** in progress. Slice plan: [m11-cite-passage](slices/m11-cite-passage.md); done: F-ANN-8.
+**Status:** implemented. Slice plans: [m11-cite-passage](slices/m11-cite-passage.md), [m11-references](slices/m11-references.md); decisions: [ADR 0019](adr/0019-references.md).
 
 | Area | Content | PRD |
 |---|---|---|
 | Cite a passage | "Copy as quote" in both readers, `shelf cite`, `POST /files/{id}/quote`, MCP `cite_passage`; Markdown block quote plus Pandoc citation with the place | F-ANN-8 |
-| References | `references.json` from Crossref, cited and cited-by in the library | planned |
+| References | `references.json` from Crossref on `shelf refs fetch`; cited works in the library and the works that cite a paper: `shelf refs list`, `GET /works/{id}/references`, tab "References", MCP `get_references` | F-PAP-11, F-PAP-12 |
 
 **Exit criteria:** feature files exist for all M11 requirements, the complete BDD suite is green.
 

@@ -255,6 +255,8 @@ A work is a **book** (default) or a **paper**. Papers are identified by DOI or a
 | F-PAP-8 | `shelf fetch <doi or arXiv ID>` and "Add paper" in the library view of the web interface (REST `POST /api/v1/works/fetch`) load the metadata (F-PAP-3) and the open-access PDF and create the work. All usual spellings are accepted (`1706.03762`, `arXiv:1706.03762v5`, `https://arxiv.org/abs/…`, `10.48550/arXiv.…`, `doi:…`, `https://doi.org/…`). The PDF comes from arXiv first; for a DOI, [Unpaywall](https://unpaywall.org) is asked next for a legal free copy (the best location first, at most three tries, only a file that really is a PDF counts). Unpaywall asks for an e-mail address with every request, so it is used only if `fetch.unpaywall_email` is set (global or library config); without it the error names the key. A paper without a free PDF creates nothing. A paper that is in the library already (same DOI or arXiv ID) is not loaded again. Only on explicit command. (`shelf add` stays what it is, F-GRP-7.) | S |
 | F-PAP-9 | In the grouping cascade (F-GRP-1) DOI and arXiv ID (without the version) come first. Versions of an arXiv paper are one work; a preprint and its published version are two works marked "related" (F-GRP-5). | S |
 | F-PAP-10 | `shelf organize` names a paper by its own pattern, `organize.paper_pattern` in the config or `--paper-pattern` (default `papers/{year}/{cite_key}/{cite_key}.{ext}`); `organize.pattern` and `--pattern` stay the pattern of books. The new placeholder `{cite_key}` is the cite key of the work, the title if there is none; it works in both patterns. A paper without a year goes straight to `papers/<cite key>`. | S |
+| F-PAP-11 | `shelf refs fetch <work> [--apply]` and "Load references from Crossref" on the work page (REST `POST /api/v1/works/{id}/references/fetch`) ask Crossref for the **reference list** of a paper by its DOI. Without `--apply` nothing is written; with it the list replaces the old one in `references.json` next to `book.json` (source of truth, ADR 0019; `schema` of `book.json` stays 1) and is mirrored in the index. An entry has a DOI, a title, a year, an author or the text of the citation. Only on this command: import, scan and reindex never ask. | S |
+| F-PAP-12 | The references of a paper show which of the cited works are in the library (matched by DOI, whatever its case), and a paper shows the works of the library that cite it. Available as `shelf refs list <work>`, `GET /api/v1/works/{id}/references`, the tab "References" on the work page and the read-only MCP tool `get_references`. Nobody is asked. | S |
 
 ## 7. Interfaces
 
@@ -495,6 +497,7 @@ review_queue(id, kind, payload_json, created_at) -- mirrored from .shelf/review.
 reading_progress(file_id, locator, updated_at) -- mirrored from book.json
 annotations(id, work_id, file_id, kind, locator, quote, color, note, created_at, updated_at) -- mirrored from annotations.json
 annotations_fts (FTS5: quote, note)
+work_refs(work_id, position, doi, title, year, author, unstructured) -- mirrored from references.json (F-PAP-11)
 ```
 
 ### 10.4 `book.json` (Sidecar)

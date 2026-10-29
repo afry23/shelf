@@ -65,6 +65,7 @@ public static class LibraryReindexer
                 }
 
                 writer.ReplaceAnnotations(work.Sidecar.Id.ToString(), LibraryAnnotations.ReadForMirror(root, work.DirPath, problems));
+                writer.ReplaceReferences(work.Sidecar.Id.ToString(), LibraryReferences.ReadForMirror(root, work.DirPath, problems));
             }
 
             writer.ReplaceReviewMirror(review);
