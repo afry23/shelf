@@ -6,18 +6,113 @@ using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
 
-/// <summary><c>shelf tag add|rm|list|rename|merge</c> (F-TAG-1 to F-TAG-5).</summary>
+/// <summary><c>shelf tag add|rm|list|rename|merge|suggest</c> (F-TAG-1 to F-TAG-6).</summary>
 internal static class TagCommand
 {
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
-        var command = new Command("tag", "Manage tags: add, rm, list, rename, merge");
+        var command = new Command("tag", "Manage tags: add, rm, list, rename, merge, suggest");
         command.Subcommands.Add(Select("add", "Add a tag to works and/or to the works that a search finds", json, stdout, stderr, environment, add: true));
         command.Subcommands.Add(Select("rm", "Remove a tag (only that tag, not the ones below it) from works and/or the works that a search finds", json, stdout, stderr, environment, add: false));
         command.Subcommands.Add(List(json, stdout, stderr, environment));
+        command.Subcommands.Add(Suggest(json, stdout, stderr, environment));
         command.Subcommands.Add(Move("rename", "Rename a tag and the tags below it on every work (the new name must be unused)", json, stdout, stderr, environment, merge: false));
         command.Subcommands.Add(Move("merge", "Put a tag and the tags below it into another tag on every work", json, stdout, stderr, environment, merge: true));
         return command;
+    }
+
+    private const int DefaultSuggestions = 10;
+
+    private static Command Suggest(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
+    {
+        var reference = WorkSupport.Argument();
+        var limit = new Option<int>("--limit")
+        {
+            Description = "Largest number of tags to suggest",
+            DefaultValueFactory = _ => DefaultSuggestions,
+        };
+        limit.Validators.Add(result =>
+        {
+            if (result.GetValueOrDefault<int>() is < 1 or > 100)
+            {
+                result.AddError("--limit must be between 1 and 100");
+            }
+        });
+        var apply = new Option<bool>("--apply") { Description = "Add the suggested tags to the work (can be undone with shelf undo)" };
+        var library = LibraryContext.CreateOption();
+        var command = new Command("suggest", "Suggest tags from the works that are most like a work, by the meaning of title, description and tags");
+        command.Arguments.Add(reference);
+        command.Options.Add(limit);
+        command.Options.Add(apply);
+        command.Options.Add(library);
+        command.SetAction(parseResult =>
+        {
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
+            using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(context.Root));
+
+            // The vector of the work is in the index: no model is loaded.
+            var store = Shelf.Semantic.VectorStore.OpenExisting(connection);
+            var suggestions = store is null ? null : Shelf.Semantic.SemanticSearch.SuggestTags(connection, store, work.Id.ToString(), parseResult.GetValue(limit));
+            var coverage = Shelf.Semantic.SemanticSearch.Coverage(connection, store);
+            var found = suggestions ?? [];
+
+            if (parseResult.GetValue(json))
+            {
+                stdout.WriteLine(JsonOutput.Write(writer => WriteSuggestionsJson(writer, work, found)));
+            }
+            else if (found.Count == 0)
+            {
+                stdout.WriteLine("No tag suggestions.");
+            }
+            else
+            {
+                foreach (var suggestion in found)
+                {
+                    var works = TextFormat.Plural(suggestion.Works, "similar work", "similar works");
+                    stdout.WriteLine($"{suggestion.Tag}  ({works}, {suggestion.Score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)})");
+                }
+            }
+
+            if (Shelf.Semantic.SemanticSearch.SimilarNote(suggestions is null ? null : [], store, coverage) is { } note)
+            {
+                stderr.WriteLine($"note: {note}");
+            }
+
+            if (parseResult.GetValue(apply) && found.Count > 0)
+            {
+                // One journal for all tags, so that one shelf undo takes them back.
+                var own = LibraryEditor.Read(context.Root, work).Tags;
+                LibraryTags.SetTags(context.Root, work.Id, [.. own, .. found.Select(s => s.Tag)]);
+                if (!parseResult.GetValue(json))
+                {
+                    stdout.WriteLine($"Added {TextFormat.Plural(found.Count, "tag", "tags")} to {work.Title}");
+                }
+            }
+
+            return ExitCodes.Success;
+        });
+        return command;
+    }
+
+    private static void WriteSuggestionsJson(Utf8JsonWriter writer, LibraryWork work, List<Shelf.Semantic.TagSuggestion> suggestions)
+    {
+        writer.WriteStartObject();
+        JsonOutput.Property(writer, "id", work.Id.ToString());
+        JsonOutput.Property(writer, "title", work.Title);
+        JsonOutput.Property(writer, "total", suggestions.Count);
+        writer.WriteStartArray("suggestions");
+        foreach (var suggestion in suggestions)
+        {
+            writer.WriteStartObject();
+            JsonOutput.Property(writer, "tag", suggestion.Tag);
+            JsonOutput.Property(writer, "works", suggestion.Works);
+            JsonOutput.Property(writer, "score", suggestion.Score);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
     }
 
     private static Command Select(string name, string description, Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment, bool add)

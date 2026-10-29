@@ -16,6 +16,9 @@ public sealed record PassagePlace(string File, string Format, string Locator, st
 /// <summary>A hit: a work, or a passage of a work. <paramref name="Score"/> is the cosine similarity (1 same, 0 unrelated).</summary>
 public sealed record SemanticHit(SemanticWork Work, double Score, PassagePlace? Passage);
 
+/// <summary>A tag suggested for a work (F-TAG-6): how many of the similar works carry it and their share of the similarity (0 to 1).</summary>
+public sealed record TagSuggestion(string Tag, int Works, double Score);
+
 /// <summary>What waits for the embeddings. A result that ignores it can miss works and passages.</summary>
 /// <param name="PendingFiles">Files with text that have no vectors (yet or any more).</param>
 /// <param name="WorksWithoutVector">Works that have no work vector.</param>
@@ -96,6 +99,62 @@ public static class SemanticSearch
 
         var bySeq = LoadWorks(connection, "seq", near.Select(h => (object)h.Id)).ToDictionary(w => w.Seq, w => w.Work);
         return [.. near.Where(h => bySeq.ContainsKey(h.Id)).Select(h => new SemanticHit(bySeq[h.Id], Similarity(h.Distance), null))];
+    }
+
+    /// <summary>How many of the most similar works vote on the tags of a work.</summary>
+    public const int TagNeighbours = 10;
+
+    /// <summary>
+    /// The tags of the works most like the work with the ID <paramref name="workId"/> (F-TAG-6), best first, without the tags the
+    /// work has. A tag counts with the similarity of every one of the <see cref="TagNeighbours"/> nearest works that carries it;
+    /// its score is that sum as a share of the similarity of all of them. Null if the work has no vector (yet). No model is needed.
+    /// </summary>
+    public static List<TagSuggestion>? SuggestTags(SqliteConnection connection, VectorStore store, string workId, int limit)
+    {
+        var similar = SimilarWorks(connection, store, workId, TagNeighbours);
+        if (similar is null)
+        {
+            return null;
+        }
+
+        var total = similar.Sum(h => Math.Max(h.Score, 0));
+        if (total <= 0)
+        {
+            return [];
+        }
+
+        var own = TagsOf(connection, [workId])[workId];
+        var votes = new Dictionary<string, (int Works, double Score)>(StringComparer.Ordinal);
+        var tags = TagsOf(connection, similar.Select(h => h.Work.Id.ToString()).ToList());
+        foreach (var hit in similar)
+        {
+            foreach (var tag in tags[hit.Work.Id.ToString()].Except(own, StringComparer.Ordinal))
+            {
+                var (works, score) = votes.GetValueOrDefault(tag);
+                votes[tag] = (works + 1, score + Math.Max(hit.Score, 0));
+            }
+        }
+
+        return [.. votes
+            .Select(v => new TagSuggestion(v.Key, v.Value.Works, Math.Round(v.Value.Score / total, 4)))
+            .OrderByDescending(t => t.Score)
+            .ThenByDescending(t => t.Works)
+            .ThenBy(t => t.Tag, StringComparer.Ordinal)
+            .Take(limit)];
+    }
+
+    private static Dictionary<string, List<string>> TagsOf(SqliteConnection connection, IReadOnlyList<string> workIds)
+    {
+        var result = workIds.ToDictionary(id => id, _ => new List<string>(), StringComparer.Ordinal);
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT wt.work_id, t.path FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id IN ({Placeholders(command, workIds)})";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result[reader.GetString(0)].Add(reader.GetString(1));
+        }
+
+        return result;
     }
 
     /// <summary>

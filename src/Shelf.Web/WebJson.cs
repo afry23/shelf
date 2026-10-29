@@ -17,6 +17,7 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(WorkList))]
 [JsonSerializable(typeof(SearchResponse))]
 [JsonSerializable(typeof(SimilarResponse))]
+[JsonSerializable(typeof(TagSuggestionsResponse))]
 [JsonSerializable(typeof(WorkDetail))]
 [JsonSerializable(typeof(DuplicateList))]
 [JsonSerializable(typeof(DuplicateOutcome))]

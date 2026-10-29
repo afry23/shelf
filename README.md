@@ -273,7 +273,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf fetch <doi\|arXiv ID>` | Add a paper: metadata and open-access PDF from arXiv, or via Unpaywall for a DOI |
 | `shelf export [query] [--format bibtex\|csl-json\|ris]` | Citations of all works or of a search result |
 | `shelf import-bib <file> [--apply]` | Take over DOIs, venues and cite keys from a BibTeX file (preview unless `--apply`) |
-| `shelf tag add\|rm\|list\|rename\|merge` | Manage tags; `tag add <tag> --query "<search>"` tags in bulk |
+| `shelf tag add\|rm\|list\|rename\|merge\|suggest` | Manage tags; `tag add <tag> --query "<search>"` tags in bulk; `tag suggest <work>` proposes the tags of similar books (`--apply` takes them over) |
 | `shelf dupes [--interactive]` | Find and clean up duplicates |
 | `shelf merge <a> <b>` / `shelf split <work> <file>` | Fix grouping by hand |
 | `shelf add <work> <file> [--replace <file>]` | Add a file to a work, for example a new version |
@@ -308,7 +308,7 @@ shelf search 'author:kleppmann year:>2015 "stream processing"'
 
 ### MCP server
 
-Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
+Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `suggest_tags`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
 
 #### Remote access over HTTP
 

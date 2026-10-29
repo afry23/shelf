@@ -47,6 +47,12 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("Largest number of works, 1 to 100 (default 10)")] int limit = 10) =>
         Run(() => service.SimilarBooks(id, limit));
 
+    [Description("The tags that the works most like a given work carry and the work does not, best first, each with the number of those works that carry it and their share of the similarity (0 to 1). Pass the ones that fit to add_tags. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete. Nothing is changed.")]
+    public TagSuggestionsResult SuggestTags(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("Largest number of tags, 1 to 100 (default 10)")] int limit = 10) =>
+        Run(() => service.SuggestTags(id, limit));
+
     [Description("Add tags to a work. A tag is free text; '/' makes a hierarchy such as 'architektur/ddd'. Tags the work has are left as they are. The change can be undone with 'shelf undo'.")]
     public TagChange AddTags(
         [Description("The ID of a work, or the start of it")] string id,

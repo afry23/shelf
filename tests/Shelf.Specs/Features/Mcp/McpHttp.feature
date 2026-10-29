@@ -56,6 +56,7 @@ Feature: The MCP server over Streamable HTTP
       | search_books         |
       | semantic_search      |
       | similar_books        |
+      | suggest_tags         |
     And every tool except "add_bookmark", "add_note", "add_tags" and "remove_tags" is marked read-only
     And no tool is marked destructive
     And the server offers the resource templates:
@@ -102,6 +103,7 @@ Feature: The MCP server over Streamable HTTP
       | search_books         |
       | semantic_search      |
       | similar_books        |
+      | suggest_tags         |
     And every tool is marked read-only
     And the server instructions mention "read-only"
     When I call the unknown tool "add_tags"

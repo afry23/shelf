@@ -148,6 +148,22 @@ export interface SimilarResponse {
   results: SearchItem[];
 }
 
+export interface TagSuggestion {
+  tag: string;
+  /** In how many of the most similar works the tag is. */
+  works: number;
+  /** Their share of the similarity, 0 to 1. */
+  score: number;
+}
+
+export interface TagSuggestionsResponse {
+  id: string;
+  title: string;
+  total: number;
+  note: string | null;
+  suggestions: TagSuggestion[];
+}
+
 export interface DuplicateFile {
   id: string;
   workId: string;
@@ -320,6 +336,9 @@ export const saveProgress = (fileId: string, locator: string): Promise<unknown> 
 
 export const similar = (id: string, limit = 6) =>
   request<SimilarResponse>('GET', `/works/${encodeURIComponent(id)}/similar?limit=${limit}`);
+
+export const tagSuggestions = (id: string, limit = 8) =>
+  request<TagSuggestionsResponse>('GET', `/works/${encodeURIComponent(id)}/tag-suggestions?limit=${limit}`);
 
 export const editWork = (id: string, patch: Record<string, unknown>) =>
   request<WorkDetail>('PATCH', `/works/${encodeURIComponent(id)}`, patch, 'application/merge-patch+json');

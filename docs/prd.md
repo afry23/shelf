@@ -198,7 +198,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-TAG-3 | Bulk tagging: `shelf tag add <tag> --query "<search>"`. | M |
 | F-TAG-4 | Rename and merge tags library-wide: `shelf tag rename`, `shelf tag merge`. | M |
 | F-TAG-5 | Tag overview with the number of works per tag. | M |
-| F-TAG-6 | Tag suggestions based on semantic similarity to already tagged works. | C |
+| F-TAG-6 | Tag suggestions based on semantic similarity to already tagged works: the tags of the 10 works most like a work, without the tags it has, each with the number of those works that carry it and their share of the similarity. Nothing is changed unless a person applies them. Available as `shelf tag suggest <work> [--limit] [--apply]`, `GET /api/v1/works/{id}/tag-suggestions`, the MCP tool `suggest_tags` (read-only) and as clickable suggestions on the work page. Needs the embeddings, not the model. | S |
 
 ### 6.6 Search (Metadata and Full Text)
 

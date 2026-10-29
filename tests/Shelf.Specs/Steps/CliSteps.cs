@@ -178,6 +178,15 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     public void ThenStandardOutputDoesNotContain(string text) =>
         Assert.DoesNotContain(text, _stdout.ToString(), StringComparison.Ordinal);
 
+    [Then("{string} stands before {string} in standard output")]
+    public void ThenStandardOutputOrder(string first, string second)
+    {
+        var text = _stdout.ToString();
+        var a = text.IndexOf(first, StringComparison.Ordinal);
+        var b = text.IndexOf(second, StringComparison.Ordinal);
+        Assert.True(a >= 0 && b >= 0 && a < b, $"'{first}' does not stand before '{second}' in: {text}");
+    }
+
     [Then("standard error contains the line {string}")]
     public void ThenStandardErrorContainsTheLine(string line) =>
         Assert.Contains(line, StderrLines());
