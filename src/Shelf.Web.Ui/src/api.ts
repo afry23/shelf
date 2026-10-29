@@ -608,6 +608,19 @@ export interface AnnotationDraft {
   rects?: number[][];
 }
 
+/** A passage as a Markdown quote with its citation (F-ANN-8); nothing is stored. */
+export interface PassageCitation {
+  id: string;
+  citeKey: string;
+  /** The place for people, "page 12", or null. */
+  place: string | null;
+  text: string;
+  bibtex: string;
+}
+
+export const quotePassage = (fileId: string, quote: string, locator?: string) =>
+  request<PassageCitation>('POST', `/files/${encodeURIComponent(fileId)}/quote`, locator ? { quote, locator } : { quote });
+
 const fileAnnotationsPath = (fileId: string) => `/files/${encodeURIComponent(fileId)}/annotations`;
 
 export const fileAnnotations = (fileId: string) => request<Annotation[]>('GET', fileAnnotationsPath(fileId));

@@ -717,6 +717,53 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>A passage of a file as a quote with the cite key and the place (F-ANN-8). Nothing is written.</summary>
+    /// <exception cref="LibraryException">Invalid: the quote is empty or too long, the place does not fit the format, or the work has no cite key. NotFound: no such file.</exception>
+    public PassageCitation QuotePassage(string fileId, string quote, string? locator)
+    {
+        var file = ResolveFile(fileId);
+        return Quote(Find(file.Work.ToString()), file.Format, quote, locator);
+    }
+
+    /// <summary>As above for a work: with a place, the named file or the only file of the work says how to read the place.</summary>
+    public PassageCitation QuotePassageOfWork(string workId, string quote, string? locator, string? file = null)
+    {
+        var work = Find(workId);
+        if (locator is null && file is null)
+        {
+            return Quote(work, null, quote, null);
+        }
+
+        var name = FileOfWork(work, file);
+        return Quote(work, ResolveFile(FileIds.Make(work.Id.ToString(), name)).Format, quote, locator);
+    }
+
+    private PassageCitation Quote(LibraryWork work, string? format, string quote, string? locator)
+    {
+        if (string.IsNullOrWhiteSpace(quote) || quote.Length > QuoteFormat.MaxQuoteLength)
+        {
+            throw new LibraryException($"quote is required: the passage, at most {QuoteFormat.MaxQuoteLength} characters");
+        }
+
+        if (locator is not null && format is not null && Locators.Problem(format, locator) is { } problem)
+        {
+            throw new LibraryException(problem);
+        }
+
+        var sidecar = ReadSidecar(work);
+        if (string.IsNullOrWhiteSpace(sidecar.CiteKey))
+        {
+            throw new LibraryException(WorkExport.MissingCiteKey);
+        }
+
+        return new PassageCitation(
+            work.Id.ToString(),
+            sidecar.CiteKey,
+            QuoteFormat.Place(locator),
+            QuoteFormat.Render(sidecar.CiteKey, quote, locator),
+            CitationFormats.Render(CitationFormat.BibTeX, [sidecar]));
+    }
+
     /// <summary>
     /// The citations of all works, of the works that match <paramref name="query"/>, or of one work (F-PAP-5). Nothing is written:
     /// a work without a cite key is left out and named in <see cref="CitationsExport.Skipped"/> (<c>shelf citekeys</c> gives keys).

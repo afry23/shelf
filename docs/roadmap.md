@@ -311,6 +311,19 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-RDR-6 and F-TAG-6, the complete BDD suite is green, `shelf reindex` restores the bookmarks, suggestions need no model.
 
+### M11 – Cite and References
+
+**Goal:** A passage is quoted with the right citation, and a paper knows which of the works it cites are in the library.
+
+**Status:** in progress. Slice plan: [m11-cite-passage](slices/m11-cite-passage.md); done: F-ANN-8.
+
+| Area | Content | PRD |
+|---|---|---|
+| Cite a passage | "Copy as quote" in both readers, `shelf cite`, `POST /files/{id}/quote`, MCP `cite_passage`; Markdown block quote plus Pandoc citation with the place | F-ANN-8 |
+| References | `references.json` from Crossref, cited and cited-by in the library | planned |
+
+**Exit criteria:** feature files exist for all M11 requirements, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

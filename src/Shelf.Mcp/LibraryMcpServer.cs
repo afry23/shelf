@@ -18,13 +18,13 @@ public static class LibraryMcpServer
         "Tools for an e-book library. Use search_books to find works and places in their text by words, semantic_search to find "
         + "them by meaning (also across languages), get_book for the details and table of contents of a work, and read_passage "
         + "to read the text at a location from any of them. Locations such as 'page=12' are given in the results; pass them on "
-        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite. suggest_tags gives the tags of the most similar works. add_tags and remove_tags change the tags of a work add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
+        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite and cite_passage a quote with its citation. suggest_tags gives the tags of the most similar works. add_tags and remove_tags change the tags of a work add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
 
     private const string ReadOnlyInstructions =
         "Tools for an e-book library. This server is read-only. Use search_books to find works and places in their text by words, "
         + "semantic_search to find them by meaning (also across languages), get_book for the details and table of contents of a "
         + "work, and read_passage to read the text at a location from any of them. Locations such as 'page=12' are given in the "
-        + "results; pass them on unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite. suggest_tags gives the tags of the most similar works.";
+        + "results; pass them on unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite and cite_passage a quote with its citation. suggest_tags gives the tags of the most similar works.";
 
     /// <summary>Runs until the input ends or <paramref name="cancellation"/> is cancelled.</summary>
     public static async Task RunAsync(
@@ -94,6 +94,7 @@ public static class LibraryMcpServer
         collection.Add(McpServerTool.Create((Func<string, BookDetails>)tools.GetBook, Read("get_book", json)));
         collection.Add(McpServerTool.Create((Func<string, AnnotationList>)tools.GetAnnotations, Read("get_annotations", json)));
         collection.Add(McpServerTool.Create((Func<string?, string, string?, CitationsExport>)tools.ExportCitations, Read("export_citations", json)));
+        collection.Add(McpServerTool.Create((Func<string, string, string?, string?, PassageCitation>)tools.CitePassage, Read("cite_passage", json)));
         collection.Add(McpServerTool.Create((Func<string, string, int?, int, string?, PassageText>)tools.ReadPassage, Read("read_passage", json)));
         collection.Add(McpServerTool.Create((Func<TagTree>)tools.ListTags, Read("list_tags", json)));
         collection.Add(McpServerTool.Create((Func<DuplicatesResult>)tools.FindDuplicates, Read("find_duplicates", json)));

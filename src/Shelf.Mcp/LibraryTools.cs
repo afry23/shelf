@@ -76,6 +76,14 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The name of the file, if the work has more than one")] string? file = null) =>
         Run(() => service.AddNote(id, text, file));
 
+    [Description("A passage of a book as a Markdown quote with a Pandoc citation of the work and the place, such as '> the passage' followed by '[@alander2021event, p. 12]', and the BibTeX entry of the work. Use the text of the passage and the location from read_passage or search_books. The work needs a cite key. Nothing is changed.")]
+    public PassageCitation CitePassage(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The passage, as it stands in the book")] string quote,
+        [Description("The place in the file, as given by the other tools ('page=12' for a PDF, an 'epubcfi(...)' for an EPUB); without it the citation names the work only")] string? locator = null,
+        [Description("The name of the file, if the work has more than one and a locator is given")] string? file = null) =>
+        Run(() => service.QuotePassageOfWork(id, quote, locator, file));
+
     [Description("Set a bookmark at a place in a file of a work, with an optional short label. Use a location from get_book, search_books or read_passage ('page=12' for a PDF, an 'epubcfi(...)' for an EPUB). A bookmark that is there already is returned as it is.")]
     public AnnotationView AddBookmark(
         [Description("The ID of a work, or the start of it")] string id,

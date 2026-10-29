@@ -2,12 +2,24 @@
   import type { AnnotationColor } from '../api';
   import { colors } from './annotations.svelte';
 
-  // Shown in the toolbar while a passage is selected in the book: mark it, in the color that is chosen.
-  let { color = $bindable('yellow'), onhighlight }: { color?: AnnotationColor; onhighlight: () => void } = $props();
+  // Shown in the toolbar while a passage is selected in the book: mark it, in the color that is chosen, or copy it as a quote (needs a cite key).
+  let {
+    color = $bindable('yellow'),
+    onhighlight,
+    oncite,
+    citable = true,
+  }: { color?: AnnotationColor; onhighlight: () => void; oncite: () => void; citable?: boolean } = $props();
 </script>
 
 <span class="group" role="group" aria-label="Selection">
   <button type="button" class="button" onclick={onhighlight}>Highlight</button>
+  <button
+    type="button"
+    class="button"
+    disabled={!citable}
+    title={citable ? 'Copy the passage with its cite key and place' : 'Set a cite key on the book page first'}
+    onclick={oncite}>Copy as quote</button
+  >
   {#each Object.entries(colors) as [name, value] (name)}
     <button
       type="button"

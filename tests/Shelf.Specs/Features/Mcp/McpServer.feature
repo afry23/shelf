@@ -43,6 +43,7 @@ Feature: The MCP server
       | add_bookmark         |
       | add_note             |
       | add_tags             |
+      | cite_passage         |
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
@@ -68,6 +69,7 @@ Feature: The MCP server
     And the tool "semantic_search" requires the arguments "query"
     And the tool "similar_books" requires the arguments "id"
     And the tool "suggest_tags" requires the arguments "id"
+    And the tool "cite_passage" requires the arguments "id, quote"
     And the tool "get_annotations" requires the arguments "id"
     And the tool "add_note" requires the arguments "id, text"
     And the tool "add_tags" requires the arguments "id, tags"
@@ -159,4 +161,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_bookmark, add_note, add_tags, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books, suggest_tags"
+    Then the tool names sorted are "add_bookmark, add_note, add_tags, cite_passage, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books, suggest_tags"
