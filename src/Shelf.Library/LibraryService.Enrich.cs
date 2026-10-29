@@ -1,5 +1,6 @@
 using Shelf.Core.Model;
 using Shelf.Index;
+using Shelf.Organize;
 
 namespace Shelf.Library;
 
@@ -67,6 +68,34 @@ public sealed partial class LibraryService
         catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
         {
             throw new LibraryException(e.Message);
+        }
+    }
+
+    /// <summary>
+    /// Loads a paper by DOI or arXiv ID: metadata and open-access PDF, as <c>shelf fetch</c> does (F-PAP-8). Only on request.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: the text is neither a DOI nor an arXiv ID. Conflict: the paper is in the library, no source knows it, or no PDF is found.</exception>
+    public FetchPaperOutcome FetchPaper(string paper, CancellationToken cancellation)
+    {
+        if (PaperIds.Parse(paper) is not { } reference)
+        {
+            throw new LibraryException($"'{paper}' is neither a DOI nor an arXiv ID");
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                var result = LibraryPapers.Fetch(root, reference, metadataSources ?? [], settings.Fetch, cancellation);
+
+                // A paper without a cover is no reason to fail a work that was made.
+                LibraryCovers.FillWorks(root, [result.Work]);
+                return new FetchPaperOutcome(result.Work.ToString(), result.Title, result.File, result.Folder, result.Source, [.. result.Warnings]);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)
+            {
+                throw new LibraryException(e.Message, LibraryErrorKind.Conflict);
+            }
         }
     }
 

@@ -172,6 +172,13 @@ internal static class Api
             .Accepts<byte[]>("application/octet-stream")
             .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/fetch", ([FromServices] LibraryHandle library, [FromBody] FetchRequest? body) =>
+                Run(WebJsonContext.Default.FetchPaperOutcome, () =>
+                    library.Service.FetchPaper(OptionalText(body?.Paper, "paper") ?? throw new LibraryException("paper is required"), CancellationToken.None)))
+            .WithName("FetchPaper")
+            .Accepts<FetchRequest>("application/json")
+            .Produces<FetchPaperOutcome>(StatusCodes.Status200OK);
+
         api.MapPost("/works/{id}/files", (
                 [FromServices] LibraryHandle library,
                 string id,

@@ -472,6 +472,18 @@ export const addFile = (workId: string, file: File, options: { replace?: string;
 export const createWork = (file: File, values: { title?: string; author?: string; year?: string } = {}) =>
   upload<CreateWorkOutcome>(`/works${query({ name: file.name, title: values.title?.trim(), author: values.author?.trim(), year: values.year?.trim() })}`, file);
 
+export interface FetchPaperOutcome {
+  work: string;
+  title: string;
+  file: string;
+  folder: string;
+  source: string;
+  warnings: string[];
+}
+
+/** Loads a paper by DOI or arXiv ID from the internet and makes a work of it. Only on request. */
+export const fetchPaper = (paper: string) => request<FetchPaperOutcome>('POST', '/works/fetch', { paper: paper.trim() });
+
 /** Moves a file to the work `target`, or to a work of its own when `target` is null. `shelf undo` reverts it. */
 export const moveFile = (fileId: string, target: string | null) =>
   request<MoveFileOutcome>('POST', `/files/${encodeURIComponent(fileId)}/move`, target === null ? { new: true } : { to: target });
