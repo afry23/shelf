@@ -116,9 +116,9 @@ public static class LibraryScanner
             {
                 attached.Add((workId, Path.GetFileName(path), rel, path));
             }
-            else
+            else if (!BookExtractor.IsMarkdown(path))
             {
-                untracked.Add(rel);
+                untracked.Add(rel); // a Markdown file outside a work is a note, not a book
             }
         }
 

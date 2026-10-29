@@ -865,7 +865,7 @@
                     <td class="size">{bytes(file.sizeBytes)}</td>
                     <td class="pages">{file.pages ? `${file.pages} pages` : ''}</td>
                     <td class="row-actions">
-                      {#if file.format === 'epub' || file.format === 'pdf'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a>{/if}
+                      {#if file.format === 'epub' || file.format === 'pdf' || file.format === 'md'}<a href={readLink(file.id)} aria-label={`Read ${file.name}`}>Read</a>{/if}
                       <a href={fileUrl(file.id, true)} download aria-label={`Download ${file.name}`}>Download</a>
                       <button type="button" class="button" aria-label={`Move ${file.name}`} onclick={() => { moving = { id: file.id, name: file.name }; moveQuery = ''; }}>Move</button>
                       <button type="button" class="button" aria-label={`Delete ${file.name}`} onclick={() => (deleting = { kind: 'file', id: file.id, name: file.name })}>Delete</button>

@@ -20,6 +20,7 @@ public static class SidecarFormat
         "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "finishedAt", "added", "cover",
         "files", "notDuplicates", "related",
         "kind", "doi", "arxivId", "pmid", "venue", "volume", "issue", "pages", "abstract", "keywords",
+        "sourceUrl", "site", "published", "captured",
     ];
 
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -207,15 +208,27 @@ public static class SidecarFormat
             Optional(w, "edition", sidecar.Edition);
             Optional(w, "citeKey", sidecar.CiteKey);
             Optional(w, "description", sidecar.Description);
-            if (sidecar.Kind == WorkKind.Paper)
+            if (sidecar.Kind != WorkKind.Book)
             {
-                w.WriteString("kind", "paper");
+                w.WriteString("kind", sidecar.Kind == WorkKind.Paper ? "paper" : "article");
             }
 
             Optional(w, "doi", sidecar.Doi);
             Optional(w, "arxivId", sidecar.ArxivId);
             Optional(w, "pmid", sidecar.Pmid);
             Optional(w, "venue", sidecar.Venue);
+            Optional(w, "sourceUrl", sidecar.SourceUrl);
+            Optional(w, "site", sidecar.Site);
+            if (sidecar.Published is { } published)
+            {
+                w.WriteString("published", FormatTimestamp(published));
+            }
+
+            if (sidecar.Captured is { } captured)
+            {
+                w.WriteString("captured", FormatTimestamp(captured));
+            }
+
             Optional(w, "volume", sidecar.Volume);
             Optional(w, "issue", sidecar.Issue);
             Optional(w, "pages", sidecar.Pages);
@@ -391,6 +404,10 @@ public static class SidecarFormat
                 ArxivId = String(root, "arxivId", ""),
                 Pmid = String(root, "pmid", ""),
                 Venue = String(root, "venue", ""),
+                SourceUrl = String(root, "sourceUrl", ""),
+                Site = String(root, "site", ""),
+                Published = Timestamp(root, "published", ""),
+                Captured = Timestamp(root, "captured", ""),
                 Volume = String(root, "volume", ""),
                 Issue = String(root, "issue", ""),
                 Pages = String(root, "pages", ""),
@@ -427,7 +444,8 @@ public static class SidecarFormat
             {
                 null or "book" => WorkKind.Book,
                 "paper" => WorkKind.Paper,
-                _ => throw Fail("kind", "must be one of book, paper"),
+                "article" => WorkKind.Article,
+                _ => throw Fail("kind", "must be one of book, paper, article"),
             };
         }
 

@@ -2,11 +2,12 @@ using System.Text.Json;
 
 namespace Shelf.Core.Model;
 
-/// <summary>What a work is (F-PAP-1). A sidecar without the field describes a book.</summary>
+/// <summary>What a work is (F-PAP-1, F-ART-1). A sidecar without the field describes a book.</summary>
 public enum WorkKind
 {
     Book,
     Paper,
+    Article,
 }
 
 /// <summary>Reading status of a work (PRD 6.1).</summary>
@@ -75,7 +76,7 @@ public sealed record WorkSidecar
 
     public string? Description { get; init; }
 
-    /// <summary>Book (default) or paper; written only for papers (F-PAP-1).</summary>
+    /// <summary>Book (default), paper or article; written only for papers and articles (F-PAP-1, F-ART-1).</summary>
     public WorkKind Kind { get; init; } = WorkKind.Book;
 
     /// <summary>DOI without prefix (<c>10.1145/3295500.3356159</c>); papers only in practice.</summary>
@@ -98,6 +99,18 @@ public sealed record WorkSidecar
     public string? Abstract { get; init; }
 
     public IReadOnlyList<string> Keywords { get; init; } = [];
+
+    /// <summary>The canonical address the article was clipped from, without fragment and tracking parameters (F-ART-1, F-ART-6).</summary>
+    public string? SourceUrl { get; init; }
+
+    /// <summary>The website or publication an article appeared on (F-ART-1).</summary>
+    public string? Site { get; init; }
+
+    /// <summary>When the article was published (UTC), if the page says so (F-ART-1).</summary>
+    public DateTimeOffset? Published { get; init; }
+
+    /// <summary>When the article was clipped (UTC, second precision) (F-ART-1).</summary>
+    public DateTimeOffset? Captured { get; init; }
 
     public IReadOnlyList<string> Tags { get; init; } = [];
 

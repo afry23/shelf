@@ -44,9 +44,15 @@ public static partial class Locators
             "epub" => locator.Length <= 2_000 && locator.StartsWith("epubcfi(", StringComparison.Ordinal) && locator.EndsWith(')')
                 ? null
                 : "locator of an EPUB must be an epubcfi(...)",
+            "md" => HeadingLocator().IsMatch(locator)
+                ? null
+                : "locator of a Markdown file must be heading=SLUG",
             _ => $"files of the format {format} have no reading position",
         };
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^heading=[\p{L}\p{N}-]{1,200}$")]
+    private static partial System.Text.RegularExpressions.Regex HeadingLocator();
 
     [System.Text.RegularExpressions.GeneratedRegex("^page=[1-9][0-9]{0,8}$")]
     private static partial System.Text.RegularExpressions.Regex PageLocator();
@@ -67,6 +73,12 @@ public static partial class Locators
         if (TryParsePdfPage(locator, out var page))
         {
             return "page " + page.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (locator.StartsWith("heading=", StringComparison.Ordinal))
+        {
+            var slug = locator["heading=".Length..];
+            return slug == "start" ? "start" : "section \"" + slug.Replace('-', ' ') + "\"";
         }
 
         const string prefix = "epubcfi(/6/";

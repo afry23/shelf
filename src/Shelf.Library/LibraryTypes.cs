@@ -350,6 +350,9 @@ public sealed record AddFileOutcome(string Work, string File, string? Replaced);
 /// <summary>A work made by hand from a file (F-GRP-9): its ID, the file name and the folder (relative to the library).</summary>
 public sealed record CreateWorkOutcome(string Work, string File, string Folder);
 
+/// <summary>An article kept from a web page (F-ART-2): the work, its title, the file name, the folder, the number of images saved, whether it was in the library already, and what went wrong on the way.</summary>
+public sealed record ClipArticleOutcome(string Work, string Title, string File, string Folder, int Images, bool Existing, string[] Warnings);
+
 /// <summary>A paper loaded from the internet by its DOI or arXiv ID (F-PAP-8): the work, its title, the file name, the folder, the source that knew it, and what went wrong on the way.</summary>
 public sealed record FetchPaperOutcome(string Work, string Title, string File, string Folder, string Source, string[] Warnings);
 

@@ -49,6 +49,7 @@ public sealed class WorkspaceSteps(ConfigSteps workspace)
         WriteFile(path, content.Replace("\r\n", "\n", StringComparison.Ordinal));
 
     [Given("I delete the file {string}")]
+    [When("I delete the file {string}")]
     public void GivenIDeleteTheFile(string name)
     {
         foreach (var suffix in new[] { string.Empty, "-wal", "-shm" })

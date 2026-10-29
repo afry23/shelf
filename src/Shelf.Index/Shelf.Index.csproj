@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Shelf.Clip\Shelf.Clip.csproj" />
     <ProjectReference Include="..\Shelf.Core\Shelf.Core.csproj" />
     <ProjectReference Include="..\Shelf.Extraction\Shelf.Extraction.csproj" />
     <ProjectReference Include="..\Shelf.Organize\Shelf.Organize.csproj" />

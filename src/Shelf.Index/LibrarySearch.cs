@@ -387,6 +387,10 @@ public static class LibrarySearch
                     // Contains, ignoring case: "venue:neurips" finds "Advances in NeurIPS 2017".
                     filter.Add($"{not}COALESCE(instr(lower(w.venue), {{0}}) > 0, 0)", venue.Value);
                     break;
+                case ValueFilter { Field: FieldKind.Site } site:
+                    // Contains, ignoring case: "site:ops" finds "Ops Weekly".
+                    filter.Add($"{not}COALESCE(instr(lower(w.site), {{0}}) > 0, 0)", site.Value);
+                    break;
                 case ValueFilter { Field: FieldKind.Series } series:
                     // The whole name of the series, ignoring case: "series:\"reusable elements\"" finds "Reusable Elements".
                     filter.Add($"{not}COALESCE(lower(w.series) = {{0}}, 0)", series.Value);

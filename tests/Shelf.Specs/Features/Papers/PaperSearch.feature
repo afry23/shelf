@@ -37,4 +37,4 @@ Feature: Searching papers
   Scenario: A type that does not exist is refused
     When I run shelf with arguments "search type:thesis --library library"
     Then the exit code is 2
-    And standard error contains "type: 'thesis' is not one of book, paper"
+    And standard error contains "type: 'thesis' is not one of book, paper, article"

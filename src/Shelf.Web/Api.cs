@@ -70,6 +70,11 @@ internal static class Api
             .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .Produces(StatusCodes.Status206PartialContent, contentType: "application/octet-stream");
 
+        api.MapMethods("/files/{id}/assets/{name}", ["GET", "HEAD"], ([FromServices] LibraryHandle library, string id, string name) =>
+                SendAsset(library.Service, id, name))
+            .WithName("GetFileAsset")
+            .Produces(StatusCodes.Status200OK, contentType: "image/jpeg");
+
         api.MapPut("/files/{id}/progress", ([FromServices] LibraryHandle library, string id, [FromBody] ProgressRequest body) =>
                 Run(WebJsonContext.Default.ReadingPosition, () => library.Service.SaveProgress(id, RequireLocator(body))))
             .WithName("SaveReadingProgress")
@@ -209,6 +214,13 @@ internal static class Api
             .Accepts<byte[]>("application/octet-stream")
             .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/clip", ([FromServices] LibraryHandle library, [FromBody] ClipRequest? body) =>
+                Run(WebJsonContext.Default.ClipArticleOutcome, () =>
+                    library.Service.ClipArticle(OptionalText(body?.Url, "url") ?? throw new LibraryException("url is required"), CancellationToken.None)))
+            .WithName("ClipArticle")
+            .Accepts<ClipRequest>("application/json")
+            .Produces<ClipArticleOutcome>(StatusCodes.Status200OK);
+
         api.MapPost("/works/fetch", ([FromServices] LibraryHandle library, [FromBody] FetchRequest? body) =>
                 Run(WebJsonContext.Default.FetchPaperOutcome, () =>
                     library.Service.FetchPaper(OptionalText(body?.Paper, "paper") ?? throw new LibraryException("paper is required"), CancellationToken.None)))
@@ -347,9 +359,32 @@ internal static class Api
             {
                 "epub" => "application/epub+zip",
                 "pdf" => "application/pdf",
+                "md" => "text/markdown; charset=utf-8",
                 _ => "application/octet-stream",
             };
             return Serve(file, type, download);
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
+        }
+    }
+
+    /// <summary>An image of an article, from the <c>images/</c> folder next to its Markdown file (F-ART-8).</summary>
+    private static IResult SendAsset(LibraryService service, string id, string name)
+    {
+        try
+        {
+            var image = service.ResolveAsset(id, name);
+            var type = image.Format switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "png" => "image/png",
+                "gif" => "image/gif",
+                "webp" => "image/webp",
+                _ => "application/octet-stream",
+            };
+            return Serve(image, type, download: false);
         }
         catch (LibraryException e)
         {

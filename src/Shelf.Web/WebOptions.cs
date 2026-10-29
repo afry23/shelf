@@ -15,6 +15,7 @@ namespace Shelf.Web;
 /// <param name="Models">The embedding models that are known, for semantic search.</param>
 /// <param name="EmbedderFactory">Opens the embedding model of a folder, on the first semantic request.</param>
 /// <param name="MetadataSources">The online catalogs that <c>enrich</c> asks; none if null.</param>
+/// <param name="Pages">How <c>clip</c> loads a page and its images; HTTPS if null.</param>
 public sealed record WebOptions(
     string Root,
     ShelfSettings Settings,
@@ -24,7 +25,8 @@ public sealed record WebOptions(
     string? Token,
     ModelCatalog Models,
     Func<ModelFolder, IEmbedder> EmbedderFactory,
-    IReadOnlyList<IMetadataSource>? MetadataSources = null);
+    IReadOnlyList<IMetadataSource>? MetadataSources = null,
+    IHttpGetter? Pages = null);
 
 /// <summary>The server could not start or stop as asked (for example the port is in use). The message is meant to be shown.</summary>
 public sealed class WebHostException(string message) : Exception(message);

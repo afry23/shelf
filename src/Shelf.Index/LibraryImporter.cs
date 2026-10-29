@@ -124,7 +124,7 @@ public static class LibraryImporter
             {
                 foreach (var path in Directory.EnumerateFiles(full, "*", LibraryReindexer.Recursive).Order(StringComparer.Ordinal))
                 {
-                    if (BookExtractor.IsSupported(path))
+                    if (BookExtractor.IsSupported(path) && !BookExtractor.IsMarkdown(path))
                     {
                         files.Add(path);
                     }

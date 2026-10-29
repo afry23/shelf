@@ -563,6 +563,22 @@ export interface FetchPaperOutcome {
 /** Loads a paper by DOI or arXiv ID from the internet and makes a work of it. Only on request. */
 export const fetchPaper = (paper: string) => request<FetchPaperOutcome>('POST', '/works/fetch', { paper: paper.trim() });
 
+export interface ClipArticleOutcome {
+  work: string;
+  title: string;
+  file: string;
+  folder: string;
+  images: number;
+  existing: boolean;
+  warnings: string[];
+}
+
+/** Keeps the article of a public page as Markdown with its images and makes a work of it. Only on request. */
+export const clipArticle = (url: string) => request<ClipArticleOutcome>('POST', '/works/clip', { url: url.trim() });
+
+/** The address of an image of an article, saved in the `images/` folder next to its Markdown file. */
+export const assetUrl = (fileId: string, name: string) => `/api/v1/files/${encodeURIComponent(fileId)}/assets/${encodeURIComponent(name)}`;
+
 /** Moves a file to the work `target`, or to a work of its own when `target` is null. `shelf undo` reverts it. */
 export const moveFile = (fileId: string, target: string | null) =>
   request<MoveFileOutcome>('POST', `/files/${encodeURIComponent(fileId)}/move`, target === null ? { new: true } : { to: target });
