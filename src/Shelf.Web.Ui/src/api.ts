@@ -342,6 +342,33 @@ export const similar = (id: string, limit = 6) =>
 export const tagSuggestions = (id: string, limit = 8) =>
   request<TagSuggestionsResponse>('GET', `/works/${encodeURIComponent(id)}/tag-suggestions?limit=${limit}`);
 
+// ---- what was read (F-STA-2) ----
+
+export interface ReadingItem {
+  id: string;
+  title: string;
+  status: ReadStatus;
+  /** When a reader last moved in a file of the work, or null. */
+  lastReadAt: string | null;
+}
+
+export interface LibraryStats {
+  works: number;
+  files: number;
+  bytes: number;
+  authors: number;
+  tags: number;
+  readStatus: { unread: number; reading: number; read: number };
+  /** Works that are read but were set to read before shelf kept the date. */
+  readWithoutDate: number;
+  /** Oldest first; only months in which a work was set to read. */
+  finishedByMonth: { month: string; works: number }[];
+  reading: ReadingItem[];
+  recent: ReadingItem[];
+}
+
+export const libraryStats = () => request<LibraryStats>('GET', '/stats');
+
 // ---- references and citations (F-PAP-11, F-PAP-12) ----
 
 export interface ReferenceItem {

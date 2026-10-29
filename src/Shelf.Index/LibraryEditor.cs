@@ -130,6 +130,7 @@ public static class LibraryEditor
             .Distinct()
             .ToList();
         var added = new[] { t.Added, s.Added }.Where(a => a.HasValue).Select(a => a!.Value).DefaultIfEmpty().Min();
+        var mergedStatus = (ReadStatus)Math.Max((int)t.ReadStatus, (int)s.ReadStatus);
         var merged = t with
         {
             Subtitle = t.Subtitle ?? s.Subtitle,
@@ -155,7 +156,8 @@ public static class LibraryEditor
             Keywords = t.Keywords.Count > 0 ? t.Keywords : s.Keywords,
             Rating = t.Rating ?? s.Rating,
             Tags = [.. t.Tags.Concat(s.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-            ReadStatus = (ReadStatus)Math.Max((int)t.ReadStatus, (int)s.ReadStatus),
+            ReadStatus = mergedStatus,
+            FinishedAt = mergedStatus == ReadStatus.Read ? new[] { t.FinishedAt, s.FinishedAt }.Max() : null,
             Added = added == default ? null : added,
             Cover = cover ?? t.Cover,
             Files = files,

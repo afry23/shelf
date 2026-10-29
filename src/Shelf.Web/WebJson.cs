@@ -39,6 +39,7 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(EnrichRequest))]
 [JsonSerializable(typeof(ReferencesFetchRequest))]
 [JsonSerializable(typeof(ReferencesResult))]
+[JsonSerializable(typeof(StatsResult))]
 [JsonSerializable(typeof(ReferencesFetchResult))]
 [JsonSerializable(typeof(EnrichPreviewResult))]
 [JsonSerializable(typeof(EnrichApplyResult))]

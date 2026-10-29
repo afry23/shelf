@@ -106,6 +106,12 @@ public sealed record WorkSidecar
 
     public ReadStatus ReadStatus { get; init; } = ReadStatus.Unread;
 
+    /// <summary>
+    /// When the work was set to read (UTC, second precision), or null: not read, or read before shelf recorded the date (F-STA-1).
+    /// <see cref="WithReadStatus"/> keeps it in line with <see cref="ReadStatus"/>.
+    /// </summary>
+    public DateTimeOffset? FinishedAt { get; init; }
+
     /// <summary>When the work was added to the library (UTC, second precision).</summary>
     public DateTimeOffset? Added { get; init; }
 
@@ -113,6 +119,18 @@ public sealed record WorkSidecar
     public string? Cover { get; init; }
 
     public IReadOnlyList<SidecarFile> Files { get; init; } = [];
+
+    /// <summary>
+    /// The work with this reading status. Becoming read dates it with <paramref name="now"/>; a work that is read already keeps its
+    /// date; leaving read takes the date away.
+    /// </summary>
+    public WorkSidecar WithReadStatus(ReadStatus status, DateTimeOffset now) => this with
+    {
+        ReadStatus = status,
+        FinishedAt = status != ReadStatus.Read
+            ? null
+            : ReadStatus == ReadStatus.Read ? FinishedAt : DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds()),
+    };
 
     public NotDuplicates NotDuplicates { get; init; } = NotDuplicates.None;
 

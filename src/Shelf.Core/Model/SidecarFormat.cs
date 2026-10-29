@@ -17,7 +17,7 @@ public static class SidecarFormat
     private static readonly HashSet<string> KnownKeys =
     [
         "schema", "id", "title", "subtitle", "authors", "language", "year", "isbn10", "isbn13", "publisher",
-        "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "added", "cover",
+        "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "finishedAt", "added", "cover",
         "files", "notDuplicates", "related",
         "kind", "doi", "arxivId", "pmid", "venue", "volume", "issue", "pages", "abstract", "keywords",
     ];
@@ -244,6 +244,11 @@ public static class SidecarFormat
             }
 
             w.WriteString("readStatus", ReadStatusName(sidecar.ReadStatus));
+            if (sidecar.FinishedAt is { } finished)
+            {
+                w.WriteString("finishedAt", FormatTimestamp(finished));
+            }
+
             if (sidecar.Added is { } added)
             {
                 w.WriteString("added", FormatTimestamp(added));
@@ -394,6 +399,7 @@ public static class SidecarFormat
                 Tags = Strings(root, "tags", ""),
                 Rating = Int32(root, "rating", ""),
                 ReadStatus = ReadStatus(root),
+                FinishedAt = Timestamp(root, "finishedAt", ""),
                 Added = Timestamp(root, "added", ""),
                 Cover = String(root, "cover", ""),
                 Files = Files(root),

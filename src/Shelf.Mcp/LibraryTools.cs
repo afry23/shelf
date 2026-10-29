@@ -76,6 +76,9 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The name of the file, if the work has more than one")] string? file = null) =>
         Run(() => service.AddNote(id, text, file));
 
+    [Description("The library in numbers (works, files, size, authors, tags, formats, languages, how many works are unread, being read or read) and what was read: the works set to read per month, the works being read and the works a reader moved in last, each with the day. Works set to read before shelf kept the date are counted in readWithoutDate. Nothing is changed.")]
+    public StatsResult GetStats() => Run(() => service.Stats());
+
     [Description("The references of a paper as they were loaded (each with the work of the library it points to, if its DOI is there) and the works of the library that cite the paper. Nobody is asked: if no list was loaded, 'references' is empty; the person loads one with 'shelf refs fetch'.")]
     public ReferencesResult GetReferences([Description("The ID of a work, or the start of it")] string id) =>
         Run(() => service.References(id));

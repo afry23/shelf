@@ -291,7 +291,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf open <work-id> [--format pdf]` | Open with the default app |
 | `shelf serve [--port] [--bind] [--token]` | Web UI and REST API |
 | `shelf mcp [--http] [--port] [--bind] [--token]` | MCP server (stdio, or Streamable HTTP at `/mcp`) |
-| `shelf stats` | Library statistics |
+| `shelf stats` | Library statistics, also what was read: books finished per month, being read, read lately |
 | `shelf completion bash\|zsh\|fish` | Print a shell completion script |
 
 Run `shelf <command> --help` for all options.
@@ -310,7 +310,7 @@ shelf search 'author:kleppmann year:>2015 "stream processing"'
 
 ### MCP server
 
-Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `suggest_tags`, `cite_passage`, `get_references`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
+Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `suggest_tags`, `cite_passage`, `get_references`, `get_stats`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
 
 #### Remote access over HTTP
 
