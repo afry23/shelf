@@ -537,6 +537,14 @@ export const fileUrl = (id: string, download = false) => `/api/v1/files/${encode
 /** The Markdown export of a work (F-ANN-7): metadata, highlights and notes; the file is named after the cite key. */
 export const exportUrl = (workId: string) => `/api/v1/works/${encodeURIComponent(workId)}/export.md`;
 
+export type CitationFormat = 'bibtex' | 'csl-json' | 'ris';
+
+/** The citation of one work as a download (F-PAP-5); the work needs a cite key. */
+export const citationUrl = (workId: string, format: CitationFormat) => `/api/v1/works/${encodeURIComponent(workId)}/citation${query({ format })}`;
+
+/** The citations of all works, or of the works a query finds, as a download (F-PAP-5). Works without a cite key are left out. */
+export const citationsUrl = (format: CitationFormat, q?: string) => `/api/v1/citations${query({ format, query: q })}`;
+
 // ---- highlights and notes (F-ANN-1 to F-ANN-4) ----
 
 export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';

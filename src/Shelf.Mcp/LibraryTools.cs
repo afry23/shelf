@@ -70,6 +70,13 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("The name of the file, if the work has more than one")] string? file = null) =>
         Run(() => service.AddNote(id, text, file));
 
+    [Description("The citations of works as BibTeX, CSL-JSON or RIS, for all works, for the works a search finds, or for one work. Works without a cite key are left out and named in 'skipped'. Read-only: nothing is written.")]
+    public CitationsExport ExportCitations(
+        [Description("Only the works this search finds, in the language of search_books, e.g. 'tag:thesis year:>=2020 type:paper venue:CVPR' (default: all works)")] string? query = null,
+        [Description("bibtex, csl-json or ris (default bibtex)")] string format = "bibtex",
+        [Description("The ID of one work, or the start of it; instead of a query")] string? id = null) =>
+        Run(() => service.ExportCitations(query, format, id));
+
     [Description("The tags of the library as a tree, with the number of works under each.")]
     public TagTree ListTags() =>
         Run(() => service.ListTags());

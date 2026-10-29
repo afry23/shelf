@@ -47,6 +47,12 @@ public sealed record AnnotationView(
 /// <summary>A work as a Markdown file: the name (the cite key) and the text.</summary>
 public sealed record MarkdownExport(string FileName, string Content);
 
+/// <summary>
+/// The citations of works (F-PAP-5): the format (<c>bibtex</c>, <c>csl-json</c> or <c>ris</c>), the text, how many works it holds,
+/// the titles of the works left out because they have no cite key, and the file name for a download.
+/// </summary>
+public sealed record CitationsExport(string Format, string Content, int Works, string[] Skipped, string FileName);
+
 /// <summary>The highlights and notes of a work.</summary>
 public sealed record AnnotationList(string Id, string Title, AnnotationView[] Annotations);
 

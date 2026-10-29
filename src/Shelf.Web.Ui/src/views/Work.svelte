@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -802,8 +802,14 @@
                 <h2>Export</h2>
                 {#if book.citeKey}
                   <p><a href={exportUrl(book.id)} download>Export Markdown</a> <span class="muted">metadata, highlights and notes in one file</span></p>
+                  <p>
+                    Cite as
+                    <a href={citationUrl(book.id, 'bibtex')} download>BibTeX</a>,
+                    <a href={citationUrl(book.id, 'ris')} download>RIS</a>,
+                    <a href={citationUrl(book.id, 'csl-json')} download>CSL-JSON</a>
+                  </p>
                 {:else}
-                  <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file.</p>
+                  <p class="muted">Set a cite key to export the metadata, highlights and notes as a Markdown file, or to cite the work.</p>
                 {/if}
               </section>
               <section class="panel">

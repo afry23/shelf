@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createWork, works, type FacetValue, type WorkList } from '../api';
+  import { citationsUrl, createWork, works, type FacetValue, type WorkList } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural } from '../format';
@@ -153,6 +153,7 @@
   <div class="head">
     <h1>Library</h1>
     <p class="count muted" role="status">{list ? plural(list.total, 'book') : ''}</p>
+    <a class="button" href={citationsUrl('bibtex', q || undefined)} download title="BibTeX of the works shown; works without a cite key are left out">Export citations</a>
     <button type="button" class="button" aria-expanded={creating} aria-controls="new-work" onclick={() => (creating = !creating)}>New work</button>
   </div>
 
@@ -335,8 +336,9 @@
 
   .head {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 1rem;
+    gap: 0.5rem 1rem;
     margin-bottom: 1rem;
   }
 

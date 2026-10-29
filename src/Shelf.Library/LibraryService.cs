@@ -696,6 +696,68 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>
+    /// The citations of all works, of the works that match <paramref name="query"/>, or of one work (F-PAP-5). Nothing is written:
+    /// a work without a cite key is left out and named in <see cref="CitationsExport.Skipped"/> (<c>shelf citekeys</c> gives keys).
+    /// </summary>
+    /// <param name="format"><c>bibtex</c>, <c>csl-json</c> or <c>ris</c>.</param>
+    /// <exception cref="LibraryException">Invalid: an unknown format, a query that cannot be read, both a query and a work, or a work without a cite key. NotFound: no such work.</exception>
+    public CitationsExport ExportCitations(string? query = null, string format = "bibtex", string? workId = null)
+    {
+        if (!CitationFormats.TryParse(format, out var citationFormat))
+        {
+            throw new LibraryException($"Unknown format '{format}'; use bibtex, csl-json or ris");
+        }
+
+        if (workId is not null && !string.IsNullOrWhiteSpace(query))
+        {
+            throw new LibraryException("give either an ID or a query, not both");
+        }
+
+        SearchQuery? parsed = null;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            try
+            {
+                parsed = QueryParser.Parse(query);
+            }
+            catch (QueryException e)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+
+        var only = workId is null ? (Ulid?)null : Find(workId).Id;
+        CitationExport export;
+        try
+        {
+            export = LibraryCitations.Export(root, citationFormat, parsed, assignKeys: false, only);
+        }
+        catch (Exception e) when (e is IndexException or SidecarException)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        var (name, extension) = citationFormat switch
+        {
+            CitationFormat.BibTeX => ("bibtex", "bib"),
+            CitationFormat.CslJson => ("csl-json", "json"),
+            _ => ("ris", "ris"),
+        };
+        var fileName = "shelf." + extension;
+        if (only is not null)
+        {
+            if (export.Works == 0)
+            {
+                throw new LibraryException(WorkExport.MissingCiteKey);
+            }
+
+            fileName = PathSanitizer.Segment(ReadSidecar(Find(workId!)).CiteKey!) + "." + extension;
+        }
+
+        return new CitationsExport(name, export.Text, export.Works, [.. export.Skipped], fileName);
+    }
+
     /// <summary>Adds a note without a place in the text to a file of the work: the named file, else the only file of the work.</summary>
     /// <exception cref="LibraryException">Invalid: the text is empty, or the work has several files and none is named. NotFound: no such work or file.</exception>
     public AnnotationView AddNote(string workId, string text, string? file = null)

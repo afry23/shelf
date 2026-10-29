@@ -188,6 +188,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the response body contains {string}")]
     public void ThenTheBodyContains(string text) => Assert.Contains(text, _body, StringComparison.Ordinal);
 
+    [Then("the response body does not contain {string}")]
+    public void ThenTheBodyDoesNotContain(string text) => Assert.DoesNotContain(text, _body, StringComparison.Ordinal);
+
     [Then("the response status is {int}")]
     public void ThenTheStatusIs(int status) =>
         Assert.True(status == (int)_response!.StatusCode, $"Expected status {status} but it was {(int)_response.StatusCode}. Body: {_body}");
