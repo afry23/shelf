@@ -251,6 +251,10 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     public void ThenBookAuthor(string title, string author) =>
         Expect(Page.Locator("li").Filter(new() { HasText = title }).First, e => e.ToContainTextAsync(author));
 
+    [Then("the book {string} shows its year {string}")]
+    public void ThenBookYear(string title, string year) =>
+        Expect(Page.Locator("li").Filter(new() { HasText = title }).First.Locator(".year"), e => e.ToHaveTextAsync(year));
+
     [Then("the books of the list {string} stand in {int} row(s)")]
     public void ThenRows(string list, int rows)
     {

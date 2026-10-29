@@ -50,6 +50,17 @@ Feature: The library as a shelf
     And the book "Kubernetes Patterns" shows a spine instead of a cover
     And the book "Kubernetes Patterns" shows its author "Bilgin Ibryam"
 
+  @F-WEB-8 @M12
+  Scenario Outline: A book on the shelf shows its year of publication
+    When I open "/library" in the browser
+    Then the book "<title>" shows its year "<year>"
+
+    Examples:
+      | title                       | year |
+      | Kubernetes Patterns         | 2019 |
+      | Event Sourcing in Practice  | 2021 |
+      | Verteilte Systeme verstehen | 2015 |
+
   Scenario: A facet narrows the shelf and shows as a filter that can be removed
     Given I open "/library" in the browser
     When I click the "Format: pdf" button

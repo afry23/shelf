@@ -347,12 +347,13 @@ Requirements for the MCP server:
 | F-WEB-5 | Keyboard control: `/` focuses the search, `j`/`k` navigates, `Enter` opens. | S |
 | F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. | M |
 | F-WEB-7 | The filter panel of the library view also has **series** and **type** (book or paper), with counts like the other facets, and the query language has the filter `series:` (the whole name of a series, ignoring case; a series written in two cases is one facet value). | S |
+| F-WEB-8 | In the grid of the library view, every book shows its year of publication below the author. A book without a year shows none. | S |
 
 ### 8.2 Views
 
 | View | Content | Prio |
 |---|---|---|
-| **Library** | Grid (covers) or list; faceted filters for tags, author, publisher, language, year, format, reading status, series, type (F-WEB-7); sorting; paging with page numbers and a page size (F-WEB-6) | M |
+| **Library** | Grid (covers, with title, author and year; F-WEB-8) or list; faceted filters for tags, author, publisher, language, year, format, reading status, series, type (F-WEB-7); sorting; paging with page numbers and a page size (F-WEB-6) | M |
 | **Search** | One search field with a Full text / Semantic / Hybrid toggle and an Everything / Titles only scope toggle; hits with snippet and jump into the reader at the location | M |
 | **Work details** | Metadata (editable), formats, tags, similar books, merge another work into this one (F-GRP-4), add a file or a new version (F-GRP-7), move a file to another work (F-GRP-8), delete a file or the work (F-DUP-7), load details from the internet with preview and "Take over" (F-IMP-6), "Read" and "Download" buttons | M |
 | **Tags** | Tag tree, rename/merge via UI | S |
