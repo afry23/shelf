@@ -370,6 +370,9 @@ Requirements for the MCP server:
 | F-RDR-4 | Reading progress is saved per file in `book.json` and resumed on opening. Writes are debounced (e.g. at most every 30 s and on closing the reader). | S |
 | F-RDR-5 | If a work has multiple formats, the preferred format for the reader is configurable (default: EPUB). | S |
 | F-RDR-6 | Bookmarks: a person sets a bookmark at the place of the reader (a PDF page or an EPUB position), with an optional label, and removes it again. A place has at most one bookmark. Bookmarks are kept in `annotations.json` as an annotation of the kind `bookmark`, are listed in the reader and on the work page, and are available as `shelf notes bookmark`, in the Markdown export and as the MCP tool `add_bookmark` (not with `mcp.read_only`). | S |
+| F-STA-1 | Setting a work to **read** (web interface, `shelf edit --status read`, REST, an edit by MCP-free paths alike) records the date in `book.json` as `finishedAt` (UTC, to the second; `schema` stays 1). A work that is read already keeps its date; leaving read takes the date away; a merge keeps the later date. Works that were read before this field have no date. | S |
+| F-STA-2 | `shelf stats`, `GET /api/v1/stats` and the read-only MCP tool `get_stats` also tell what was read: the works set to read per month, how many are read without a date, the works being read and the works a reader last moved in (each newest first, at most 10, with the day). Counted from the index; nothing is asked online. | S |
+| F-STA-3 | The web interface has a view **Statistics** (`/stats`, in the main navigation): the works finished per month as bars (from the first to the last month with a work, months without one as 0, at most the latest 24), the works being read and the works read lately, each linking to the work, and a note on works read without a date. A library without anything read says what to do. | S |
 | F-ANN-1 | In the reader a person selects text and creates a **highlight** with a color. Highlights are drawn again when the file is opened. EPUB first, PDF second. | S |
 | F-ANN-2 | A highlight or a whole file can carry a **note in Markdown**. A note without a place in the text (a note for the file) is possible. | S |
 | F-ANN-3 | Highlights and notes are stored in `annotations.json` next to `book.json` (source of truth, same atomic writes). The index mirrors them and `shelf reindex` restores the mirror. They move with the work on organize, merge and split. | S |
@@ -483,7 +486,7 @@ The candidates must be checked for license and maintenance status before the pro
 ```
 works(id, title, title_norm, subtitle, authors_json, author_sort, language,
       year, isbn13, publisher, series, series_index, edition, description,
-      rating, read_status, cover_path, dir_path, added_at, updated_at)
+      rating, read_status, cover_path, dir_path, added_at, finished_at, updated_at)
 files(id, work_id, format, rel_path, size, sha256, mtime, page_count,
       simhash, text_status, embed_status)
 tags(id, path)               -- hierarchical, e.g. "architektur/ddd"
@@ -516,6 +519,7 @@ work_refs(work_id, position, doi, title, year, author, unstructured) -- mirrored
   "tags": ["architektur/verteilte-systeme", "datenbanken"],
   "rating": 5,
   "readStatus": "read",
+  "finishedAt": "2026-10-12T19:04:00Z",
   "files": [
     {
       "name": "Designing Data-Intensive Applications.epub",

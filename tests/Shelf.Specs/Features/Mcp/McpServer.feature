@@ -50,6 +50,7 @@ Feature: The MCP server
       | get_annotations      |
       | get_book             |
       | get_references       |
+      | get_stats            |
       | list_tags            |
       | propose_organization |
       | read_passage         |
@@ -67,6 +68,7 @@ Feature: The MCP server
     Then the tool "search_books" requires the arguments "query"
     And the tool "get_book" requires the arguments "id"
     And the tool "get_references" requires the arguments "id"
+    And the tool "get_stats" requires no arguments
     And the tool "read_passage" requires the arguments "id, location"
     And the tool "semantic_search" requires the arguments "query"
     And the tool "similar_books" requires the arguments "id"
@@ -129,6 +131,7 @@ Feature: The MCP server
       | add_bookmark         | { "id": "01J9Z3K0000000000000000002", "locator": "page=1" } |
       | get_book             | { "id": "01J9Z3K0000000000000000001" }            |
       | get_references       | { "id": "01J9Z3K0000000000000000002" }            |
+      | get_stats            | {}                                                |
       | read_passage         | { "id": "01J9Z3K0000000000000000002", "location": "page=1" } |
       | list_tags            | {}                                                |
       | export_citations     | {}                                                |
@@ -165,4 +168,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_bookmark, add_note, add_tags, cite_passage, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, get_references, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books, suggest_tags"
+    Then the tool names sorted are "add_bookmark, add_note, add_tags, cite_passage, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, get_references, get_stats, list_tags, propose_organization, read_passage, remove_tags, search_books, semantic_search, similar_books, suggest_tags"

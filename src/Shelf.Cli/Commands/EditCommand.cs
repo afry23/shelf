@@ -131,7 +131,7 @@ internal static class EditCommand
             {
                 var v = Value(status)?.ToLowerInvariant();
                 if (v is null || !Statuses.Contains(v)) { Fail("--status", "must be unread, reading or read"); }
-                else { var st = Enum.Parse<ReadStatus>(v, ignoreCase: true); changed.Add("status"); edits.Add(s => s with { ReadStatus = st }); }
+                else { var st = Enum.Parse<ReadStatus>(v, ignoreCase: true); changed.Add("status"); edits.Add(s => s.WithReadStatus(st, DateTimeOffset.UtcNow)); }
             }
 
             var relatedAdd = parseResult.GetValue(addRelated) ?? [];

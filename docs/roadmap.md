@@ -328,12 +328,12 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** The library view narrows to a series or to papers, and the library shows what was read and when.
 
-**Status:** in progress. Slice plans: [m12-facets](slices/m12-facets.md); done: F-WEB-7.
+**Status:** implemented. Slice plans: [m12-facets](slices/m12-facets.md), [m12-reading-stats](slices/m12-reading-stats.md).
 
 | Area | Content | PRD |
 |---|---|---|
 | Facets | the filter `series:`, the facets series and type in the filter panel | F-WEB-7 |
-| Statistics | planned | – |
+| Statistics | `finishedAt` in `book.json`, `shelf stats`, `GET /stats`, MCP `get_stats`, the view `/stats` | F-STA-1 to F-STA-3 |
 
 **Exit criteria:** feature files exist for all M12 requirements, the complete BDD suite is green.
 

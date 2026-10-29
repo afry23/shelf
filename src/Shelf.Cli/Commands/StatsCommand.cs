@@ -65,6 +65,26 @@ internal static class StatsCommand
         Line("Tags", TextFormat.Number(stats.Tags));
         Section("Formats", stats.Formats.Select(f => (f.Format, TextFormat.Number(f.Files), (string?)TextFormat.Size(f.Bytes))));
         Section("Read status", [("unread", TextFormat.Number(stats.Unread), null), ("reading", TextFormat.Number(stats.Reading), null), ("read", TextFormat.Number(stats.Read), null)]);
+        if (stats.FinishedByMonth.Count > 0)
+        {
+            Section("Finished by month", stats.FinishedByMonth.TakeLast(12).Select(m => (m.Month, TextFormat.Number(m.Works), (string?)null)));
+        }
+
+        if (stats.ReadWithoutDate > 0)
+        {
+            stdout.WriteLine($"  {TextFormat.Number(stats.ReadWithoutDate)} read without a date");
+        }
+
+        if (stats.CurrentlyReading.Count > 0)
+        {
+            Section("Reading", stats.CurrentlyReading.Select(a => (a.Title, Day(a.LastReadAt), (string?)a.Id.ToString())));
+        }
+
+        if (stats.Recent.Count > 0)
+        {
+            Section("Recently read", stats.Recent.Select(a => (a.Title, Day(a.LastReadAt), (string?)a.Status)));
+        }
+
         if (stats.Languages.Count > 0)
         {
             Section("Languages", stats.Languages.Select(l => (l.Language, TextFormat.Number(l.Works), (string?)null)));
@@ -76,6 +96,30 @@ internal static class StatsCommand
         {
             stdout.WriteLine($"  {ReviewQueue.KindName(kind).PadRight(18)}{TextFormat.Number(count).PadLeft(3)}");
         }
+    }
+
+    private static string Day(DateTimeOffset? time) => time is { } t ? t.UtcDateTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "-";
+
+    private static string Stamp(DateTimeOffset? time) => time is { } t ? t.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+
+    private static void WriteActivity(Utf8JsonWriter writer, string name, IReadOnlyList<ReadingActivity> list, bool status)
+    {
+        writer.WriteStartArray(name);
+        foreach (var a in list)
+        {
+            writer.WriteStartObject();
+            JsonOutput.Property(writer, "id", a.Id.ToString());
+            JsonOutput.Property(writer, "title", a.Title);
+            if (status)
+            {
+                JsonOutput.Property(writer, "status", a.Status);
+            }
+
+            JsonOutput.Property(writer, "lastReadAt", a.LastReadAt is null ? null : Stamp(a.LastReadAt));
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
     }
 
     private static void WriteJson(Utf8JsonWriter writer, LibraryStatistics stats, int review, Dictionary<ReviewKind, int> kinds)
@@ -102,6 +146,19 @@ internal static class StatsCommand
         JsonOutput.Property(writer, "reading", stats.Reading);
         JsonOutput.Property(writer, "read", stats.Read);
         writer.WriteEndObject();
+        JsonOutput.Property(writer, "readWithoutDate", stats.ReadWithoutDate);
+        writer.WriteStartArray("finishedByMonth");
+        foreach (var month in stats.FinishedByMonth)
+        {
+            writer.WriteStartObject();
+            JsonOutput.Property(writer, "month", month.Month);
+            JsonOutput.Property(writer, "works", month.Works);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        WriteActivity(writer, "reading", stats.CurrentlyReading, status: false);
+        WriteActivity(writer, "recent", stats.Recent, status: true);
         writer.WriteStartArray("languages");
         foreach (var language in stats.Languages)
         {

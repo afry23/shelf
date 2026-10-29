@@ -55,6 +55,42 @@ public sealed record PassageCitation(
     string Text,
     string Bibtex);
 
+public sealed record StatusCounts(int Unread, int Reading, int Read);
+
+public sealed record FormatCount(string Format, int Files, long Bytes);
+
+public sealed record LanguageCount(string Language, int Works);
+
+/// <summary>The works set to read in a month, <c>2026-10</c> (F-STA-1).</summary>
+public sealed record MonthCount(string Month, int Works);
+
+/// <summary>A work and when a reader last moved in one of its files, <c>yyyy-MM-ddTHH:mm:ssZ</c>, or null.</summary>
+public sealed record ReadingItem(
+    string Id,
+    string Title,
+    string Status,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? LastReadAt);
+
+/// <summary>
+/// The library in numbers and what was read (F-STA-2). <paramref name="FinishedByMonth"/> is oldest first and holds only months in which
+/// a work was set to read; <paramref name="ReadWithoutDate"/> counts works that are read but were set to read before shelf kept the
+/// date. <paramref name="Reading"/> are the works being read, <paramref name="Recent"/> the works a reader moved in last, each newest
+/// first and at most 10.
+/// </summary>
+public sealed record StatsResult(
+    int Works,
+    int Files,
+    long Bytes,
+    int Authors,
+    int Tags,
+    StatusCounts ReadStatus,
+    FormatCount[] Formats,
+    LanguageCount[] Languages,
+    int ReadWithoutDate,
+    MonthCount[] FinishedByMonth,
+    ReadingItem[] Reading,
+    ReadingItem[] Recent);
+
 /// <summary>The work in the library that a reference points to.</summary>
 public sealed record ReferencedWorkView(string Id, string Title);
 

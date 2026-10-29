@@ -8,10 +8,11 @@
   import Organize from './views/Organize.svelte';
   import Review from './views/Review.svelte';
   import Search from './views/Search.svelte';
+  import Stats from './views/Stats.svelte';
   import Tags from './views/Tags.svelte';
   import Work from './views/Work.svelte';
 
-  // The route is the path: /library, /search, /works/{id}, /tags, /review, /organize, /duplicates, /read/{fileId}. The root leads to the library.
+  // The route is the path: /library, /search, /works/{id}, /tags, /review, /organize, /duplicates, /stats, /read/{fileId}. The root leads to the library.
   const route = $derived.by(() => {
     const path = router.path.replace(/\/+$/, '') || '/';
     const segments = path.split('/').filter(Boolean).map(decodeURIComponent);
@@ -29,6 +30,8 @@
         return { name: 'tags' } as const;
       case 'duplicates':
         return { name: 'duplicates' } as const;
+      case 'stats':
+        return { name: 'stats' } as const;
       case 'works':
         return segments[1] ? ({ name: 'work', id: segments[1] } as const) : ({ name: 'missing' } as const);
       case 'read':
@@ -93,6 +96,7 @@
     <a href="/duplicates" aria-current={here('duplicates')}>
       Duplicates{#if duplicateCount.value}<span class="badge">{duplicateCount.value}</span>{/if}
     </a>
+    <a href="/stats" aria-current={here('stats')}>Statistics</a>
   </nav>
 </header>
 
@@ -109,6 +113,8 @@
     <Tags />
   {:else if route.name === 'duplicates'}
     <Duplicates />
+  {:else if route.name === 'stats'}
+    <Stats />
   {:else if route.name === 'work'}
     <Work id={route.id} />
   {:else if route.name === 'read'}

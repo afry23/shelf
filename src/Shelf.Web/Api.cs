@@ -160,6 +160,12 @@ internal static class Api
             .WithName("SuggestCiteKey")
             .Produces<CiteKeySuggestion>(StatusCodes.Status200OK);
 
+        // A read: counted from the index, nobody is asked.
+        api.MapGet("/stats", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.StatsResult, () => library.Service.Stats()))
+            .WithName("LibraryStats")
+            .Produces<StatsResult>(StatusCodes.Status200OK);
+
         // A read: the list comes from references.json and the index, nobody is asked.
         api.MapGet("/works/{id}/references", ([FromServices] LibraryHandle library, string id) =>
                 Run(WebJsonContext.Default.ReferencesResult, () => library.Service.References(RequireId(id))))

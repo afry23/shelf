@@ -75,7 +75,7 @@ internal static class MetadataPatch
                 }
 
                 var parsed = Enum.Parse<ReadStatus>(status, ignoreCase: true);
-                return s => s with { ReadStatus = parsed };
+                return s => s.WithReadStatus(parsed, DateTimeOffset.UtcNow);
             default:
                 throw Refuse(field, "unknown field");
         }
