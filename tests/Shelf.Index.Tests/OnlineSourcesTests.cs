@@ -158,6 +158,33 @@ public sealed class OnlineSourcesTests
         Assert.Equal("hep-th/9901001", Assert.Single(new ArxivSource(http).FindByArxivId("hep-th/9901001", None)).ArxivId);
     }
 
+    [Fact]
+    public void Crossref_reads_the_reference_list_of_a_paper()
+    {
+        var http = new StubHttp("""
+            { "message": { "title": ["BERT"], "reference": [
+                { "key": "r1", "DOI": "10.5555/Attention", "article-title": "Attention Is All You Need", "author": "Vaswani", "year": "2017" },
+                { "key": "r2", "unstructured": "Peters et al., Deep contextualized word representations, 2018." },
+                { "key": "r3", "volume-title": "A Book", "year": "n.d." },
+                { "key": "r4" } ] } }
+            """);
+
+        var references = new CrossrefSource(http).FindReferences("10.18653/bert", None);
+
+        Assert.NotNull(references);
+        Assert.Equal(3, references.Count);
+        Assert.Equal(new Shelf.Core.Model.Reference("10.5555/attention", "Attention Is All You Need", 2017, "Vaswani", null), references[0]);
+        Assert.Equal("Peters et al., Deep contextualized word representations, 2018.", references[1].Unstructured);
+        Assert.Equal(("A Book", (int?)null), (references[2].Title, references[2].Year));
+        Assert.Contains("api.crossref.org/works/10.18653/bert", http.Urls[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Crossref_knows_no_reference_list_of_an_unknown_DOI_and_an_empty_one_of_a_paper_without() =>
+        Assert.Multiple(
+            () => Assert.Null(new CrossrefSource(new StubHttp("{}", HttpStatusCode.NotFound)).FindReferences("10.1/x", None)),
+            () => Assert.Empty(new CrossrefSource(new StubHttp("""{ "message": { "title": ["T"] } }""")).FindReferences("10.1/x", None)!));
+
     private sealed class StubHttp(string body, HttpStatusCode status = HttpStatusCode.OK, string contentType = "application/json") : IHttpGetter
     {
         public List<string> Urls { get; } = [];

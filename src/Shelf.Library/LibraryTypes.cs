@@ -55,6 +55,42 @@ public sealed record PassageCitation(
     string Text,
     string Bibtex);
 
+/// <summary>The work in the library that a reference points to.</summary>
+public sealed record ReferencedWorkView(string Id, string Title);
+
+/// <summary>An entry of the reference list of a paper (F-PAP-11); <paramref name="Work"/> is the work of the library with this DOI, or null.</summary>
+public sealed record ReferenceItem(
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Doi,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Author,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Unstructured,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReferencedWorkView? Work);
+
+/// <summary>A work of the library that lists the paper in its references (F-PAP-12).</summary>
+public sealed record CitedByItem(
+    string Id,
+    string Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year);
+
+/// <summary>
+/// The references of a work as they were loaded, with the works of the library they point to, and the works of the library that cite
+/// the work (F-PAP-11, F-PAP-12). <paramref name="Doi"/> is the DOI of the work: without one a list cannot be loaded. <paramref name="Source"/> and <paramref name="FetchedAt"/> are null until a list was loaded.
+/// </summary>
+public sealed record ReferencesResult(
+    string Id,
+    string Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Doi,
+    int Total,
+    int InLibrary,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Source,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FetchedAt,
+    ReferenceItem[] References,
+    CitedByItem[] CitedBy);
+
+/// <summary>What the source lists for a paper and whether it was stored (F-PAP-11).</summary>
+public sealed record ReferencesFetchResult(string Id, string Title, string Source, int Total, int WithDoi, int InLibrary, bool Applied);
+
 /// <summary>A work as a Markdown file: the name (the cite key) and the text.</summary>
 public sealed record MarkdownExport(string FileName, string Content);
 

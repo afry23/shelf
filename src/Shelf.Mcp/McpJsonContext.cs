@@ -16,6 +16,7 @@ namespace Shelf.Mcp;
 [JsonSerializable(typeof(SimilarBooksResult))]
 [JsonSerializable(typeof(TagSuggestionsResult))]
 [JsonSerializable(typeof(PassageCitation))]
+[JsonSerializable(typeof(ReferencesResult))]
 [JsonSerializable(typeof(CitationsExport))]
 [JsonSerializable(typeof(AnnotationList))]
 [JsonSerializable(typeof(AnnotationView))]

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, ApiError, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, ApiError, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -101,6 +101,46 @@
     };
   });
 
+  // The references of a paper and the works that cite it (F-PAP-11, F-PAP-12). The list is read from the library; it is loaded from
+  // Crossref only on the click of a button.
+  let refs = $state<WorkReferences | null>(null);
+  let refsBusy = $state(false);
+  let refsError = $state<string | null>(null);
+
+  $effect(() => {
+    const wanted = id;
+    let current = true;
+    refs = null;
+    refsError = null;
+    workReferences(wanted)
+      .then((result) => {
+        if (current) {
+          refs = result;
+        }
+      })
+      .catch(() => {
+        if (current) {
+          refs = null;
+        }
+      });
+    return () => {
+      current = false;
+    };
+  });
+
+  async function loadReferences(): Promise<void> {
+    refsBusy = true;
+    refsError = null;
+    try {
+      await fetchReferences(id);
+      refs = await workReferences(id);
+    } catch (e) {
+      refsError = (e as Error).message;
+    } finally {
+      refsBusy = false;
+    }
+  }
+
   // The tags of the library, for the suggestions of the field.
   $effect(() => {
     const flatten = (nodes: TagNode[]): string[] => nodes.flatMap((n) => [n.path, ...flatten(n.children)]);
@@ -124,6 +164,7 @@
     ...(book?.description ? [{ id: 'description', label: 'Description' }] : []),
     ...((book?.toc.length && tocFile) || similarBooks.length ? [{ id: 'contents', label: 'Contents' }] : []),
     ...(notes.items.length ? [{ id: 'notes', label: 'Highlights and notes', count: notes.items.length }] : []),
+    ...(refs && (refs.total || refs.citedBy.length || refs.doi) ? [{ id: 'references', label: 'References', count: refs.total || undefined }] : []),
     { id: 'files', label: 'Files', count: book?.files.length },
     { id: 'manage', label: 'Manage' },
   ]);
@@ -763,6 +804,55 @@
             </div>
           {:else if active === 'notes'}
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
+          {:else if active === 'references' && refs}
+            <div class="pair">
+              <section class="group">
+                <h2>References</h2>
+                {#if refs.total === 0}
+                  <p class="muted">No references loaded.</p>
+                {:else}
+                  <p class="muted">{refs.total} references, {refs.inLibrary} in the library</p>
+                  <ol class="refs" aria-label="References">
+                    {#each refs.references as reference, index (index)}
+                      <li>
+                        {#if reference.work}
+                          <a href={`/works/${reference.work.id}`}>{reference.work.title}</a>
+                        {:else}
+                          <span>{reference.title ?? reference.unstructured ?? reference.doi}</span>
+                        {/if}
+                        <span class="muted">{[reference.author, reference.year].filter(Boolean).join(', ')}</span>
+                        {#if reference.doi}<a class="muted" href={`https://doi.org/${reference.doi}`} rel="noreferrer">{reference.doi}</a>{/if}
+                      </li>
+                    {/each}
+                  </ol>
+                {/if}
+                {#if refs.doi}
+                  <p>
+                    <button type="button" class="button" disabled={refsBusy} onclick={loadReferences}>
+                      {refs.total ? 'Reload references from Crossref' : 'Load references from Crossref'}
+                    </button>
+                  </p>
+                  <p class="muted">Asks Crossref for the DOI {refs.doi}. Nothing is sent before you click.</p>
+                {/if}
+                {#if refsError}<p role="alert">{refsError}</p>{/if}
+              </section>
+
+              <section class="group">
+                <h2>Cited by</h2>
+                {#if refs.citedBy.length === 0}
+                  <p class="muted">No work in the library lists this one in its references.</p>
+                {:else}
+                  <ul class="similar" aria-label="Cited by">
+                    {#each refs.citedBy as citing (citing.id)}
+                      <li>
+                        <a href={`/works/${citing.id}`}>{citing.title}</a>
+                        {#if citing.year}<span class="muted">({citing.year})</span>{/if}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </section>
+            </div>
           {:else if active === 'files'}
             {#if deleteDone}<p class="done" role="status">{deleteDone}</p>{/if}
             <table class="files">
@@ -1090,6 +1180,17 @@
     margin-top: 0.4rem;
     font-family: var(--serif);
     font-size: 1.05rem;
+  }
+
+  .refs {
+    margin: 0;
+    padding-left: 1.5rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .refs li {
+    overflow-wrap: anywhere;
   }
 
   .description {

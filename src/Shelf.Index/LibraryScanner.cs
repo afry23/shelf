@@ -392,6 +392,7 @@ public static class LibraryScanner
         }
 
         writer.ReplaceAnnotations(id, LibraryAnnotations.ReadForMirror(root, dir, problems));
+        writer.ReplaceReferences(id, LibraryReferences.ReadForMirror(root, dir, problems));
     }
 
     /// <summary>Files that appeared next to a sidecar: named in the sidecar, then indexed.</summary>

@@ -50,6 +50,7 @@ Feature: A read-only MCP server
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_references       |
       | list_tags            |
       | propose_organization |
       | read_passage         |

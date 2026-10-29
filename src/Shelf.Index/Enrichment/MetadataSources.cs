@@ -1,4 +1,5 @@
 using Shelf.Core.Configuration;
+using Shelf.Core.Model;
 
 namespace Shelf.Index;
 
@@ -44,6 +45,10 @@ public interface IMetadataSource
 
     /// <exception cref="MetadataSourceException"/>
     IReadOnlyList<OnlineBook> FindByDoi(string doi, CancellationToken cancellation) => [];
+
+    /// <returns>The reference list of the paper with this DOI (F-PAP-11), empty if the source lists none, null if it does not know the DOI.</returns>
+    /// <exception cref="MetadataSourceException"/>
+    IReadOnlyList<Reference>? FindReferences(string doi, CancellationToken cancellation) => null;
 
     /// <exception cref="MetadataSourceException"/>
     IReadOnlyList<OnlineBook> FindByArxivId(string arxivId, CancellationToken cancellation) => [];

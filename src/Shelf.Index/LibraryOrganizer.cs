@@ -162,6 +162,11 @@ public static class LibraryOrganizer
                 moves.Add(new Move(IndexWriter.JoinRelative(directory, AnnotationsFormat.FileName), IndexWriter.JoinRelative(newDirectory, AnnotationsFormat.FileName), IsFile: false));
             }
 
+            if (File.Exists(Path.Combine(root, directory, ReferencesFormat.FileName)))
+            {
+                moves.Add(new Move(IndexWriter.JoinRelative(directory, ReferencesFormat.FileName), IndexWriter.JoinRelative(newDirectory, ReferencesFormat.FileName), IsFile: false));
+            }
+
             if (sidecar.Cover is { } cover && File.Exists(Path.Combine(root, directory, cover)))
             {
                 moves.Add(new Move(IndexWriter.JoinRelative(directory, cover), IndexWriter.JoinRelative(newDirectory, cover), IsFile: false));

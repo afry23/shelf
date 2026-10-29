@@ -340,6 +340,37 @@ export const similar = (id: string, limit = 6) =>
 export const tagSuggestions = (id: string, limit = 8) =>
   request<TagSuggestionsResponse>('GET', `/works/${encodeURIComponent(id)}/tag-suggestions?limit=${limit}`);
 
+// ---- references and citations (F-PAP-11, F-PAP-12) ----
+
+export interface ReferenceItem {
+  doi: string | null;
+  title: string | null;
+  year: number | null;
+  author: string | null;
+  unstructured: string | null;
+  /** The work of the library with this DOI, or null. */
+  work: { id: string; title: string } | null;
+}
+
+export interface WorkReferences {
+  id: string;
+  title: string;
+  /** The DOI of the work: without one the references cannot be loaded. */
+  doi: string | null;
+  total: number;
+  inLibrary: number;
+  source: string | null;
+  fetchedAt: string | null;
+  references: ReferenceItem[];
+  citedBy: { id: string; title: string; year: number | null }[];
+}
+
+export const workReferences = (id: string) => request<WorkReferences>('GET', `/works/${encodeURIComponent(id)}/references`);
+
+/** Asks Crossref for the references of the work and stores them. Only on a click. */
+export const fetchReferences = (id: string) =>
+  request<{ total: number; applied: boolean }>('POST', `/works/${encodeURIComponent(id)}/references/fetch`, { apply: true });
+
 export const editWork = (id: string, patch: Record<string, unknown>) =>
   request<WorkDetail>('PATCH', `/works/${encodeURIComponent(id)}`, patch, 'application/merge-patch+json');
 

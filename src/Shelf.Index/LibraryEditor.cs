@@ -165,6 +165,7 @@ public static class LibraryEditor
         SidecarStore.Write(targetPath, merged);
 
         LibraryAnnotations.Carry(root, source, target, renames);
+        LibraryReferences.CarryOnMerge(root, source, target);
         File.Delete(sourcePath);
         var leftover = RemoveFolderIfEmpty(root, sourceDirectory) ? null : source.Directory;
 

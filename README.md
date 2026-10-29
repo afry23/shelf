@@ -284,6 +284,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf organize [--apply] [--pattern ...] [--paper-pattern ...]` | Re-sort the library by pattern; papers have a pattern of their own |
 | `shelf undo` | Revert the last organize, tag, dupes or delete run |
 | `shelf trash empty [--yes]` | Delete the trash for good |
+| `shelf refs list\|fetch <work>` | References of a paper and the works that cite it; `fetch` asks Crossref by DOI (`--apply` stores the list in `references.json`) |
 | `shelf cite <work> <quote>` | A passage as a Markdown quote with the cite key and the place (`--locator page=12`, `--bibtex`); the reader has "Copy as quote" for the same |
 | `shelf notes` | Notes, highlights and bookmarks (`list`, `add`, `bookmark`, `rm`, `export`) |
 | `shelf covers` | Cover maintenance |
@@ -309,7 +310,7 @@ shelf search 'author:kleppmann year:>2015 "stream processing"'
 
 ### MCP server
 
-Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `suggest_tags`, `cite_passage`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
+Add shelf to your AI assistant as a stdio server (`shelf mcp`). Tools: `search_books`, `semantic_search`, `get_book`, `read_passage`, `similar_books`, `suggest_tags`, `cite_passage`, `get_references`, `list_tags`, `add_tags`, `remove_tags`, `find_duplicates`, `propose_organization`. Delete and move are never offered. Set `mcp.read_only = true` to disable the write tools.
 
 #### Remote access over HTTP
 

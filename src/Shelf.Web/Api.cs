@@ -160,6 +160,20 @@ internal static class Api
             .WithName("SuggestCiteKey")
             .Produces<CiteKeySuggestion>(StatusCodes.Status200OK);
 
+        // A read: the list comes from references.json and the index, nobody is asked.
+        api.MapGet("/works/{id}/references", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.ReferencesResult, () => library.Service.References(RequireId(id))))
+            .WithName("WorkReferences")
+            .Produces<ReferencesResult>(StatusCodes.Status200OK);
+
+        // Asks Crossref, so only on this request; without "apply" nothing is stored.
+        api.MapPost("/works/{id}/references/fetch", ([FromServices] LibraryHandle library, string id, [FromBody] ReferencesFetchRequest? body) =>
+                Run(WebJsonContext.Default.ReferencesFetchResult, () =>
+                    library.Service.FetchReferences(RequireId(id), OptionalFlag(body?.Apply, "apply") ?? false, CancellationToken.None)))
+            .WithName("FetchWorkReferences")
+            .Accepts<ReferencesFetchRequest>("application/json")
+            .Produces<ReferencesFetchResult>(StatusCodes.Status200OK);
+
         api.MapPost("/works/{id}/enrich", ([FromServices] LibraryHandle library, string id, [FromBody] EnrichRequest? body) =>
                 Run(WebJsonContext.Default.EnrichPreviewResult, () =>
                     library.Service.EnrichPreview(RequireId(id), OptionalText(body?.Source, "source"), OptionalFlag(body?.Overwrite, "overwrite") ?? false, OptionalWhole(body?.Pick, "pick"), CancellationToken.None)))
