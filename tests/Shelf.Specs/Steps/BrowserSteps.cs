@@ -98,7 +98,7 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [When("I fill the {string} field with {string}")]
     [Given("I fill the {string} field with {string}")]
     public void WhenIFill(string label, string text) =>
-        Page.GetByLabel(label, new() { Exact = true }).FillAsync(text.Replace("\\n", "\n", StringComparison.Ordinal)).GetAwaiter().GetResult();
+        Page.GetByLabel(label, new() { Exact = true }).And(Page.Locator("input, textarea, select")).FillAsync(text.Replace("\\n", "\n", StringComparison.Ordinal)).GetAwaiter().GetResult();
 
     [When("I choose the file {string} in the {string} field")]
     [Given("I choose the file {string} in the {string} field")]

@@ -46,7 +46,7 @@ Feature: A book and its details
     And the page shows the text "devops"
 
   Scenario: The table of contents leads into the book
-    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open "/works/01J9Z3K0000000000000000001#contents" in the browser
     Then the link "Foundational Patterns" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub#cfi="
 
   Scenario Outline: Read opens the book in the format that suits a reader best

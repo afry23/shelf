@@ -75,16 +75,15 @@ Feature: The interface fits the screen and the system
   Scenario Outline: The page of a book groups its parts to fit the window
     Given the browser window is <width> x <height> pixels
     When I open "/works/01J9Z3K0000000000000000001" in the browser
-    Then "Design patterns for containers" <description> "Year"
-    And "Edit details" <tools> "Load details from the internet"
+    Then "Edit details" <tools> "Load details from the internet"
     When I open the "Files" tab
     Then "Files" stands above "Add a file"
 
     Examples:
-      | width | height | description   | tools         |
-      | 1280  | 900    | stands beside | stands beside |
-      | 820   | 1180   | stands beside | stands beside |
-      | 390   | 844    | stands above  | stands above  |
+      | width | height | tools         |
+      | 1280  | 900    | stands beside |
+      | 820   | 1180   | stands beside |
+      | 390   | 844    | stands above  |
 
   Scenario: A file of a book stays usable on a phone
     Given the browser window is 390 x 844 pixels

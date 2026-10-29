@@ -33,27 +33,37 @@ Feature: The page of a book in tabs
     And I have run shelf with arguments "reindex --library library"
     And the web server is running on the library "library"
 
-  Scenario: The book opens on its contents
+  Scenario: The book opens on its description
     When I open "/works/01J9Z3K0000000000000000001" in the browser
-    Then the "Contents" tab is selected
-    And the link "Foundational Patterns" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub#cfi="
+    Then the "Description" tab is selected
+    And the page shows the text "Design patterns for containers"
 
-  Scenario: The details of the book stay in view whichever tab is open
+  Scenario: The contents lead into the book
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I open the "Contents" tab
+    Then the link "Foundational Patterns" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub#cfi="
+
+  Scenario: The facts of the book stay in view whichever tab is open
     Given I open "/works/01J9Z3K0000000000000000001" in the browser
     When I open the "Manage" tab
-    Then the page shows the text "Design patterns for containers"
+    Then the page does not show the text "Design patterns for containers"
     And the page shows the text "cloud/kubernetes"
     And the link "Read" points to an address containing "/read/01J9Z3K0000000000000000001~kp.epub"
 
   Scenario: The tabs of a book are named after what they hold
     When I open "/works/01J9Z3K0000000000000000001" in the browser
-    Then the "Contents" tab is shown
+    Then the "Description" tab is shown
+    And the "Contents" tab is shown
     And the "Files" tab is shown
     And the "Manage" tab is shown
 
   Scenario: The number of files is shown on the tab
     When I open "/works/01J9Z3K0000000000000000001" in the browser
     Then the tab "Files" shows the number 1
+
+  Scenario: A book without a description has no tab for it
+    When I open "/works/01J9Z3K0000000000000000002" in the browser
+    Then the "Description" tab is not shown
 
   Scenario: A book without a table of contents opens on its files
     When I open "/works/01J9Z3K0000000000000000002" in the browser
@@ -87,6 +97,14 @@ Feature: The page of a book in tabs
     When I open "/works/01J9Z3K0000000000000000001" in the browser
     Then "Edit details" stands beside "Load details from the internet"
 
+  Scenario: The description changes with the details
+    Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I click the "Edit details" button
+    And I fill the "Description" field with "Patterns for pods"
+    And I click the "Save" button
+    Then the "Description" tab is selected
+    And the page shows the text "Patterns for pods"
+
   Scenario: The tab is kept in the address
     Given I open "/works/01J9Z3K0000000000000000001" in the browser
     When I open the "Files" tab
@@ -100,6 +118,8 @@ Feature: The page of a book in tabs
 
   Scenario: The arrow keys move between the tabs
     Given I open "/works/01J9Z3K0000000000000000001" in the browser
+    When I press the key "ArrowRight" on the "Description" tab
+    Then the "Contents" tab is selected
     When I press the key "ArrowRight" on the "Contents" tab
     Then the "Files" tab is selected
     When I press the key "ArrowRight" on the "Files" tab
