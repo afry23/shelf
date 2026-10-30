@@ -40,6 +40,10 @@ public sealed record SearchHit(
 /// </remarks>
 public static class LibrarySearch
 {
+    /// <summary>Where a passage of a file is: its place, and "notes file" in front for a notes file (F-NOTEF-4).</summary>
+    private static string WhereOf(string role, string locator) =>
+        role == "notes" ? "notes file, " + Locators.Describe(locator) : Locators.Describe(locator);
+
     public const int DefaultLimit = 20;
     public const int DefaultHitsPerWork = 3;
 
@@ -187,7 +191,7 @@ public static class LibrarySearch
             // needed to apply them.
             command.CommandText = filter.IsEmpty
                 ? $"""
-                    SELECT w.id, r.score, c.id, f.rel_path, f.format, c.locator
+                    SELECT w.id, r.score, c.id, f.rel_path, f.format, c.locator, f.role
                     FROM (SELECT rowid, bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH $match ORDER BY 2 LIMIT {MaxCandidates}) r
                     JOIN chunks c ON c.id = r.rowid
                     JOIN files f ON f.id = c.file_id
@@ -195,7 +199,7 @@ public static class LibrarySearch
                     ORDER BY r.score
                     """
                 : $"""
-                    SELECT w.id, bm25(chunks_fts), c.id, f.rel_path, f.format, c.locator
+                    SELECT w.id, bm25(chunks_fts), c.id, f.rel_path, f.format, c.locator, f.role
                     FROM chunks_fts
                     JOIN chunks c ON c.id = chunks_fts.rowid
                     JOIN files f ON f.id = c.file_id
@@ -219,7 +223,7 @@ public static class LibrarySearch
                 hits.Add((
                     reader.GetDouble(1),
                     reader.GetInt64(2),
-                    new ContentHit(reader.GetString(3), reader.GetString(4), locator, Locators.Describe(locator), string.Empty)));
+                    new ContentHit(reader.GetString(3), reader.GetString(4), locator, WhereOf(reader.GetString(6), locator), string.Empty)));
             }
         }
 
@@ -372,7 +376,7 @@ public static class LibrarySearch
                     filter.Add($"{not}(lower(w.language) = {{0}} OR lower(w.language) LIKE {{1}})", lang.Value, lang.Value + "-%");
                     break;
                 case ValueFilter { Field: FieldKind.Format } format:
-                    filter.Add($"{not}EXISTS (SELECT 1 FROM files fx WHERE fx.work_id = w.id AND fx.format = {{0}})", format.Value);
+                    filter.Add($"{not}EXISTS (SELECT 1 FROM files fx WHERE fx.role = 'book' AND fx.work_id = w.id AND fx.format = {{0}})", format.Value);
                     break;
                 case ValueFilter { Field: FieldKind.Type } type:
                     filter.Add($"w.kind {(f.Negated ? "<>" : "=")} {{0}}", type.Value);
@@ -608,7 +612,7 @@ public static class LibrarySearch
 
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = $"SELECT DISTINCT work_id, format FROM files WHERE work_id IN ({placeholders})";
+            command.CommandText = $"SELECT DISTINCT work_id, format FROM files WHERE role = 'book' AND work_id IN ({placeholders})";
             AddIds(command, ids);
             using var reader = command.ExecuteReader();
             while (reader.Read())

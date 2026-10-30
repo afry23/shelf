@@ -309,7 +309,7 @@ public static class LibraryScanner
                         continue;
                     }
 
-                    writer.InsertFile(id, entry.Name, IndexWriter.JoinRelative(dir, entry.Name), info.Length, IndexWriter.Mtime(info), entry.Progress);
+                    writer.InsertFile(id, entry.Name, IndexWriter.JoinRelative(dir, entry.Name), info.Length, IndexWriter.Mtime(info), entry.Progress, entry.Role);
                 }
 
                 created++;
@@ -370,6 +370,7 @@ public static class LibraryScanner
                 }
 
                 writer.SetProgress(row.Id, entry.Progress);
+                writer.SetRole(row.Id, entry.Role);
                 continue;
             }
 
@@ -380,7 +381,7 @@ public static class LibraryScanner
                 continue;
             }
 
-            writer.InsertFile(id, entry.Name, rel, info.Length, IndexWriter.Mtime(info), entry.Progress);
+            writer.InsertFile(id, entry.Name, rel, info.Length, IndexWriter.Mtime(info), entry.Progress, entry.Role);
         }
 
         foreach (var (name, row) in rows)

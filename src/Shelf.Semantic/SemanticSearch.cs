@@ -335,7 +335,7 @@ public static class SemanticSearch
         var formats = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
         using (var command2 = connection.CreateCommand())
         {
-            command2.CommandText = $"SELECT DISTINCT work_id, format FROM files WHERE work_id IN ({Placeholders(command2, works.Select(w => (object)w.Item2).ToList())})";
+            command2.CommandText = $"SELECT DISTINCT work_id, format FROM files WHERE role = 'book' AND work_id IN ({Placeholders(command2, works.Select(w => (object)w.Item2).ToList())})";
             using var reader = command2.ExecuteReader();
             while (reader.Read())
             {

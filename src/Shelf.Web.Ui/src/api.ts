@@ -77,6 +77,8 @@ export interface WorkFile {
   sizeBytes: number;
   pages: number | null;
   progress: ReadingPosition | null;
+  /** `notes` for a notes file (F-NOTEF-2): searched, but no book. */
+  role: 'book' | 'notes';
 }
 
 export interface TocItem {
@@ -557,9 +559,9 @@ export interface MoveFileOutcome {
 }
 
 /** Adds a file to a work; with `replace` (a file ID of the work) the old file goes to the trash. `shelf undo` reverts it. */
-export const addFile = (workId: string, file: File, options: { replace?: string; carryNotes?: boolean } = {}) =>
+export const addFile = (workId: string, file: File, options: { replace?: string; carryNotes?: boolean; notes?: boolean } = {}) =>
   upload<AddFileOutcome>(
-    `/works/${encodeURIComponent(workId)}/files${query({ name: file.name, replace: options.replace, carryNotes: options.carryNotes ? 'true' : undefined })}`,
+    `/works/${encodeURIComponent(workId)}/files${query({ name: file.name, replace: options.replace, carryNotes: options.carryNotes ? 'true' : undefined, role: options.notes ? 'notes' : undefined })}`,
     file,
   );
 

@@ -150,7 +150,8 @@ public sealed record BookFile(
     string Format,
     long SizeBytes,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress = null,
+    string Role = "book");
 
 public sealed record TocItem(
     string Title,

@@ -368,6 +368,23 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all F-RLS requirements, the complete BDD suite is green, `shelf reindex` restores the list from the sidecars.
 
+### M15 – Notes Files
+
+**Goal:** A PDF or TXT file with the notes of an e-reader (for example the Kindle notebook) can be attached to a work and is found by the full text search, next to the Markdown notes.
+
+**Status:** implemented. Slice plan: [m15-notes-files](slices/m15-notes-files.md); decisions: [ADR 0021](adr/0021-notes-files.md).
+
+| Area | Content | PRD |
+|---|---|---|
+| Data model | role `notes` per file in `book.json` and the index | F-NOTEF-2 |
+| Attach | `shelf add <work> <file> --notes`, REST upload with `?role=notes` | F-NOTEF-1 |
+| Extraction | TXT extractor, PDF text layer; no OCR | F-NOTEF-3 |
+| Search | label "Notes file", filters apply, notes files are no books | F-NOTEF-2, F-NOTEF-4 |
+| Moves with the work | organize, merge, split, move, trash, undo, reindex | F-NOTEF-5 |
+| Interfaces | `shelf notes files`, REST, MCP, block on the work page | F-NOTEF-6, F-NOTEF-7 |
+
+**Exit criteria:** feature files exist for all F-NOTEF requirements, the complete BDD suite is green, `shelf reindex` restores the roles from the sidecars.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

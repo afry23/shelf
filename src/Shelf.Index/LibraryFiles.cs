@@ -11,7 +11,8 @@ namespace Shelf.Index;
 /// <param name="Move">The source file is deleted after it was copied into the library.</param>
 /// <param name="Replace">A file of the work (name or path) that the new file replaces; it goes to the trash.</param>
 /// <param name="CarryNotes">Reading position and notes of the replaced file go to the new file.</param>
-public sealed record AddOptions(bool Move = false, string? Replace = null, bool CarryNotes = false);
+/// <param name="Notes">The file is a notes file (F-NOTEF-1): a PDF or TXT file with the role <see cref="FileRole.Notes"/>.</param>
+public sealed record AddOptions(bool Move = false, string? Replace = null, bool CarryNotes = false, bool Notes = false);
 
 /// <summary>What <see cref="LibraryFiles.AddFile"/> did.</summary>
 public sealed record AddResult(Ulid Work, string File, string? Replaced);
@@ -47,7 +48,7 @@ public static class LibraryFiles
                 ?? throw new LibraryEditException($"{work.Id} has no file '{replace}'");
         }
 
-        var fullSource = CheckSource(root, source, workingDirectory);
+        var fullSource = CheckSource(root, source, workingDirectory, options.Notes);
         var directory = Path.Combine(root, work.Directory);
         var name = FolderNames.UniqueFileName(directory, Path.GetFileName(fullSource));
         var journal = FileJournal.Begin(root, "add", undoable: true);
@@ -55,7 +56,7 @@ public static class LibraryFiles
         {
             Place(journal, Path.Combine(directory, name), fullSource);
             var files = sidecar.Files.Where(f => f.Name != replaced?.Name).ToList();
-            files.Add(new SidecarFile(name, options.CarryNotes ? replaced?.Progress : null));
+            files.Add(new SidecarFile(name, options.CarryNotes ? replaced?.Progress : null, options.Notes ? FileRole.Notes : FileRole.Book));
             var updated = sidecar with
             {
                 Files = files,
@@ -177,6 +178,11 @@ public static class LibraryFiles
         string targetDirectory;
         WorkSidecar? created = null;
         WorkSidecar? targetSidecar = null;
+        if (target is null && entry.Role == FileRole.Notes)
+        {
+            throw new LibraryEditException($"{entry.Name} is a notes file; it can only be moved to a work that exists");
+        }
+
         if (target is null)
         {
             var id = Ulid.New();
@@ -202,13 +208,13 @@ public static class LibraryFiles
             if (created is not null)
             {
                 var createdPath = Path.Combine(targetDirectory, SidecarStore.FileName);
-                created = created with { Files = [new SidecarFile(name, entry.Progress)] };
+                created = created with { Files = [new SidecarFile(name, entry.Progress, entry.Role)] };
                 journal.Create(createdPath, SidecarBytes(created, createdPath));
             }
             else
             {
                 var targetPath = LibraryEditor.SidecarPath(root, receiver);
-                var updated = targetSidecar! with { Files = [.. targetSidecar.Files, new SidecarFile(name, entry.Progress)] };
+                var updated = targetSidecar! with { Files = [.. targetSidecar.Files, new SidecarFile(name, entry.Progress, entry.Role)] };
                 journal.Replace(targetPath, SidecarBytes(updated, targetPath));
             }
 
@@ -261,7 +267,7 @@ public static class LibraryFiles
     // ---- helpers ----
 
     /// <summary>The full path of a source that is a supported file, not yet in the library.</summary>
-    private static string CheckSource(string root, string source, string workingDirectory)
+    private static string CheckSource(string root, string source, string workingDirectory, bool notes = false)
     {
         var full = Path.GetFullPath(source, workingDirectory);
         if (Directory.Exists(full))
@@ -274,9 +280,11 @@ public static class LibraryFiles
             throw new LibraryEditException($"{source} does not exist");
         }
 
-        if (!BookExtractor.IsSupported(full))
+        if (notes ? !BookExtractor.IsNotesFile(full) : !BookExtractor.IsSupported(full))
         {
-            throw new LibraryEditException($"{source} is not a supported format");
+            throw new LibraryEditException(notes
+                ? $"{source} is not a notes file: only PDF and TXT files can be added with --notes"
+                : $"{source} is not a supported format");
         }
 
         string sha;

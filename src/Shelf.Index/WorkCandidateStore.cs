@@ -16,7 +16,7 @@ public static class WorkCandidateStore
         var fingerprints = new Dictionary<string, List<ulong>>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT work_id, simhash FROM files WHERE simhash IS NOT NULL";
+            command.CommandText = "SELECT work_id, simhash FROM files WHERE simhash IS NOT NULL AND role = 'book'";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -34,7 +34,7 @@ public static class WorkCandidateStore
         var formats = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT DISTINCT work_id, format FROM files";
+            command.CommandText = "SELECT DISTINCT work_id, format FROM files WHERE role = 'book'";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {

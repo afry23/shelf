@@ -11,7 +11,11 @@ namespace Shelf.Extraction;
 /// </summary>
 public static class BookExtractor
 {
-    public static bool IsSupported(string path) => FormatOf(path) is not null;
+    /// <summary>True for a file that can be a book. A TXT file is read only as a notes file (F-NOTEF-3), so it is not supported here.</summary>
+    public static bool IsSupported(string path) => FormatOf(path) is { } format && format != Format.Text;
+
+    /// <summary>True for a file that can be attached to a work as a notes file: a PDF or a TXT file (F-NOTEF-1).</summary>
+    public static bool IsNotesFile(string path) => FormatOf(path) is Format.Pdf or Format.Text;
 
     /// <summary>True for a Markdown file. Unlike an EPUB or a PDF it is no book by itself: it counts only inside a work (F-ART-9).</summary>
     public static bool IsMarkdown(string path) => FormatOf(path) == Format.Markdown;
@@ -29,7 +33,7 @@ public static class BookExtractor
         ArgumentException.ThrowIfNullOrEmpty(path);
         options ??= ExtractionOptions.Default;
         var format = FormatOf(path)
-            ?? throw new ExtractionException($"{path}: unsupported: only EPUB, PDF and Markdown files are read", ExtractionErrorKind.Unsupported, path);
+            ?? throw new ExtractionException($"{path}: unsupported: only EPUB, PDF, Markdown and TXT files are read", ExtractionErrorKind.Unsupported, path);
 
         // PdfPig reports a missing file as InvalidOperationException; say what is wrong instead.
         if (!File.Exists(path))
@@ -44,6 +48,7 @@ public static class BookExtractor
             {
                 Format.Epub => EpubExtractor.Read(path, withText, options),
                 Format.Markdown => MarkdownExtractor.Read(path, withText),
+                Format.Text => TextFileExtractor.Read(path, withText),
                 _ => PdfExtractor.Read(path, withText),
             };
         }
@@ -109,6 +114,7 @@ public static class BookExtractor
         Epub,
         Pdf,
         Markdown,
+        Text,
     }
 
     private static Format? FormatOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
@@ -116,6 +122,7 @@ public static class BookExtractor
         ".epub" => Format.Epub,
         ".pdf" => Format.Pdf,
         ".md" => Format.Markdown,
+        ".txt" => Format.Text,
         _ => null,
     };
 }

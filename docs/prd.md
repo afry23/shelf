@@ -59,7 +59,7 @@ Existing alternatives were evaluated and rejected. Reasons include unreadable ha
 - Cloud hosting or SaaS
 - Reader functions beyond reading and annotating (highlights, notes), e.g. dictionary lookup or text-to-speech
 - Sync of a library across multiple machines
-- OCR for scanned PDFs without a text layer (metadata only)
+- OCR for scanned or handwritten PDFs without a text layer (metadata only; a notes file without a text layer is kept but not searched, F-NOTEF-3)
 
 ## 4. Target Audience
 
@@ -88,7 +88,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 |---|---|---|
 | F-LIB-1 | One library = one root folder. Multiple libraries are possible via configuration. | M |
 | F-LIB-2 | Supported formats: EPUB, PDF. | M |
-| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT) are tracked as files but not indexed by content. Markdown is indexed as the text of an article (F-ART-7); a Markdown file outside a work is no book and is not taken in by `import` or `scan`. | S |
+| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT) are tracked as files but not indexed by content. Markdown is indexed as the text of an article (F-ART-7); a Markdown file outside a work is no book and is not taken in by `import` or `scan`. A TXT file attached as a notes file is indexed (F-NOTEF-3). | S |
 | F-LIB-4 | The data model separates **Work** and **File**. A work has 1..n files. | M |
 | F-LIB-5 | Each work has a sidecar file `book.json` in the work folder. It is the **source of truth** for metadata, tags, reading progress, and "not a duplicate" markings, and holds the work ID (ULID, generated once, never changed). | M |
 | F-LIB-6 | The SQLite database is exclusively an index and cache. `shelf reindex` rebuilds it completely from the file system and sidecars. | M |
@@ -287,6 +287,20 @@ The reading list holds the works (books, papers and articles) a person wants to 
 | F-RLS-5 | REST: `GET /api/v1/reading-list`, `PUT /api/v1/works/{id}/reading-list` (put on the list), `DELETE /api/v1/works/{id}/reading-list` (take off). A work shows `readingListAt` in its details. | M |
 | F-RLS-6 | MCP: the read-only tool `get_reading_list` and the write tools `add_to_reading_list` and `remove_from_reading_list`. With `mcp.read_only` the write tools are not offered. | M |
 | F-RLS-7 | Web interface: the view "Reading list" (menu entry, `/reading-list`) lists the works oldest first with a button to take a work off and one to mark it as read (the work then leaves the list). The work page has a button to put the work on the list or take it off. | M |
+
+### 6.12 Notes Files
+
+A **notes file** is a PDF or TXT file that belongs to a work but is not a book: typically the notes and highlights a person exported from an e-reader (for example the Kindle notebook as a searchable PDF, or a TXT export). It is a file of the work with the role `notes` (the other files have the role `book`). Its text is searched together with the Markdown notes (F-ANN-5).
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-NOTEF-1 | A notes file is added to an existing work by hand: `shelf add <work> <file> --notes`, and the work details of the web interface (upload, `POST /api/v1/works/{id}/files?role=notes`). Accepted are `.pdf` and `.txt`; any other file is refused with an error. The same SHA-256 as a file already in the library is refused (F-GRP-7). A work can have any number of notes files. | S |
+| F-NOTEF-2 | The role is kept in `book.json` (source of truth; `schema` stays 1) and mirrored in the index; `shelf reindex` restores it. A notes file is no book: it is not counted as a format of the work, is never the preferred format of the reader (F-RDR-5), takes no part in duplicate detection (F-DUP-*) and is not embedded for semantic search. | S |
+| F-NOTEF-3 | The text of a notes file is indexed for full text search: the text layer of a PDF (page locators) and a TXT file (UTF-8 with or without BOM, else Latin-1). A PDF without a text layer, e.g. handwriting, is kept and can be downloaded, but is not searched; it is marked "no text" like any such file (Q7). No OCR. | S |
+| F-NOTEF-4 | A search hit from a notes file says "notes file" with the place (the page of a PDF, the line of a TXT file) and the file name. The usual filters (`author:`, `tag:`, `type:` …) apply to it like to a hit of a book. | S |
+| F-NOTEF-5 | A notes file moves with its work: `shelf organize`, undo, merge, split, `shelf move` (F-GRP-8), trash and deletion treat it like any other file of the work. | S |
+| F-NOTEF-6 | `shelf notes files <work>` lists the notes files of a work (`--json`); A notes file is removed like any file of a work, with `shelf delete` and the work details (F-DUP-7). REST: the files of a work in `GET /api/v1/works/{id}` carry their `role`. MCP: `get_book` lists the files with their role and `search_books` finds the text of a notes file. | S |
+| F-NOTEF-7 | The work page of the web interface lists the notes files in an own block "Notes files" with upload, download and removal; a hit in the search view opens the file (a PDF at the page). | S |
 
 ## 7. Interfaces
 
@@ -610,7 +624,7 @@ work_refs(work_id, position, doi, title, year, author, unstructured) -- mirrored
 | Q4 | Work ID | **ULID**, generated once on import and stored in `book.json`. It never changes. |
 | Q5 | Annotations/highlights | **Added after 1.0** (F-ANN-1 to F-ANN-6): a separate sidecar `annotations.json` per work, mirrored in the index; EPUB before PDF; notes in Markdown. See [ADR 0018](adr/0018-annotations.md). |
 | Q6 | Sync scenario | **No sync.** A library is used on one machine only. |
-| Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. |
+| Q7 | Scanned PDFs without a text layer | **Ignore.** Such files are tracked with metadata only; no OCR. This holds for notes files (F-NOTEF-3) too: handwriting in a PDF without a text layer is kept and shown, not searched. |
 | Q1 | Frontend technology | **Svelte** (Svelte 5 + Vite + TypeScript, single-page application without SvelteKit), decided 2026-10-17 by the project owner. It replaces the earlier choice htmx + RazorSlices (RazorSlices: pre-1.0, single maintainer, Native AOT claim unverified). The server only provides JSON under `/api/v1`, files and the embedded static UI. The UI is built at build time and embedded as static assets (F-WEB-3); Node.js is needed for the build and for UI development, not at runtime. Razor Pages/MVC stay excluded (not Native AOT-compatible, Q2). |
 
 ### 13.2 Open

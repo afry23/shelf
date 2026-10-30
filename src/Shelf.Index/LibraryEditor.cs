@@ -98,7 +98,7 @@ public static class LibraryEditor
             Move(journal, from, Path.Combine(targetDirectory, name));
             renames[file.Name] = name;
             movedPaths[IndexWriter.JoinRelative(source.Directory, file.Name)] = IndexWriter.JoinRelative(target.Directory, name);
-            files.Add(new SidecarFile(name, file.Progress));
+            files.Add(new SidecarFile(name, file.Progress, file.Role));
         }
 
         // The cover of the work that goes away: the target keeps its own; a target without one takes it over. Left in the
@@ -232,7 +232,7 @@ public static class LibraryEditor
             SeriesIndex = metadata.SeriesIndex,
             Description = metadata.Description,
             Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
-            Files = [new SidecarFile(name, entry.Progress)],
+            Files = [new SidecarFile(name, entry.Progress, entry.Role)],
             NotDuplicates = new NotDuplicates([work.Id], []),
         }.From(metadata);
         SidecarStore.Write(Path.Combine(folder, SidecarStore.FileName), created);

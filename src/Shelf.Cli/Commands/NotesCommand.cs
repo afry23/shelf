@@ -16,6 +16,53 @@ internal static class NotesCommand
         command.Subcommands.Add(Bookmark(json, stdout, stderr, environment));
         command.Subcommands.Add(Remove(json, stdout, stderr, environment));
         command.Subcommands.Add(Export(stdout, stderr, environment));
+        command.Subcommands.Add(Files(json, stdout, stderr, environment));
+        return command;
+    }
+
+    /// <summary><c>shelf notes files</c>: the notes files of a work (F-NOTEF-6). They are added with <c>shelf add --notes</c>.</summary>
+    private static Command Files(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
+    {
+        var work = WorkSupport.Argument();
+        var library = LibraryContext.CreateOption();
+        var command = new Command("files", "List the notes files of a work (add one with shelf add --notes)");
+        command.Arguments.Add(work);
+        command.Options.Add(library);
+        command.SetAction(parseResult =>
+        {
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            var found = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(work));
+            var files = LibraryEditor.Read(context.Root, found).Files.Where(f => f.Role == FileRole.Notes).ToList();
+            if (parseResult.GetValue(json))
+            {
+                stdout.WriteLine(JsonOutput.Write(writer =>
+                {
+                    writer.WriteStartArray();
+                    foreach (var file in files)
+                    {
+                        writer.WriteStartObject();
+                        JsonOutput.Property(writer, "file", file.Name);
+                        JsonOutput.Property(writer, "role", "notes");
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
+                }));
+            }
+            else if (files.Count == 0)
+            {
+                stdout.WriteLine($"No notes files for {found.Title}");
+            }
+            else
+            {
+                foreach (var file in files)
+                {
+                    stdout.WriteLine(file.Name);
+                }
+            }
+
+            return ExitCodes.Success;
+        });
         return command;
     }
 

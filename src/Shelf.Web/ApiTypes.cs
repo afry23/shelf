@@ -99,7 +99,8 @@ public sealed record WorkFile(
     string Format,
     long SizeBytes,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Pages,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadingPosition? Progress,
+    string Role = "book");
 
 /// <summary>The body of <c>PUT /files/{id}/progress</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record ProgressRequest(JsonNode? Locator);
