@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, ApiError, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, addToReadingList, ApiError, removeFromReadingList, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -191,6 +191,19 @@
   }
 
   const setStatus = (status: ReadStatus) => patch({ readStatus: status });
+
+  async function toggleReadingList(): Promise<void> {
+    if (!book) {
+      return;
+    }
+    actionError = null;
+    try {
+      const updated = await (book.readingListAt ? removeFromReadingList(book.id) : addToReadingList(book.id));
+      book = { ...updated, toc: book.toc };
+    } catch (e) {
+      actionError = (e as Error).message;
+    }
+  }
   const setRating = (stars: number) => patch({ rating: book?.rating === stars ? null : stars });
 
   async function changeTags(next: string[]): Promise<void> {
@@ -620,6 +633,13 @@
             onchange={setStatus}
           />
         </div>
+        <button
+          type="button"
+          class="list-toggle"
+          aria-pressed={book.readingListAt !== null}
+          disabled={book.readStatus === 'read'}
+          title={book.readStatus === 'read' ? 'Already read: set it to unread to put it on the reading list' : undefined}
+          onclick={toggleReadingList}>{book.readingListAt ? 'On the reading list' : 'Add to reading list'}</button>
         <div class="stars" role="group" aria-label="Rating">
           {#each [1, 2, 3, 4, 5] as stars (stars)}
             <button
@@ -1028,6 +1048,15 @@
 
   .control {
     width: 100%;
+  }
+
+  .list-toggle {
+    width: 100%;
+  }
+
+  .list-toggle[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .control :global(.segmented) {

@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 12;
+    public const int Version = 13;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 
@@ -48,6 +48,7 @@ internal static class IndexSchema
             dir_path TEXT NOT NULL,
             added_at TEXT,
             finished_at TEXT,
+            reading_list_at TEXT,
             updated_at TEXT NOT NULL)
         """,
         "CREATE INDEX works_isbn13 ON works(isbn13)",

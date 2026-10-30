@@ -50,6 +50,7 @@ Feature: A read-only MCP server
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_reading_list     |
       | get_references       |
       | get_stats            |
       | list_tags            |
@@ -76,11 +77,13 @@ Feature: A read-only MCP server
     And the folder "library" equals the snapshot
 
     Examples:
-      | tool        |
-      | add_bookmark |
-      | add_note    |
-      | add_tags    |
-      | remove_tags |
+      | tool                     |
+      | add_bookmark             |
+      | add_note                 |
+      | add_tags                 |
+      | remove_tags              |
+      | add_to_reading_list      |
+      | remove_from_reading_list |
 
   Scenario: The read tools keep working
     Given the config file of the library "library" contains the line "mcp.read_only = true"
@@ -90,6 +93,16 @@ Feature: A read-only MCP server
       { "query": "kubernetes" }
       """
     Then the result has the number "total" equal to 2
+
+  Scenario: The reading list can be read
+    Given the config file of the library "library" contains the line "mcp.read_only = true"
+    And the MCP server is running on the library "library"
+    When I call the tool "get_reading_list" with the arguments:
+      """
+      {}
+      """
+    Then the tool call succeeds
+    And the result has the number "total" equal to 0
 
   Scenario: mcp.read_only = false offers the tools
     Given the config file of the library "library" contains the line "mcp.read_only = false"

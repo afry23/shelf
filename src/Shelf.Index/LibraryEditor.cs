@@ -158,6 +158,7 @@ public static class LibraryEditor
             Tags = [.. t.Tags.Concat(s.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             ReadStatus = mergedStatus,
             FinishedAt = mergedStatus == ReadStatus.Read ? new[] { t.FinishedAt, s.FinishedAt }.Max() : null,
+            ReadingListAt = mergedStatus == ReadStatus.Read ? null : new[] { t.ReadingListAt, s.ReadingListAt }.Where(r => r.HasValue).Min(),
             Added = added == default ? null : added,
             Cover = cover ?? t.Cover,
             Files = files,

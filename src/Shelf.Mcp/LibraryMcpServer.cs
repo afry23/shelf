@@ -18,13 +18,13 @@ public static class LibraryMcpServer
         "Tools for an e-book library. Use search_books to find works and places in their text by words, semantic_search to find "
         + "them by meaning (also across languages), get_book for the details and table of contents of a work, and read_passage "
         + "to read the text at a location from any of them. Locations such as 'page=12' are given in the results; pass them on "
-        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. suggest_tags gives the tags of the most similar works. add_tags and remove_tags change the tags of a work add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
+        + "unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. get_reading_list gives the works a person wants to read next. suggest_tags gives the tags of the most similar works. add_tags and remove_tags change the tags of a work, add_to_reading_list and remove_from_reading_list change the reading list, add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
 
     private const string ReadOnlyInstructions =
         "Tools for an e-book library. This server is read-only. Use search_books to find works and places in their text by words, "
         + "semantic_search to find them by meaning (also across languages), get_book for the details and table of contents of a "
         + "work, and read_passage to read the text at a location from any of them. Locations such as 'page=12' are given in the "
-        + "results; pass them on unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. suggest_tags gives the tags of the most similar works.";
+        + "results; pass them on unchanged. get_annotations gives the highlights and notes that a person made in a work. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. get_reading_list gives the works a person wants to read next. suggest_tags gives the tags of the most similar works.";
 
     /// <summary>Runs until the input ends or <paramref name="cancellation"/> is cancelled.</summary>
     public static async Task RunAsync(
@@ -95,6 +95,7 @@ public static class LibraryMcpServer
         collection.Add(McpServerTool.Create((Func<string, AnnotationList>)tools.GetAnnotations, Read("get_annotations", json)));
         collection.Add(McpServerTool.Create((Func<string?, string, string?, CitationsExport>)tools.ExportCitations, Read("export_citations", json)));
         collection.Add(McpServerTool.Create((Func<StatsResult>)tools.GetStats, Read("get_stats", json)));
+        collection.Add(McpServerTool.Create((Func<ReadingListResult>)tools.GetReadingList, Read("get_reading_list", json)));
         collection.Add(McpServerTool.Create((Func<string, ReferencesResult>)tools.GetReferences, Read("get_references", json)));
         collection.Add(McpServerTool.Create((Func<string, string, string?, string?, PassageCitation>)tools.CitePassage, Read("cite_passage", json)));
         collection.Add(McpServerTool.Create((Func<string, string, int?, int, string?, PassageText>)tools.ReadPassage, Read("read_passage", json)));
@@ -111,6 +112,8 @@ public static class LibraryMcpServer
             collection.Add(McpServerTool.Create((Func<string, string, string?, string?, AnnotationView>)tools.AddBookmark, Write("add_bookmark", json)));
             collection.Add(McpServerTool.Create((Func<string, string[], TagChange>)tools.AddTags, Write("add_tags", json)));
             collection.Add(McpServerTool.Create((Func<string, string[], TagChange>)tools.RemoveTags, Write("remove_tags", json)));
+            collection.Add(McpServerTool.Create((Func<string, ReadingListChange>)tools.AddToReadingList, Write("add_to_reading_list", json)));
+            collection.Add(McpServerTool.Create((Func<string, ReadingListChange>)tools.RemoveFromReadingList, Write("remove_from_reading_list", json)));
         }
 
         return collection;

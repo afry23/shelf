@@ -14,6 +14,9 @@ public enum WorkSort
     Year,
     Added,
     Updated,
+
+    /// <summary>When the work was put on the reading list (F-RLS-4); works that are not on it go last.</summary>
+    ReadingList,
 }
 
 /// <param name="Offset">Works to skip.</param>
@@ -35,7 +38,8 @@ public sealed record WorkListEntry(
     IReadOnlyList<string> Formats,
     IReadOnlyList<string> Tags,
     string ReadStatus,
-    bool HasCover);
+    bool HasCover,
+    string? ReadingListAt = null);
 
 /// <summary>A value of a facet and the number of works of the filtered set that have it.</summary>
 public sealed record FacetCount(string Value, int Count);
@@ -94,10 +98,10 @@ public static class LibraryBrowse
             return [];
         }
 
-        var rows = new Dictionary<string, (string Title, string? Subtitle, List<string> Authors, int? Year, string? Language, string Status, bool HasCover)>(StringComparer.Ordinal);
+        var rows = new Dictionary<string, (string Title, string? Subtitle, List<string> Authors, int? Year, string? Language, string Status, bool HasCover, string? ReadingListAt)>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = $"SELECT w.id, w.title, w.subtitle, w.authors_json, w.year, w.language, w.read_status, w.cover_path IS NOT NULL FROM works w WHERE w.id IN ({Placeholders(command, ids)})";
+            command.CommandText = $"SELECT w.id, w.title, w.subtitle, w.authors_json, w.year, w.language, w.read_status, w.cover_path IS NOT NULL, w.reading_list_at FROM works w WHERE w.id IN ({Placeholders(command, ids)})";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -108,7 +112,8 @@ public static class LibraryBrowse
                     reader.IsDBNull(4) ? null : reader.GetInt32(4),
                     reader.IsDBNull(5) ? null : reader.GetString(5),
                     reader.GetString(6),
-                    reader.GetBoolean(7));
+                    reader.GetBoolean(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8));
             }
         }
 
@@ -117,7 +122,7 @@ public static class LibraryBrowse
         return [.. ids.Select(id =>
         {
             var r = rows[id];
-            return new WorkListEntry(Ulid.Parse(id), r.Title, r.Subtitle, r.Authors, r.Year, r.Language, formats.GetValueOrDefault(id) ?? [], tags.GetValueOrDefault(id) ?? [], r.Status, r.HasCover);
+            return new WorkListEntry(Ulid.Parse(id), r.Title, r.Subtitle, r.Authors, r.Year, r.Language, formats.GetValueOrDefault(id) ?? [], tags.GetValueOrDefault(id) ?? [], r.Status, r.HasCover, r.ReadingListAt);
         })];
     }
 
@@ -130,6 +135,7 @@ public static class LibraryBrowse
 
             // A work without a year goes last in either direction.
             WorkSort.Year => $"w.year IS NULL, w.year {direction}, w.title_norm, w.id",
+            WorkSort.ReadingList => $"w.reading_list_at IS NULL, w.reading_list_at {direction}, w.title_norm, w.id",
             WorkSort.Added => $"w.added_at IS NULL, w.added_at {direction}, w.title_norm, w.id",
             _ => $"w.updated_at {direction}, w.title_norm, w.id",
         };

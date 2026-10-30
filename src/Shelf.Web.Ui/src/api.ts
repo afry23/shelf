@@ -33,6 +33,8 @@ export interface WorkItem {
   tags: string[];
   readStatus: ReadStatus;
   hasCover: boolean;
+  /** When the work was put on the reading list, or null when it is not on it. */
+  readingListAt: string | null;
 }
 
 export type ReadStatus = 'unread' | 'reading' | 'read';
@@ -100,6 +102,8 @@ export interface WorkDetail {
   rating: number | null;
   tags: string[];
   readStatus: ReadStatus;
+  /** When the work was put on the reading list, or null when it is not on it. */
+  readingListAt: string | null;
   hasCover: boolean;
   files: WorkFile[];
   /** The ID of the file that "Read" opens (F-RDR-5), or null for a work without files. */
@@ -405,6 +409,18 @@ export const editWork = (id: string, patch: Record<string, unknown>) =>
 
 export const suggestCiteKey = (id: string) =>
   request<{ id: string; citeKey: string | null }>('POST', `/works/${encodeURIComponent(id)}/cite-key/suggest`);
+
+export interface ReadingList {
+  total: number;
+  works: WorkItem[];
+}
+
+/** The works on the reading list, the one put on first at the top. */
+export const readingList = () => request<ReadingList>('GET', '/reading-list');
+
+export const addToReadingList = (id: string) => request<WorkDetail>('PUT', `/works/${encodeURIComponent(id)}/reading-list`);
+
+export const removeFromReadingList = (id: string) => request<WorkDetail>('DELETE', `/works/${encodeURIComponent(id)}/reading-list`);
 
 export const setTags = (id: string, tags: string[]) =>
   request<{ id: string; tags: string[]; added: number; removed: number }>('PUT', `/works/${encodeURIComponent(id)}/tags`, { tags });

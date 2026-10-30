@@ -454,7 +454,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
     // ---- the library as a list, metadata, tag sets (the web API) ----
 
-    public const string SortNames = "title, author, year, added, updated";
+    public const string SortNames = "title, author, year, added, updated, readinglist";
 
     /// <summary>The works that pass the filters in <paramref name="query"/>, one page, with the counts per facet.</summary>
     /// <param name="query">Filters of the query language only (<c>tag:cloud -lang:de</c>); words are refused.</param>
@@ -538,6 +538,47 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
 
         return Details(work, withToc: false);
+    }
+
+    /// <summary>
+    /// Puts a work of any kind on the reading list (F-RLS-1). A work that is on it already keeps its time; a work that is read
+    /// is refused, because reading it again is a new decision (set it to unread first).
+    /// </summary>
+    public ReadingListChange AddToReadingList(string id) => ChangeReadingList(id, add: true);
+
+    /// <summary>Takes a work off the reading list. A work that is not on it is no error (F-RLS-1).</summary>
+    public ReadingListChange RemoveFromReadingList(string id) => ChangeReadingList(id, add: false);
+
+    private ReadingListChange ChangeReadingList(string id, bool add)
+    {
+        var work = Find(id);
+        lock (_writeGate)
+        {
+            try
+            {
+                var (changed, sidecar) = LibraryReadingList.Set(root, work, add);
+                return new ReadingListChange(
+                    work.Id.ToString(),
+                    sidecar.Title,
+                    sidecar.ReadingListAt is not null,
+                    changed,
+                    sidecar.ReadingListAt is { } onList ? onList.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture) : null);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
+            {
+                // A read work cannot be put on the list: the request is fine, the state of the work is not.
+                throw new LibraryException(e.Message, e is LibraryEditException ? LibraryErrorKind.Conflict : LibraryErrorKind.Invalid);
+            }
+        }
+    }
+
+    /// <summary>The works on the reading list, the one put on first at the top (F-RLS-1, F-RLS-4).</summary>
+    public ReadingListResult ReadingList()
+    {
+        var page = Browse("readinglist:yes", "readinglist", "asc", 0, BrowseOptions.MaxLimit);
+        return new ReadingListResult(
+            page.Total,
+            [.. page.Items.Select(w => new ReadingListItem(w.Id.ToString(), w.Title, [.. w.Authors], w.Year, [.. w.Formats], w.ReadStatus, w.ReadingListAt ?? string.Empty))]);
     }
 
     /// <summary>The cite key that the metadata of a work suggest, different from the keys of the other works. Nothing is written.</summary>
@@ -1553,6 +1594,8 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
             sidecar.Rating,
             [.. sidecar.Tags],
             sidecar.ReadStatus.ToString().ToLowerInvariant(),
+            sidecar.ReadingListAt is not null,
+            sidecar.ReadingListAt is { } onList ? onList.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture) : null,
             [.. files],
             [.. toc]);
     }

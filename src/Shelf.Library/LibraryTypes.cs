@@ -174,8 +174,32 @@ public sealed record BookDetails(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,
     string ReadStatus,
+    bool OnReadingList,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadingListAt,
     BookFile[] Files,
     TocItem[] Toc);
+
+/// <summary>What putting a work on the reading list or taking it off did. <paramref name="Changed"/> is false when the work was in that state already (F-RLS-1).</summary>
+/// <param name="ReadingListAt">When the work was put on the list, <c>yyyy-MM-ddTHH:mm:ssZ</c>; null when it is not on the list.</param>
+public sealed record ReadingListChange(
+    string Id,
+    string Title,
+    bool OnReadingList,
+    bool Changed,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadingListAt);
+
+/// <summary>A work on the reading list.</summary>
+public sealed record ReadingListItem(
+    string Id,
+    string Title,
+    string[] Authors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    string[] Formats,
+    string ReadStatus,
+    string ReadingListAt);
+
+/// <summary>The reading list, the work put on it first at the top (F-RLS-6).</summary>
+public sealed record ReadingListResult(int Total, ReadingListItem[] Works);
 
 public sealed record PassageText(string Id, string File, string Location, string Where, string Text, int Offset, int TotalChars, bool Truncated);
 

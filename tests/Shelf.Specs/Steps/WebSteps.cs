@@ -233,6 +233,9 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
     [Then("the JSON field {string} of the response is {string}")]
     public void ThenTheFieldIsString(string path, string expected) => Assert.Equal(expected, Field(path)!.GetValue<string>());
 
+    [Then("the JSON field {string} of the response is the noted entry")]
+    public void ThenTheFieldIsTheNotedEntry(string path) => Assert.Equal(_entry, Field(path)!.GetValue<string>());
+
     [Then("the JSON field {string} of the response is not zero")]
     public void ThenTheFieldIsNotZero(string path) => Assert.NotEqual(0, Field(path)!.GetValue<double>());
 
