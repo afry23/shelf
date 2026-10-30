@@ -274,6 +274,20 @@ A work is a **book** (default), a **paper** or an **article**. An article is a b
 | F-ART-8 | The web reader shows an article with its images (served from the library only, never from the source site). | S |
 | F-ART-9 | An article folder is one unit: `shelf organize`, undo, trash and deletion move the Markdown file, `images/` and `book.json` together; `scan` and `reindex` do not take the images for works. | M |
 
+### 6.11 Reading List
+
+The reading list holds the works (books, papers and articles) a person wants to read next. It is a property of the work: `book.json` has the optional field `readingList`, the time the work was put on the list (`schema` stays 1). A work is on the list or it is not; the order is the order of adding, oldest first.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-RLS-1 | A work of any kind (book, paper, article) can be put on the reading list and taken off again. Putting a work on the list twice changes nothing (the first time stays). A work that is read already is refused with an error that says to mark it unread first. | M |
+| F-RLS-2 | When the reading status of a work becomes `read`, the work leaves the reading list by itself, whatever the way the status was set (`shelf edit --status`, REST, MCP, web interface) and when a merge produces a read work. The status `reading` keeps the work on the list. Setting a work back to `unread` does not put it on the list again. | M |
+| F-RLS-3 | `shelf readlist add <work>…`, `shelf readlist rm <work>…` and `shelf readlist show` (oldest first, `--json`). | M |
+| F-RLS-4 | The search filter `readinglist:yes` / `readinglist:no` selects works on or off the list. The list is part of the index (mirrored from `book.json`) and `shelf reindex` restores it from the sidecars. | M |
+| F-RLS-5 | REST: `GET /api/v1/reading-list`, `PUT /api/v1/works/{id}/reading-list` (put on the list), `DELETE /api/v1/works/{id}/reading-list` (take off). A work shows `readingListAt` in its details. | M |
+| F-RLS-6 | MCP: the read-only tool `get_reading_list` and the write tools `add_to_reading_list` and `remove_from_reading_list`. With `mcp.read_only` the write tools are not offered. | M |
+| F-RLS-7 | Web interface: the view "Reading list" (menu entry, `/reading-list`) lists the works oldest first with a button to take a work off and one to mark it as read (the work then leaves the list). The work page has a button to put the work on the list or take it off. | M |
+
 ## 7. Interfaces
 
 ### 7.1 CLI
@@ -297,6 +311,7 @@ shelf clip <url> | --html <file> [--url <address>]  Keep a web article as Markdo
 shelf export [query] [--format bibtex|csl-json|ris] [--out file]  Citations of all works or of a search result
 shelf import-bib <file> [--apply] [--overwrite]  Take over DOIs, venues and cite keys from a BibTeX file (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
+shelf readlist add|rm|show                Manage the reading list (F-RLS-3)
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>
@@ -331,6 +346,8 @@ Further requirements for the CLI:
 | `similar_books` | Similar works to a work |
 | `list_tags` | Tag tree with counts |
 | `add_tags` / `remove_tags` | Change tags (write) |
+| `get_reading_list` | The reading list, oldest first (read-only) |
+| `add_to_reading_list` / `remove_from_reading_list` | Put a work on the reading list or take it off (write) |
 | `find_duplicates` | List duplicate candidates (read-only) |
 | `propose_organization` | Dry run of the organization pattern as a diff (read-only) |
 
@@ -350,6 +367,7 @@ Requirements for the MCP server:
 - REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, merging works, and adding, moving and creating (F-GRP-7 to F-GRP-9; a file is uploaded as the body of the request, its name in `?name=`).
 - Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs. The images of an article are served via `/api/v1/files/{id}/assets/{name}` (only from the `images/` folder next to the file).
 - `POST /api/v1/works/clip` (`{"url": …}`) keeps a public page as an article (F-ART-2).
+- `GET /api/v1/reading-list` and `PUT`/`DELETE /api/v1/works/{id}/reading-list` manage the reading list (F-RLS-5).
 - An OpenAPI specification is generated automatically.
 
 ## 8. Web Interface and Reader
@@ -539,6 +557,7 @@ work_refs(work_id, position, doi, title, year, author, unstructured) -- mirrored
   "rating": 5,
   "readStatus": "read",
   "finishedAt": "2026-10-12T19:04:00Z",
+  "readingList": "2026-10-01T08:00:00Z",
   "files": [
     {
       "name": "Designing Data-Intensive Applications.epub",

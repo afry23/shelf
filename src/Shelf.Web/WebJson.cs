@@ -21,6 +21,7 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(QuoteRequest))]
 [JsonSerializable(typeof(PassageCitation))]
 [JsonSerializable(typeof(WorkDetail))]
+[JsonSerializable(typeof(ReadingListResponse))]
 [JsonSerializable(typeof(DuplicateList))]
 [JsonSerializable(typeof(DuplicateOutcome))]
 [JsonSerializable(typeof(SplitOutcome))]

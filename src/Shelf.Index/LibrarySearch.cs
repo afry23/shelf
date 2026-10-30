@@ -391,6 +391,10 @@ public static class LibrarySearch
                     // Contains, ignoring case: "site:ops" finds "Ops Weekly".
                     filter.Add($"{not}COALESCE(instr(lower(w.site), {{0}}) > 0, 0)", site.Value);
                     break;
+                case ValueFilter { Field: FieldKind.ReadingList } onList:
+                    // "yes" is a work with a time on the list; a negation turns the answer around.
+                    filter.Add(onList.Value == "yes" != f.Negated ? "w.reading_list_at IS NOT NULL" : "w.reading_list_at IS NULL");
+                    break;
                 case ValueFilter { Field: FieldKind.Series } series:
                     // The whole name of the series, ignoring case: "series:\"reusable elements\"" finds "Reusable Elements".
                     filter.Add($"{not}COALESCE(lower(w.series) = {{0}}, 0)", series.Value);

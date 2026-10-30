@@ -17,7 +17,11 @@ public sealed record WorkItem(
     string[] Formats,
     string[] Tags,
     string ReadStatus,
-    bool HasCover);
+    bool HasCover,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadingListAt);
+
+/// <summary>The reading list (F-RLS-5): the works on it, the one put on first at the top.</summary>
+public sealed record ReadingListResponse(int Total, WorkItem[] Works);
 
 public sealed record FacetValue(string Value, int Count);
 
@@ -121,6 +125,7 @@ public sealed record WorkDetail(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Rating,
     string[] Tags,
     string ReadStatus,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadingListAt,
     bool HasCover,
     WorkFile[] Files,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReadFile,

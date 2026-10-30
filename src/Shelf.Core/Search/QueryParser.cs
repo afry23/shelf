@@ -145,6 +145,7 @@ public static partial class QueryParser
             "venue" => FieldKind.Venue,
             "series" => FieldKind.Series,
             "site" => FieldKind.Site,
+            "readinglist" => FieldKind.ReadingList,
             _ => null,
         };
         if (kind is null)
@@ -182,6 +183,11 @@ public static partial class QueryParser
                 return status is "unread" or "reading" or "read"
                     ? new ValueFilter(FieldKind.Status, status, negated)
                     : throw new QueryException($"status: '{value}' is not one of unread, reading, read");
+            case FieldKind.ReadingList:
+                var onList = value.ToLowerInvariant();
+                return onList is "yes" or "no"
+                    ? new ValueFilter(FieldKind.ReadingList, onList, negated)
+                    : throw new QueryException($"readinglist: '{value}' is not one of yes, no");
             case FieldKind.Type:
                 var type = value.ToLowerInvariant();
                 return type is "book" or "paper" or "article"

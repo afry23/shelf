@@ -89,7 +89,26 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
 
     [When("I click the {string} link")]
     [Given("I click the {string} link")]
-    public void WhenIClickTheLink(string name) => Page.GetByRole(AriaRole.Link, new() { Name = name }).First.ClickAsync().GetAwaiter().GetResult();
+    public void WhenIClickTheLink(string name)
+    {
+        LinkNamed(name).First.ClickAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>A link whose name is exactly the text wins over one that only contains it: "Read" is the link to the reader, not "Reading list".</summary>
+    private ILocator LinkNamed(string name)
+    {
+        // The page may still be drawing, so the exact link gets a moment to show; a name that no link has exactly falls back to "contains".
+        var exact = Page.GetByRole(AriaRole.Link, new() { Name = name, Exact = true }).First;
+        try
+        {
+            exact.WaitForAsync(new() { Timeout = 1500 }).GetAwaiter().GetResult();
+            return exact;
+        }
+        catch (TimeoutException)
+        {
+            return Page.GetByRole(AriaRole.Link, new() { Name = name });
+        }
+    }
 
     [When("I click the {string} button")]
     [Given("I click the {string} button")]
@@ -199,7 +218,7 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
 
     [Then("the link {string} points to an address containing {string}")]
     public void ThenLinkPoints(string name, string text) =>
-        Expect(Page.GetByRole(AriaRole.Link, new() { Name = name }).First, e => e.ToHaveAttributeAsync("href", new Regex(Regex.Escape(text))));
+        Expect(LinkNamed(name).First, e => e.ToHaveAttributeAsync("href", new Regex(Regex.Escape(text))));
 
     [Then("the link {string} shows the number {int}")]
     public void ThenLinkShowsNumber(string name, int number) =>

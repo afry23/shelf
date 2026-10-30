@@ -73,9 +73,9 @@ internal sealed class IndexWriter : IDisposable
     {
         var command = _insertWork ??= Prepare("""
             INSERT INTO works(id, title, title_norm, subtitle, authors_json, author_sort, language, year, isbn13, publisher,
-                              series, series_index, edition, cite_key, description, kind, doi, arxiv_id, venue, site, source_url, abstract, rating, read_status, cover_path, dir_path, added_at, finished_at, updated_at)
+                              series, series_index, edition, cite_key, description, kind, doi, arxiv_id, venue, site, source_url, abstract, rating, read_status, cover_path, dir_path, added_at, finished_at, reading_list_at, updated_at)
             VALUES ($id, $title, $titleNorm, $subtitle, $authors, $authorSort, $language, $year, $isbn13, $publisher,
-                    $series, $seriesIndex, $edition, $citeKey, $description, $kind, $doi, $arxivId, $venue, $site, $sourceUrl, $abstract, $rating, $status, $cover, $dir, $added, $finished, $updated)
+                    $series, $seriesIndex, $edition, $citeKey, $description, $kind, $doi, $arxivId, $venue, $site, $sourceUrl, $abstract, $rating, $status, $cover, $dir, $added, $finished, $readingList, $updated)
             RETURNING seq
             """);
         BindWork(command, s, dirPath, sidecarModifiedUtc);
@@ -93,7 +93,7 @@ internal sealed class IndexWriter : IDisposable
                 author_sort = $authorSort, language = $language, year = $year, isbn13 = $isbn13, publisher = $publisher,
                 series = $series, series_index = $seriesIndex, edition = $edition, cite_key = $citeKey, description = $description,
                 kind = $kind, doi = $doi, arxiv_id = $arxivId, venue = $venue, site = $site, source_url = $sourceUrl, abstract = $abstract,
-                rating = $rating, read_status = $status, cover_path = $cover, dir_path = $dir, added_at = $added, finished_at = $finished,
+                rating = $rating, read_status = $status, cover_path = $cover, dir_path = $dir, added_at = $added, finished_at = $finished, reading_list_at = $readingList,
                 updated_at = $updated
             WHERE id = $id
             RETURNING seq
@@ -322,6 +322,7 @@ internal sealed class IndexWriter : IDisposable
         Bind(command, "$dir", dirPath);
         Bind(command, "$added", s.Added is { } added ? Timestamp(added.UtcDateTime) : null);
         Bind(command, "$finished", s.ReadStatus == ReadStatus.Read && s.FinishedAt is { } finished ? Timestamp(finished.UtcDateTime) : null);
+        Bind(command, "$readingList", s.ReadStatus != ReadStatus.Read && s.ReadingListAt is { } onList ? Timestamp(onList.UtcDateTime) : null);
         Bind(command, "$updated", ModifiedStamp(sidecarModifiedUtc));
     }
 

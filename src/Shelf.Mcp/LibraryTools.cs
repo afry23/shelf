@@ -53,6 +53,17 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("Largest number of tags, 1 to 100 (default 10)")] int limit = 10) =>
         Run(() => service.SuggestTags(id, limit));
 
+    [Description("The reading list: the works (books, papers, articles) a person wants to read next, the one put on first at the top. A work leaves the list by itself when it is marked as read.")]
+    public ReadingListResult GetReadingList() => Run(() => service.ReadingList());
+
+    [Description("Put a work on the reading list. A work that is on it already stays as it is (changed is false). A work that is read already is refused. Can be undone with remove_from_reading_list.")]
+    public ReadingListChange AddToReadingList([Description("The ID of a work, or the start of it")] string id) =>
+        Run(() => service.AddToReadingList(id));
+
+    [Description("Take a work off the reading list. A work that is not on it stays as it is (changed is false).")]
+    public ReadingListChange RemoveFromReadingList([Description("The ID of a work, or the start of it")] string id) =>
+        Run(() => service.RemoveFromReadingList(id));
+
     [Description("Add tags to a work. A tag is free text; '/' makes a hierarchy such as 'architektur/ddd'. Tags the work has are left as they are. The change can be undone with 'shelf undo'.")]
     public TagChange AddTags(
         [Description("The ID of a work, or the start of it")] string id,

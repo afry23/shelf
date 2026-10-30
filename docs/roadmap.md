@@ -353,6 +353,21 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all F-ART requirements, the complete BDD suite is green, `shelf reindex` restores the article fields from the sidecars.
 
+### M14 – Reading List
+
+**Goal:** Books, papers and articles can be put on a reading list and taken off again; a work that is marked read leaves the list by itself. The list is managed in the CLI, MCP and the web interface.
+
+**Status:** implemented. Slice plan: [m14-reading-list](slices/m14-reading-list.md).
+
+| Area | Content | PRD |
+|---|---|---|
+| Data model | `readingList` in `book.json`, index column, filter `readinglist:` | F-RLS-1, F-RLS-4 |
+| Auto removal | status `read` takes the work off the list (edit, REST, MCP, merge) | F-RLS-2 |
+| Interfaces | `shelf readlist`, REST `/reading-list`, MCP `get_reading_list` / `add_to_reading_list` / `remove_from_reading_list` | F-RLS-3, F-RLS-5, F-RLS-6 |
+| Web interface | view "Reading list", button on the work page | F-RLS-7 |
+
+**Exit criteria:** feature files exist for all F-RLS requirements, the complete BDD suite is green, `shelf reindex` restores the list from the sidecars.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

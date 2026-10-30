@@ -43,6 +43,33 @@ internal static class Api
             .WithName("GetWork")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
 
+        api.MapGet("/reading-list", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.ReadingListResponse, () =>
+                {
+                    var page = library.Service.Browse("readinglist:yes", "readinglist", "asc", 0, BrowseOptions.MaxLimit);
+                    return new ReadingListResponse(page.Total, [.. page.Items.Select(Item)]);
+                }))
+            .WithName("GetReadingList")
+            .Produces<ReadingListResponse>(StatusCodes.Status200OK);
+
+        api.MapPut("/works/{id}/reading-list", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.WorkDetail, () =>
+                {
+                    var change = library.Service.AddToReadingList(RequireId(id));
+                    return Detail(library.Service, library.Service.GetBook(change.Id));
+                }))
+            .WithName("AddToReadingList")
+            .Produces<WorkDetail>(StatusCodes.Status200OK);
+
+        api.MapDelete("/works/{id}/reading-list", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.WorkDetail, () =>
+                {
+                    var change = library.Service.RemoveFromReadingList(RequireId(id));
+                    return Detail(library.Service, library.Service.GetBook(change.Id));
+                }))
+            .WithName("RemoveFromReadingList")
+            .Produces<WorkDetail>(StatusCodes.Status200OK);
+
         api.MapGet("/works/{id}/similar", ([FromServices] LibraryHandle library, string id, string? limit) =>
                 Run(WebJsonContext.Default.SimilarResponse, () => Similar(library.Service, RequireId(id), limit)))
             .WithName("SimilarWorks")
@@ -499,6 +526,7 @@ internal static class Api
             b.Rating,
             b.Tags,
             b.ReadStatus,
+            b.ReadingListAt,
             service.HasCover(b.Id),
             [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages, f.Progress))],
             service.PreferredFile(b.Files) is { } preferred ? FileIds.Make(b.Id, preferred) : null,
@@ -826,7 +854,7 @@ internal static class Api
             e.Message);
 
     private static WorkItem Item(WorkListEntry w) =>
-        new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus, w.HasCover);
+        new(w.Id.ToString(), w.Title, w.Subtitle, [.. w.Authors], w.Year, w.Language, [.. w.Formats], [.. w.Tags], w.ReadStatus, w.HasCover, w.ReadingListAt);
 
     private static Facets Facets(BrowseFacets f) =>
         new(Values(f.Tags), Values(f.Authors), Values(f.Publishers), Values(f.Languages), Values(f.Years), Values(f.Formats), Values(f.Statuses), Values(f.Series), Values(f.Types));

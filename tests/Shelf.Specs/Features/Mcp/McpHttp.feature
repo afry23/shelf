@@ -44,23 +44,26 @@ Feature: The MCP server over Streamable HTTP
       | add_bookmark         |
       | add_note             |
       | add_tags             |
+      | add_to_reading_list  |
       | cite_passage         |
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_reading_list     |
       | get_references       |
       | get_stats            |
       | list_tags            |
       | propose_organization |
       | read_passage         |
+      | remove_from_reading_list |
       | remove_tags          |
       | search_books         |
       | semantic_search      |
       | similar_books        |
       | suggest_tags         |
-    And every tool except "add_bookmark", "add_note", "add_tags" and "remove_tags" is marked read-only
+    And every tool except "add_bookmark", "add_note", "add_tags", "remove_tags", "add_to_reading_list" and "remove_from_reading_list" is marked read-only
     And no tool is marked destructive
     And the server offers the resource templates:
       | uri                   |
@@ -101,6 +104,7 @@ Feature: The MCP server over Streamable HTTP
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_reading_list     |
       | get_references       |
       | get_stats            |
       | list_tags            |

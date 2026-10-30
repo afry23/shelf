@@ -22,6 +22,8 @@ namespace Shelf.Mcp;
 [JsonSerializable(typeof(AnnotationList))]
 [JsonSerializable(typeof(AnnotationView))]
 [JsonSerializable(typeof(TagChange))]
+[JsonSerializable(typeof(ReadingListResult))]
+[JsonSerializable(typeof(ReadingListChange))]
 [JsonSerializable(typeof(TagTree))]
 [JsonSerializable(typeof(DuplicatesResult))]
 [JsonSerializable(typeof(ProbablePairsResult))]

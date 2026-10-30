@@ -125,6 +125,12 @@ public sealed record WorkSidecar
     /// </summary>
     public DateTimeOffset? FinishedAt { get; init; }
 
+    /// <summary>
+    /// When the work was put on the reading list (UTC, second precision), or null: not on the list (F-RLS-1).
+    /// <see cref="WithReadStatus"/> takes the work off the list when it becomes read (F-RLS-2).
+    /// </summary>
+    public DateTimeOffset? ReadingListAt { get; init; }
+
     /// <summary>When the work was added to the library (UTC, second precision).</summary>
     public DateTimeOffset? Added { get; init; }
 
@@ -135,11 +141,12 @@ public sealed record WorkSidecar
 
     /// <summary>
     /// The work with this reading status. Becoming read dates it with <paramref name="now"/>; a work that is read already keeps its
-    /// date; leaving read takes the date away.
+    /// date; leaving read takes the date away. A work that becomes read leaves the reading list.
     /// </summary>
     public WorkSidecar WithReadStatus(ReadStatus status, DateTimeOffset now) => this with
     {
         ReadStatus = status,
+        ReadingListAt = status == ReadStatus.Read ? null : ReadingListAt,
         FinishedAt = status != ReadStatus.Read
             ? null
             : ReadStatus == ReadStatus.Read ? FinishedAt : DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds()),
