@@ -341,7 +341,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** Blog posts and news articles, also from behind a paywall, are kept as Markdown with their images and are searched and read like books.
 
-**Status:** in progress. Slice plan: [m13-articles](slices/m13-articles.md); decisions: [ADR 0020](adr/0020-article-extraction-libraries.md).
+**Status:** implemented. Slice plan: [m13-articles](slices/m13-articles.md); decisions: [ADR 0020](adr/0020-article-extraction-libraries.md).
 
 | Area | Content | PRD |
 |---|---|---|
