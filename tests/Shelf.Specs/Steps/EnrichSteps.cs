@@ -106,22 +106,33 @@ public sealed class EnrichSteps(ScenarioEnvironment environment)
 public sealed class FakeOnline
 {
     private readonly List<FakeSource> _sources;
+    private readonly FakeSource _web;
 
-    public FakeOnline() => _sources =
-    [
-        new FakeSource("openlibrary", this),
-        new FakeSource("google", this),
-        new FakeSource("crossref", this, forPapers: true),
-        new FakeSource("arxiv", this, forPapers: true),
-        new FakeSource("unpaywall", this, forPapers: true, needsEmail: true),
-    ];
+    public FakeOnline()
+    {
+        _sources =
+        [
+            new FakeSource("openlibrary", this),
+            new FakeSource("google", this),
+            new FakeSource("crossref", this, forPapers: true),
+            new FakeSource("arxiv", this, forPapers: true),
+            new FakeSource("unpaywall", this, forPapers: true, needsEmail: true),
+        ];
+
+        // The web is no catalog: enrich never asks it, so it is not one of Sources.
+        _web = new FakeSource("web", this);
+        Web = new FakeWeb(this, _web);
+    }
+
+    /// <summary>The pages and images <c>shelf clip</c> loads instead of the internet (source "web").</summary>
+    public FakeWeb Web { get; }
 
     public IReadOnlyList<IMetadataSource> Sources => _sources;
 
     /// <summary>One entry per question, <c>openlibrary:isbn 978…</c> or <c>google:search Title</c>, in the order asked.</summary>
     public List<string> Calls { get; } = [];
 
-    public FakeSource Source(string name) => _sources.Single(s => s.Name == name);
+    public FakeSource Source(string name) => name == "web" ? _web : _sources.Single(s => s.Name == name);
 }
 
 public sealed class FakeSource(string name, FakeOnline online, bool forPapers = false, bool needsEmail = false) : IMetadataSource

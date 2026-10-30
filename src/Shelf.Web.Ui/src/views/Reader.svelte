@@ -56,6 +56,12 @@
     {:catch}
       <p class="notice" role="alert">The reader could not be loaded.</p>
     {/await}
+  {:else if file.format === 'md'}
+    {#await import('../reader/MarkdownReader.svelte') then { default: MarkdownReader }}
+      <MarkdownReader {book} {file} />
+    {:catch}
+      <p class="notice" role="alert">The reader could not be loaded.</p>
+    {/await}
   {:else}
     <section class="notice">
       <h1>This format has no reader</h1>

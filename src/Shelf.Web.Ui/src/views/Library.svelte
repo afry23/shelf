@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { citationsUrl, createWork, fetchPaper, works, type FacetValue, type WorkList } from '../api';
+  import { citationsUrl, clipArticle, createWork, fetchPaper, works, type FacetValue, type WorkList } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural } from '../format';
@@ -151,6 +151,30 @@
     }
   }
 
+  // An article from the internet (F-ART-2): the address of a public page is all that is needed.
+  let clipping = $state(false);
+  let clipBusy = $state(false);
+  let clipError = $state<string | null>(null);
+  let clipUrl = $state('');
+
+  async function submitClip(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (!clipUrl.trim()) {
+      clipError = 'Enter the address of a page first.';
+      return;
+    }
+    clipError = null;
+    clipBusy = true;
+    try {
+      const outcome = await clipArticle(clipUrl);
+      navigate(`/works/${outcome.work}`);
+    } catch (e) {
+      clipError = (e as Error).message;
+    } finally {
+      clipBusy = false;
+    }
+  }
+
   const visible = (key: FacetKey, values: FacetValue[]) => (expanded[key] ? values : values.slice(0, 10));
   const last = $derived(list ? Math.min(offset + limit, list.total) : 0);
   const pageCount = $derived(list ? Math.max(1, Math.ceil(list.total / limit)) : 1);
@@ -180,7 +204,17 @@
     <a class="button" href={citationsUrl('bibtex', q || undefined)} download title="BibTeX of the works shown; works without a cite key are left out">Export citations</a>
     <button type="button" class="button" aria-expanded={creating} aria-controls="new-work" onclick={() => (creating = !creating)}>New work</button>
     <button type="button" class="button" aria-expanded={fetching} aria-controls="add-paper" onclick={() => (fetching = !fetching)}>Add paper</button>
+    <button type="button" class="button" aria-expanded={clipping} aria-controls="add-article" onclick={() => (clipping = !clipping)}>Add article</button>
   </div>
+
+  {#if clipping}
+    <form id="add-article" aria-label="Add article" onsubmit={submitClip}>
+      <p class="muted">Loads the page, keeps its article as Markdown with the images that belong to it, now and only now. For a page behind a paywall save it in your browser and use <code>shelf clip --html</code>.</p>
+      <p><input type="url" aria-label="Address of the page" placeholder="https://…" bind:value={clipUrl} /></p>
+      {#if clipError}<p class="error" role="alert">{clipError}</p>{/if}
+      <button type="submit" class="button" disabled={clipBusy}>{clipBusy ? 'Loading…' : 'Clip article'}</button>
+    </form>
+  {/if}
 
   {#if fetching}
     <form id="add-paper" aria-label="Add paper" onsubmit={submitFetch}>

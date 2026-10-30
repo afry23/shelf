@@ -94,6 +94,15 @@ public static class LibraryDeleter
                 journal.Trash(Path.Combine(directory, cover));
             }
 
+            // The images belong to the article (F-ART-9).
+            if (sidecar.Kind == WorkKind.Article)
+            {
+                foreach (var image in LibraryArticles.ImageFiles(directory))
+                {
+                    journal.Trash(image);
+                }
+            }
+
             journal.Trash(Path.Combine(directory, AnnotationsFormat.FileName));
             journal.Trash(Path.Combine(directory, ReferencesFormat.FileName));
             journal.Trash(LibraryEditor.SidecarPath(root, work));
@@ -105,6 +114,7 @@ public static class LibraryDeleter
 
         if (work.Directory != ".")
         {
+            LibraryArticles.RemoveImagesFolderIfEmpty(directory);
             LibraryEditor.RemoveFolderIfEmpty(root, directory);
         }
 

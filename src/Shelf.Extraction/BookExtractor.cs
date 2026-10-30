@@ -4,7 +4,7 @@ using System.Xml;
 namespace Shelf.Extraction;
 
 /// <summary>
-/// Reads an EPUB or PDF: metadata (F-IMP-2), file name fallback (F-IMP-3), ISBN (F-IMP-4) and text by
+/// Reads an EPUB, a PDF or a Markdown article: metadata (F-IMP-2), file name fallback (F-IMP-3), ISBN (F-IMP-4) and text by
 /// page or chapter with locators (F-SRC-5). Stateless and thread-safe; at most 4 files should be read at the
 /// same time (PdfPig does not scale beyond that, ADR 0005). Every failure is an <see cref="ExtractionException"/>
 /// about this one file.
@@ -12,6 +12,9 @@ namespace Shelf.Extraction;
 public static class BookExtractor
 {
     public static bool IsSupported(string path) => FormatOf(path) is not null;
+
+    /// <summary>True for a Markdown file. Unlike an EPUB or a PDF it is no book by itself: it counts only inside a work (F-ART-9).</summary>
+    public static bool IsMarkdown(string path) => FormatOf(path) == Format.Markdown;
 
     /// <summary>Metadata only, without reading the text; the ISBN then comes from the metadata alone.</summary>
     /// <exception cref="ExtractionException"/>
@@ -26,7 +29,7 @@ public static class BookExtractor
         ArgumentException.ThrowIfNullOrEmpty(path);
         options ??= ExtractionOptions.Default;
         var format = FormatOf(path)
-            ?? throw new ExtractionException($"{path}: unsupported: only EPUB and PDF files are read", ExtractionErrorKind.Unsupported, path);
+            ?? throw new ExtractionException($"{path}: unsupported: only EPUB, PDF and Markdown files are read", ExtractionErrorKind.Unsupported, path);
 
         // PdfPig reports a missing file as InvalidOperationException; say what is wrong instead.
         if (!File.Exists(path))
@@ -37,9 +40,12 @@ public static class BookExtractor
         ExtractedBook book;
         try
         {
-            book = format == Format.Epub
-                ? EpubExtractor.Read(path, withText, options)
-                : PdfExtractor.Read(path, withText);
+            book = format switch
+            {
+                Format.Epub => EpubExtractor.Read(path, withText, options),
+                Format.Markdown => MarkdownExtractor.Read(path, withText),
+                _ => PdfExtractor.Read(path, withText),
+            };
         }
         catch (ExtractionException)
         {
@@ -102,12 +108,14 @@ public static class BookExtractor
     {
         Epub,
         Pdf,
+        Markdown,
     }
 
     private static Format? FormatOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".epub" => Format.Epub,
         ".pdf" => Format.Pdf,
+        ".md" => Format.Markdown,
         _ => null,
     };
 }

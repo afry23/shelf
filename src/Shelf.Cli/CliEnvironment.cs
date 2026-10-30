@@ -19,6 +19,7 @@ public sealed class CliEnvironment
     private readonly Stream? _mcpInput;
     private readonly Stream? _mcpOutput;
     private readonly IReadOnlyList<IMetadataSource>? _metadataSources;
+    private readonly IHttpGetter? _pages;
 
     private CliEnvironment(
         bool noColor,
@@ -37,7 +38,8 @@ public sealed class CliEnvironment
         Stream? mcpInput = null,
         Stream? mcpOutput = null,
         IRemoteFetcher? remoteFetcher = null,
-        IReadOnlyList<IMetadataSource>? metadataSources = null)
+        IReadOnlyList<IMetadataSource>? metadataSources = null,
+        IHttpGetter? pages = null)
     {
         NoColor = noColor;
         StdoutIsTerminal = stdoutIsTerminal;
@@ -56,6 +58,7 @@ public sealed class CliEnvironment
         _mcpOutput = mcpOutput;
         RemoteFetcher = remoteFetcher ?? new RcloneFetcher();
         _metadataSources = metadataSources;
+        _pages = pages;
     }
 
     /// <summary>No <c>NO_COLOR</c> and standard output is not a terminal.</summary>
@@ -80,6 +83,9 @@ public sealed class CliEnvironment
 
     /// <summary>The online catalogs of <c>shelf enrich</c>, in the order they are asked: Open Library, Google Books for books, then Crossref, arXiv, Unpaywall (if it has an e-mail address) for papers, unless the host set others.</summary>
     public IReadOnlyList<IMetadataSource> MetadataSources => _metadataSources ?? DefaultSources();
+
+    /// <summary>How <c>shelf clip</c> loads a page and its images (F-ART-2); HTTPS unless the host set another.</summary>
+    public IHttpGetter Pages => _pages ?? new HttpGetter($"shelf/{VersionInfo.Get()} (+https://github.com/afry23/shelf)");
 
     private static IMetadataSource[] DefaultSources()
     {
@@ -152,7 +158,7 @@ public sealed class CliEnvironment
     {
         ArgumentException.ThrowIfNullOrEmpty(workingDirectory);
         ArgumentException.ThrowIfNullOrEmpty(homeDirectory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, workingDirectory, homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithMinimumLogLevel(LogLevel level)
@@ -163,53 +169,59 @@ public sealed class CliEnvironment
             throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined log level.");
         }
 
-        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, level, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithFileOpener(IFileOpener fileOpener)
     {
         ArgumentNullException.ThrowIfNull(fileOpener);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, fileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithStandardInput(TextReader standardInput)
     {
         ArgumentNullException.ThrowIfNull(standardInput);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithModels(ModelCatalog catalog, IModelDownloader downloader)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(downloader);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, catalog, downloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithRemoteFetcher(IRemoteFetcher fetcher)
     {
         ArgumentNullException.ThrowIfNull(fetcher);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, fetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, fetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithMetadataSources(IReadOnlyList<IMetadataSource> sources)
     {
         ArgumentNullException.ThrowIfNull(sources);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, sources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, sources, _pages);
+    }
+
+    public CliEnvironment WithPages(IHttpGetter pages)
+    {
+        ArgumentNullException.ThrowIfNull(pages);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, pages);
     }
 
     public CliEnvironment WithEmbedder(Func<ModelFolder, IEmbedder> factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, factory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, factory, Cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
     }
 
     public CliEnvironment WithCancellation(CancellationToken cancellation) =>
-        new(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources);
+        new(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, cancellation, _mcpInput, _mcpOutput, RemoteFetcher, _metadataSources, _pages);
 
     public CliEnvironment WithMcpStreams(Stream input, Stream output)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
-        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, input, output, RemoteFetcher, _metadataSources);
+        return new CliEnvironment(NoColor, StdoutIsTerminal, MinimumLogLevel, IgnoredLogLevel, _getVariable, _workingDirectory, _homeDirectory, FileOpener, _standardInput, ModelCatalog, ModelDownloader, EmbedderFactory, Cancellation, input, output, RemoteFetcher, _metadataSources, _pages);
     }
 }

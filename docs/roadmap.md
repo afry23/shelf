@@ -337,6 +337,22 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all M12 requirements, the complete BDD suite is green.
 
+### M13 – Web Articles
+
+**Goal:** Blog posts and news articles, also from behind a paywall, are kept as Markdown with their images and are searched and read like books.
+
+**Status:** in progress. Slice plan: [m13-articles](slices/m13-articles.md); decisions: [ADR 0020](adr/0020-article-extraction-libraries.md).
+
+| Area | Content | PRD |
+|---|---|---|
+| Data model | `kind: article`, source URL, site, dates in `book.json` | F-ART-1 |
+| Clip | `shelf clip <url>`, `shelf clip --html <file>` (saved page, MHTML), REST `POST /works/clip` | F-ART-2, F-ART-3 |
+| Extraction | article text to Markdown, metadata, images in `images/`, duplicates by canonical URL | F-ART-4 to F-ART-6 |
+| Search, reader | full text, `type:article`, `site:`, Markdown reader with library images | F-ART-7, F-ART-8 |
+| Folder as a unit | organize, undo, trash, scan and reindex treat `images/` as part of the work | F-ART-9 |
+
+**Exit criteria:** feature files exist for all F-ART requirements, the complete BDD suite is green, `shelf reindex` restores the article fields from the sidecars.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

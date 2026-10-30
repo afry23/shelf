@@ -18,7 +18,7 @@ namespace Shelf.Library;
 /// organization proposals over one library. Errors the caller can act on (unknown work, bad query, no text at a location)
 /// are <see cref="LibraryException"/>s. Only the tag methods change anything.
 /// </summary>
-public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic, IReadOnlyList<IMetadataSource>? metadataSources = null)
+public sealed partial class LibraryService(string root, ShelfSettings settings, SemanticBackend semantic, IReadOnlyList<IMetadataSource>? metadataSources = null, IHttpGetter? pages = null)
 {
     public const int DefaultMaxChars = 4_000;
     public const int MaxLimit = 100;
@@ -630,7 +630,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         ArgumentNullException.ThrowIfNull(files);
         var wanted = settings.Reader.PreferredFormat;
         return (files.FirstOrDefault(f => f.Format == wanted)
-            ?? files.FirstOrDefault(f => f.Format is "epub" or "pdf")
+            ?? files.FirstOrDefault(f => f.Format is "epub" or "pdf" or "md")
             ?? files.FirstOrDefault())?.Name;
     }
 

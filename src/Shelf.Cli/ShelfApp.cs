@@ -66,6 +66,7 @@ public static class ShelfApp
         root.Subcommands.Add(ExportCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ImportBibCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(FetchCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(ClipCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(EnrichCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(MergeCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(SplitCommand.Create(json, stdout, stderr, environment));

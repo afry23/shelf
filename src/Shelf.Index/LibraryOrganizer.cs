@@ -119,7 +119,9 @@ public static class LibraryOrganizer
             return null;
         }
 
-        // A paper has a pattern of its own (F-PAP-10).
+        // A paper has a pattern of its own (F-PAP-10). An article is placed as clipping places it, keeps its file names
+        // (the images are linked relative) and takes its images along (F-ART-9).
+        var article = sidecar.Kind == WorkKind.Article;
         var pattern = sidecar.Kind == WorkKind.Paper ? paperPattern : bookPattern;
         string Render(SidecarFile file) => pattern.Render(new PatternInput(
             sidecar.Title,
@@ -132,13 +134,13 @@ public static class LibraryOrganizer
             Path.GetExtension(file.Name),
             sidecar.CiteKey));
 
-        var newDirectory = DirectoryOf(Render(existing[0]));
+        var newDirectory = article ? LibraryArticles.RelativeFolder(sidecar) : DirectoryOf(Render(existing[0]));
         var moves = new List<Move>();
         var renames = new Dictionary<string, string>(StringComparer.Ordinal);
         var unchanged = 0;
         foreach (var file in existing)
         {
-            var rendered = Render(file);
+            var rendered = article ? file.Name : Render(file);
             var name = rendered[(rendered.LastIndexOf('/') + 1)..];
             var from = IndexWriter.JoinRelative(directory, file.Name);
             var to = IndexWriter.JoinRelative(newDirectory, name);
@@ -170,6 +172,15 @@ public static class LibraryOrganizer
             if (sidecar.Cover is { } cover && File.Exists(Path.Combine(root, directory, cover)))
             {
                 moves.Add(new Move(IndexWriter.JoinRelative(directory, cover), IndexWriter.JoinRelative(newDirectory, cover), IsFile: false));
+            }
+
+            if (article)
+            {
+                foreach (var image in LibraryArticles.ImageFiles(Path.Combine(root, directory)))
+                {
+                    var relative = LibraryArticles.ImagesFolder + "/" + Path.GetFileName(image);
+                    moves.Add(new Move(IndexWriter.JoinRelative(directory, relative), IndexWriter.JoinRelative(newDirectory, relative), IsFile: false));
+                }
             }
         }
 
@@ -242,6 +253,7 @@ public static class LibraryOrganizer
 
         if (plan.OldDirectory != ".")
         {
+            LibraryArticles.RemoveImagesFolderIfEmpty(Path.Combine(root, plan.OldDirectory));
             LibraryEditor.RemoveFolderIfEmpty(root, Path.Combine(root, plan.OldDirectory));
         }
     }

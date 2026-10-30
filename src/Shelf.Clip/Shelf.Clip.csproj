@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- The only project that reads web pages (ADR 0020): AngleSharp parses, SmartReader picks the article, ReverseMarkdown writes it. -->
+  <ItemGroup>
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="ReverseMarkdown" />
+    <PackageReference Include="SmartReader" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shelf.Clip.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -34,6 +34,8 @@ public sealed record StatusResponse(string Version, int Works, int Files);
 [JsonSerializable(typeof(AddFileOutcome))]
 [JsonSerializable(typeof(CreateWorkOutcome))]
 [JsonSerializable(typeof(FetchRequest))]
+[JsonSerializable(typeof(ClipRequest))]
+[JsonSerializable(typeof(ClipArticleOutcome))]
 [JsonSerializable(typeof(FetchPaperOutcome))]
 [JsonSerializable(typeof(CiteKeySuggestion))]
 [JsonSerializable(typeof(EnrichRequest))]

@@ -88,7 +88,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 |---|---|---|
 | F-LIB-1 | One library = one root folder. Multiple libraries are possible via configuration. | M |
 | F-LIB-2 | Supported formats: EPUB, PDF. | M |
-| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT, MD) are tracked as files but not indexed by content. | S |
+| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT) are tracked as files but not indexed by content. Markdown is indexed as the text of an article (F-ART-7); a Markdown file outside a work is no book and is not taken in by `import` or `scan`. | S |
 | F-LIB-4 | The data model separates **Work** and **File**. A work has 1..n files. | M |
 | F-LIB-5 | Each work has a sidecar file `book.json` in the work folder. It is the **source of truth** for metadata, tags, reading progress, and "not a duplicate" markings, and holds the work ID (ULID, generated once, never changed). | M |
 | F-LIB-6 | The SQLite database is exclusively an index and cache. `shelf reindex` rebuilds it completely from the file system and sidecars. | M |
@@ -258,6 +258,22 @@ A work is a **book** (default) or a **paper**. Papers are identified by DOI or a
 | F-PAP-11 | `shelf refs fetch <work> [--apply]` and "Load references from Crossref" on the work page (REST `POST /api/v1/works/{id}/references/fetch`) ask Crossref for the **reference list** of a paper by its DOI. Without `--apply` nothing is written; with it the list replaces the old one in `references.json` next to `book.json` (source of truth, ADR 0019; `schema` of `book.json` stays 1) and is mirrored in the index. An entry has a DOI, a title, a year, an author or the text of the citation. Only on this command: import, scan and reindex never ask. | S |
 | F-PAP-12 | The references of a paper show which of the cited works are in the library (matched by DOI, whatever its case), and a paper shows the works of the library that cite it. Available as `shelf refs list <work>`, `GET /api/v1/works/{id}/references`, the tab "References" on the work page and the read-only MCP tool `get_references`. Nobody is asked. | S |
 
+### 6.10 Web Articles
+
+A work is a **book** (default), a **paper** or an **article**. An article is a blog post or a news story kept as a Markdown file with the images that belong to it. Everything else (tags, annotations, search) works as for books. Content behind a paywall comes in through a page the user saved in a browser where they are signed in; shelf never handles cookies or passwords.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-ART-1 | `book.json` accepts `kind: article` (`schema` stays 1). Articles add the optional fields source URL, site, published date and capture date; the authors stay a list of names. | M |
+| F-ART-2 | `shelf clip <url>` and "Add article" in the library view (REST `POST /api/v1/works/clip`) load a public page, extract the article and create the work. Only on explicit command: import, scan and reindex never go online. | M |
+| F-ART-3 | `shelf clip --html <file> [--url <original url>]` creates the work from a page saved in a browser (HTML, or MHTML with the images inside). This is the way for pages behind a paywall. Nothing goes online. | M |
+| F-ART-4 | Only the article is kept: title, headings, paragraphs, lists, quotes, code, tables and figure captions. Navigation, ads, comments, related links and scripts are dropped. The title, author, site, published date and canonical URL come from the page metadata (Open Graph, JSON-LD, `<meta>`). | M |
+| F-ART-5 | The article is written as `article.md`; images that belong to it are saved in `images/` next to it and linked relative (`![caption](images/01-3fa9c2d1.jpg)`), so the folder reads in any Markdown editor. Of a `srcset` the largest image counts, lazy-load attributes (`data-src`) are followed; icons, tracking pixels, avatars and images outside the article are skipped. An image that cannot be loaded stays a link to its source URL and is reported. Identical images are saved once. | M |
+| F-ART-6 | An article with the same canonical URL (fragment and tracking parameters such as `utm_*` ignored) is in the library already: nothing is created, the existing work is reported. | M |
+| F-ART-7 | The text of an article is part of the full-text index and of the work embedding; the search filters `type:article` and `site:` work. | M |
+| F-ART-8 | The web reader shows an article with its images (served from the library only, never from the source site). | S |
+| F-ART-9 | An article folder is one unit: `shelf organize`, undo, trash and deletion move the Markdown file, `images/` and `book.json` together; `scan` and `reindex` do not take the images for works. | M |
+
 ## 7. Interfaces
 
 ### 7.1 CLI
@@ -277,6 +293,7 @@ shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
 shelf fetch <doi or arXiv ID>                 Load a paper (metadata + open-access PDF) as a new work
+shelf clip <url> | --html <file> [--url <address>]  Keep a web article as Markdown with its images as a new work (--html: a page saved in a browser)
 shelf export [query] [--format bibtex|csl-json|ris] [--out file]  Citations of all works or of a search result
 shelf import-bib <file> [--apply] [--overwrite]  Take over DOIs, venues and cite keys from a BibTeX file (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
@@ -331,7 +348,8 @@ Requirements for the MCP server:
 ### 7.3 Web API
 
 - REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, merging works, and adding, moving and creating (F-GRP-7 to F-GRP-9; a file is uploaded as the body of the request, its name in `?name=`).
-- Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs.
+- Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs. The images of an article are served via `/api/v1/files/{id}/assets/{name}` (only from the `images/` folder next to the file).
+- `POST /api/v1/works/clip` (`{"url": …}`) keeps a public page as an article (F-ART-2).
 - An OpenAPI specification is generated automatically.
 
 ## 8. Web Interface and Reader

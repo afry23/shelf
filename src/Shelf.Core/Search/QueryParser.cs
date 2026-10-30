@@ -144,6 +144,7 @@ public static partial class QueryParser
             "arxiv" => FieldKind.Arxiv,
             "venue" => FieldKind.Venue,
             "series" => FieldKind.Series,
+            "site" => FieldKind.Site,
             _ => null,
         };
         if (kind is null)
@@ -183,9 +184,9 @@ public static partial class QueryParser
                     : throw new QueryException($"status: '{value}' is not one of unread, reading, read");
             case FieldKind.Type:
                 var type = value.ToLowerInvariant();
-                return type is "book" or "paper"
+                return type is "book" or "paper" or "article"
                     ? new ValueFilter(FieldKind.Type, type, negated)
-                    : throw new QueryException($"type: '{value}' is not one of book, paper");
+                    : throw new QueryException($"type: '{value}' is not one of book, paper, article");
             case FieldKind.Doi:
                 // "doi:10.1145/x", "doi:https://doi.org/10.1145/x": the DOI itself is what counts.
                 return new ValueFilter(FieldKind.Doi, (PaperIds.FindDoi(value) ?? value).ToLowerInvariant(), negated);
