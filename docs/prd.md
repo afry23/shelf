@@ -395,7 +395,7 @@ Requirements for the MCP server:
 | F-WEB-3 | The UI is embedded into the binary as static assets. No Node.js at runtime. | M |
 | F-WEB-4 | Responsive for desktop and tablet, light and dark mode. | M |
 | F-WEB-5 | Keyboard control: `/` focuses the search, `j`/`k` navigates, `Enter` opens. | S |
-| F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. | M |
+| F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. The size the view starts with is `web.page_size` of the global config (1 to 100, default 20). | M |
 | F-WEB-7 | The filter panel of the library view also has **series** and **type** (book or paper), with counts like the other facets, and the query language has the filter `series:` (the whole name of a series, ignoring case; a series written in two cases is one facet value). | S |
 | F-WEB-8 | In the grid of the library view, every book shows its year of publication below the author. A book without a year shows none. | S |
 

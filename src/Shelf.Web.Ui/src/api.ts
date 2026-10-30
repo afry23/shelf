@@ -20,6 +20,7 @@ export interface Status {
   version: string;
   works: number;
   files: number;
+  pageSize: number;
 }
 
 export interface WorkItem {
