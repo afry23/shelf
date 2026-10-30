@@ -128,10 +128,11 @@ internal sealed class IndexWriter : IDisposable
 
     // ---- files ----
 
-    public long InsertFile(string workId, string name, string relPath, long size, long mtime, FileProgress? progress)
+    public long InsertFile(string workId, string name, string relPath, long size, long mtime, FileProgress? progress, FileRole role = FileRole.Book)
     {
         var command = _insertFile ??= Prepare(
-            "INSERT INTO files(work_id, format, rel_path, size, mtime) VALUES ($work, $format, $path, $size, $mtime) RETURNING id");
+            "INSERT INTO files(work_id, format, rel_path, size, mtime, role) VALUES ($work, $format, $path, $size, $mtime, $role) RETURNING id");
+        Bind(command, "$role", role == FileRole.Notes ? "notes" : "book");
         Bind(command, "$work", workId);
         Bind(command, "$format", FormatOf(name));
         Bind(command, "$path", relPath);
@@ -141,6 +142,9 @@ internal sealed class IndexWriter : IDisposable
         SetProgress(id, progress);
         return id;
     }
+
+    public void SetRole(long fileId, FileRole role) =>
+        Execute("UPDATE files SET role = $role WHERE id = $f AND role <> $role", ("$role", role == FileRole.Notes ? "notes" : "book"), ("$f", fileId));
 
     public void SetProgress(long fileId, FileProgress? progress)
     {
@@ -232,7 +236,7 @@ internal sealed class IndexWriter : IDisposable
     {
         Execute("DELETE FROM chunks WHERE file_id = $id", ("$id", fileId));
         Execute(
-            "UPDATE files SET size = $size, mtime = $mtime, sha256 = $sha, page_count = $pages, simhash = $simhash, text_status = $status, embed_status = 'pending' WHERE id = $id",
+            "UPDATE files SET size = $size, mtime = $mtime, sha256 = $sha, page_count = $pages, simhash = $simhash, text_status = $status, embed_status = CASE role WHEN 'book' THEN 'pending' ELSE 'skipped' END WHERE id = $id",
             ("$size", size),
             ("$mtime", mtime),
             ("$sha", sha256),

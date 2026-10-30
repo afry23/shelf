@@ -75,6 +75,11 @@ public static partial class Locators
             return "page " + page.ToString(CultureInfo.InvariantCulture);
         }
 
+        if (locator.StartsWith("line=", StringComparison.Ordinal))
+        {
+            return "line " + locator["line=".Length..];
+        }
+
         if (locator.StartsWith("heading=", StringComparison.Ordinal))
         {
             var slug = locator["heading=".Length..];

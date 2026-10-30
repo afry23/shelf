@@ -118,7 +118,7 @@ public static class LibraryBrowse
         }
 
         var tags = Grouped(connection, ids, "SELECT wt.work_id, t.path FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id IN ({0}) ORDER BY t.path");
-        var formats = Grouped(connection, ids, "SELECT DISTINCT work_id, format FROM files WHERE work_id IN ({0}) ORDER BY format");
+        var formats = Grouped(connection, ids, "SELECT DISTINCT work_id, format FROM files WHERE role = 'book' AND work_id IN ({0}) ORDER BY format");
         return [.. ids.Select(id =>
         {
             var r = rows[id];
@@ -184,7 +184,7 @@ public static class LibraryBrowse
         var languages = Counts(connection, filter, $"SELECT lower(w.language), COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.language IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1");
         var publishers = Counts(connection, filter, $"SELECT w.publisher, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.publisher IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
         var years = Counts(connection, filter, $"SELECT w.year, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.year IS NOT NULL GROUP BY 1 ORDER BY 1 DESC");
-        var formats = Counts(connection, filter, $"SELECT f.format, COUNT(DISTINCT f.work_id) FROM files f WHERE f.work_id IN ({selection}) GROUP BY f.format ORDER BY 2 DESC, 1");
+        var formats = Counts(connection, filter, $"SELECT f.format, COUNT(DISTINCT f.work_id) FROM files f WHERE f.role = 'book' AND f.work_id IN ({selection}) GROUP BY f.format ORDER BY 2 DESC, 1");
         var statuses = Counts(connection, filter, $"SELECT w.read_status, COUNT(*) FROM works w WHERE w.id IN ({selection}) GROUP BY 1 ORDER BY 2 DESC, 1");
 
         // A series written in two cases is one series (the filter ignores case); the spelling that sorts first is shown.

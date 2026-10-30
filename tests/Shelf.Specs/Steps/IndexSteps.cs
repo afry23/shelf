@@ -44,6 +44,10 @@ public sealed class IndexSteps(ConfigSteps workspace)
     public void ThenTheFileHasTheTextStatus(string name, string status) =>
         Assert.Equal(status, Scalar("SELECT text_status FROM files WHERE rel_path = $v OR rel_path LIKE '%/' || $v", name));
 
+    [Then("the file {string} in the index has the role {string}")]
+    public void ThenTheFileHasTheRole(string name, string role) =>
+        Assert.Equal(role, Scalar("SELECT role FROM files WHERE rel_path = $v OR rel_path LIKE '%/' || $v", name));
+
     [Then("the file {string} in the index has a hash and a fingerprint")]
     public void ThenTheFileHasAHashAndAFingerprint(string name)
     {

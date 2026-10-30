@@ -21,8 +21,15 @@ public enum ReadStatus
 /// <summary>The last known reading position in one file: an EPUB CFI or <c>page=N</c> (PRD 10.4).</summary>
 public sealed record FileProgress(string Locator, DateTimeOffset UpdatedAt);
 
+/// <summary>What a file is for (F-NOTEF-2). A file entry without the field is a book.</summary>
+public enum FileRole
+{
+    Book,
+    Notes,
+}
+
 /// <summary>A file of a work, named by its file name inside the work folder (F-LIB-4).</summary>
-public sealed record SidecarFile(string Name, FileProgress? Progress = null);
+public sealed record SidecarFile(string Name, FileProgress? Progress = null, FileRole Role = FileRole.Book);
 
 /// <summary>Two files of the same or different works that were confirmed as not being duplicates.</summary>
 public sealed record FilePair(string A, string B);

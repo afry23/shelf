@@ -13,6 +13,7 @@ internal static class AddCommand
         var replace = new Option<string?>("--replace") { Description = "File of the work that the new file replaces; it goes to the trash" };
         var carryNotes = new Option<bool>("--carry-notes") { Description = "With --replace: reading position and notes go to the new file" };
         var move = new Option<bool>("--move") { Description = "Move the file into the library instead of copying it" };
+        var notes = new Option<bool>("--notes") { Description = "The file is a notes file (PDF or TXT), for example the notes exported from an e-reader; it is searched but is no book" };
         var library = LibraryContext.CreateOption();
         var command = new Command("add", "Add a file to a work, for example a new version of a book");
         command.Arguments.Add(reference);
@@ -20,6 +21,7 @@ internal static class AddCommand
         command.Options.Add(replace);
         command.Options.Add(carryNotes);
         command.Options.Add(move);
+        command.Options.Add(notes);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
@@ -29,9 +31,15 @@ internal static class AddCommand
                 return ExitCodes.Usage;
             }
 
+            if (parseResult.GetValue(notes) && (parseResult.GetValue(replace) is not null || parseResult.GetValue(carryNotes)))
+            {
+                stderr.WriteLine("error: --notes cannot be combined with --replace or --carry-notes");
+                return ExitCodes.Usage;
+            }
+
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
-            var options = new AddOptions(parseResult.GetValue(move), parseResult.GetValue(replace), parseResult.GetValue(carryNotes));
+            var options = new AddOptions(parseResult.GetValue(move), parseResult.GetValue(replace), parseResult.GetValue(carryNotes), parseResult.GetValue(notes));
             var result = LibraryFiles.AddFile(context.Root, work, parseResult.GetRequiredValue(source), options, environment.WorkingDirectory);
 
             if (parseResult.GetValue(json))

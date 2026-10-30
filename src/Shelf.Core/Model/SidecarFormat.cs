@@ -278,6 +278,11 @@ public static class SidecarFormat
             {
                 w.WriteStartObject();
                 w.WriteString("name", file.Name);
+                if (file.Role == FileRole.Notes)
+                {
+                    w.WriteString("role", "notes");
+                }
+
                 if (file.Progress is { } progress)
                 {
                     w.WriteStartObject("progress");
@@ -491,7 +496,13 @@ public static class SidecarFormat
                     progress = new FileProgress(String(progressElement, "locator", progressPrefix) ?? string.Empty, updatedAt);
                 }
 
-                files.Add(new SidecarFile(String(item, "name", prefix) ?? string.Empty, progress));
+                var role = String(item, "role", prefix) switch
+                {
+                    null or "book" => FileRole.Book,
+                    "notes" => FileRole.Notes,
+                    _ => throw Fail(prefix + "role", "must be one of book, notes"),
+                };
+                files.Add(new SidecarFile(String(item, "name", prefix) ?? string.Empty, progress, role));
             }
 
             return files;

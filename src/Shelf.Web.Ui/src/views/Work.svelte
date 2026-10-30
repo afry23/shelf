@@ -149,12 +149,12 @@
       .catch(() => (suggestions = []));
   });
 
-  const readFile = $derived(book?.files.find((f) => f.id === book?.readFile) ?? book?.files[0]);
+  const readFile = $derived(book?.files.find((f) => f.id === book?.readFile) ?? book?.files.find((f) => f.role === 'book') ?? book?.files[0]);
   // The table of contents belongs to one file; its locations say which kind: epubcfi(...) for an EPUB, page=N for a PDF.
   const tocFile = $derived(
     book?.toc.find((t) => t.location)?.location?.startsWith('epubcfi(')
-      ? book.files.find((f) => f.format === 'epub')
-      : book?.files.find((f) => f.format === 'pdf') ?? book?.files[0],
+      ? book.files.find((f) => f.format === 'epub' && f.role === 'book')
+      : book?.files.find((f) => f.format === 'pdf' && f.role === 'book') ?? book?.files.find((f) => f.role === 'book') ?? book?.files[0],
   );
 
   // The tabs under the details. A tab without anything to show is left out; the first one is open until the person picks another.
@@ -289,6 +289,7 @@
   let addInput = $state<HTMLInputElement | null>(null);
   let addReplace = $state('');
   let addCarry = $state(false);
+  let addNotes = $state(false);
   let addBusy = $state(false);
   let filesDone = $state<string | null>(null);
 
@@ -303,10 +304,11 @@
     filesDone = null;
     addBusy = true;
     try {
-      const outcome = await addFile(book.id, file, { replace: addReplace || undefined, carryNotes: addReplace ? addCarry : false });
+      const outcome = await addFile(book.id, file, { replace: addReplace || undefined, carryNotes: addReplace ? addCarry : false, notes: addReplace ? false : addNotes });
       filesDone = outcome.replaced ? `Added ${outcome.file} and moved ${outcome.replaced} to the trash.` : `Added ${outcome.file}.`;
       addReplace = '';
       addCarry = false;
+      addNotes = false;
       if (addInput) {
         addInput.value = '';
       }
@@ -880,7 +882,7 @@
               <tbody>
                 {#each book.files as file (file.id)}
                   <tr>
-                    <td class="name">{file.name}</td>
+                    <td class="name">{file.name}{#if file.role === 'notes'} <span class="muted">(notes file)</span>{/if}</td>
                     <td class="format">{file.format}</td>
                     <td class="size">{bytes(file.sizeBytes)}</td>
                     <td class="pages">{file.pages ? `${file.pages} pages` : ''}</td>
@@ -934,6 +936,7 @@
               {#if filesDone}<p class="done" role="status">{filesDone}</p>{/if}
               <p class="muted">A new version of this book, or another format. The file joins this work whatever its own metadata says.</p>
               <p><input type="file" aria-label="File to add" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={addInput} /></p>
+              <p><label><input type="checkbox" bind:checked={addNotes} disabled={!!addReplace} /> This is a notes file</label> <span class="muted">A PDF or TXT file with notes, for example exported from an e-reader. It is searched, but it is no book.</span></p>
               <p>
                 <label>Replaces
                   <select aria-label="Replaces" bind:value={addReplace}>

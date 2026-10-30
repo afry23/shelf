@@ -265,7 +265,8 @@ internal static class Api
                     RequireId(id),
                     file,
                     request.Query["replace"].ToString() is { Length: > 0 } replace ? replace : null,
-                    QueryFlag(request.Query, "carryNotes"))))
+                    QueryFlag(request.Query, "carryNotes"),
+                    request.Query["role"].ToString() is { Length: > 0 } role ? role : "book")))
             .WithName("AddFile")
             .Accepts<byte[]>("application/octet-stream")
             .Produces<AddFileOutcome>(StatusCodes.Status200OK);
@@ -528,7 +529,7 @@ internal static class Api
             b.ReadStatus,
             b.ReadingListAt,
             service.HasCover(b.Id),
-            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages, f.Progress))],
+            [.. b.Files.Select(f => new WorkFile(FileIds.Make(b.Id, f.Name), f.Name, f.Format, f.SizeBytes, f.Pages, f.Progress, f.Role))],
             service.PreferredFile(b.Files) is { } preferred ? FileIds.Make(b.Id, preferred) : null,
             b.Toc);
 

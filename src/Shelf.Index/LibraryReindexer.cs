@@ -60,7 +60,7 @@ public static class LibraryReindexer
                 writer.InsertWork(work.Sidecar, work.DirPath, work.SidecarModified);
                 foreach (var file in work.Files)
                 {
-                    writer.InsertFile(work.Sidecar.Id.ToString(), file.Entry.Name, file.RelPath, file.Size, file.Mtime, file.Entry.Progress);
+                    writer.InsertFile(work.Sidecar.Id.ToString(), file.Entry.Name, file.RelPath, file.Size, file.Mtime, file.Entry.Progress, file.Entry.Role);
                     fileCount++;
                 }
 

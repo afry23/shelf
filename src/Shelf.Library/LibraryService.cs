@@ -664,14 +664,16 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
     /// <summary>
     /// The file that <c>Read</c> opens (F-RDR-5): the first of the configured format (<c>reader.preferred_format</c>, EPUB by default),
-    /// else the first file that has a reader, else the first file. Null for a work without files.
+    /// else the first file that has a reader, else the first file; files of the role notes come last. Null for a work without files.
     /// </summary>
     public string? PreferredFile(IReadOnlyList<BookFile> files)
     {
         ArgumentNullException.ThrowIfNull(files);
         var wanted = settings.Reader.PreferredFormat;
-        return (files.FirstOrDefault(f => f.Format == wanted)
-            ?? files.FirstOrDefault(f => f.Format is "epub" or "pdf" or "md")
+        var books = files.Where(f => f.Role == "book").ToList(); // a notes file is never what Read opens (F-NOTEF-2)
+        return (books.FirstOrDefault(f => f.Format == wanted)
+            ?? books.FirstOrDefault(f => f.Format is "epub" or "pdf" or "md")
+            ?? books.FirstOrDefault()
             ?? files.FirstOrDefault())?.Name;
     }
 
@@ -1570,8 +1572,8 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             var full = LibraryEditor.FilePath(root, work, entry.Name);
             var info = new FileInfo(full);
-            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name), entry.Progress is { } progress ? Position(progress) : null));
-            if (withToc && toc.Count == 0 && info.Exists)
+            files.Add(new BookFile(entry.Name, System.IO.Path.GetExtension(entry.Name).TrimStart('.').ToLowerInvariant(), info.Exists ? info.Length : 0, pages.GetValueOrDefault(entry.Name), entry.Progress is { } progress ? Position(progress) : null, entry.Role == FileRole.Notes ? "notes" : "book"));
+            if (withToc && toc.Count == 0 && info.Exists && entry.Role == FileRole.Book)
             {
                 toc.AddRange(TocExtractor.Read(full).Select(t => new TocItem(t.Title, t.Level, t.Locator)));
             }

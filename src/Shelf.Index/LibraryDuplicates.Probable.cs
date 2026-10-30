@@ -179,7 +179,7 @@ public static partial class LibraryDuplicates
         var paths = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT work_id, rel_path FROM files ORDER BY rel_path";
+            command.CommandText = "SELECT work_id, rel_path FROM files WHERE role = 'book' ORDER BY rel_path";
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -217,7 +217,7 @@ public static partial class LibraryDuplicates
     private static List<FingerprintRow> LoadFingerprints(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT work_id, sha256, simhash FROM files";
+        command.CommandText = "SELECT work_id, sha256, simhash FROM files WHERE role = 'book'";
         using var reader = command.ExecuteReader();
         var rows = new List<FingerprintRow>();
         while (reader.Read())

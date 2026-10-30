@@ -12,9 +12,20 @@ public sealed partial class LibraryService
     /// </summary>
     /// <param name="fileName">The name the file had where it came from; only its last part is used.</param>
     /// <param name="replaceFileId">The ID of a file of the same work that the new one replaces.</param>
+    /// <param name="role"><c>book</c> or <c>notes</c>: a notes file (F-NOTEF-1) is a PDF or TXT file that is no book.</param>
     /// <exception cref="LibraryException">NotFound: no such work or file. Conflict: the file is in the library already.</exception>
-    public AddFileOutcome AddFile(string workId, ReceivedFile file, string? replaceFileId = null, bool carryNotes = false)
+    public AddFileOutcome AddFile(string workId, ReceivedFile file, string? replaceFileId = null, bool carryNotes = false, string role = "book")
     {
+        if (role is not ("book" or "notes"))
+        {
+            throw new LibraryException($"'{role}' is not a role of a file: book or notes");
+        }
+
+        if (role == "notes" && (replaceFileId is not null || carryNotes))
+        {
+            throw new LibraryException("a notes file cannot replace a file");
+        }
+
         if (!WorkLookup.LooksLikeId(workId))
         {
             throw new LibraryException($"'{workId}' is not the ID of a work");
@@ -46,7 +57,7 @@ public sealed partial class LibraryService
         {
             try
             {
-                var result = LibraryFiles.AddFile(root, work, file.Path, new AddOptions(Replace: replace, CarryNotes: carryNotes), root);
+                var result = LibraryFiles.AddFile(root, work, file.Path, new AddOptions(Replace: replace, CarryNotes: carryNotes, Notes: role == "notes"), root);
                 return new AddFileOutcome(result.Work.ToString(), result.File, result.Replaced);
             }
             catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException)

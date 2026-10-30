@@ -154,6 +154,7 @@ public static partial class LibraryDuplicates
         command.CommandText = """
             SELECT f.work_id, w.title, w.dir_path, f.rel_path, f.format, f.size, f.sha256, f.page_count
             FROM files f JOIN works w ON w.id = f.work_id
+            WHERE f.role = 'book'
             ORDER BY f.rel_path
             """;
         using var reader = command.ExecuteReader();
