@@ -94,6 +94,7 @@ public sealed class SettingsSteps
             "web.port" => Settings().Web.Port.ToString(CultureInfo.InvariantCulture),
             "web.bind" => Settings().Web.Bind,
             "web.token" => Settings().Web.Token ?? string.Empty,
+            "web.page_size" => Settings().Web.PageSize.ToString(CultureInfo.InvariantCulture),
             _ => throw new ArgumentException($"Unknown setting '{key}'.", nameof(key)),
         };
         Assert.Equal(expected, actual);

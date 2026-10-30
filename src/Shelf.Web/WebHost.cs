@@ -179,7 +179,7 @@ public static class WebHost
             {
                 using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(options.Root));
                 var statistics = LibraryStatistics.Load(connection);
-                return TypedResults.Ok(new StatusResponse(options.Version, statistics.Works, statistics.Files));
+                return TypedResults.Ok(new StatusResponse(options.Version, statistics.Works, statistics.Files, options.Settings.Web.PageSize));
             })
             .WithName("GetStatus")
             .Produces<StatusResponse>(StatusCodes.Status200OK);

@@ -5,6 +5,7 @@
   import { authorLine, plural } from '../format';
   import { addToken, describeToken, facetGroups, filterToken, hasToken, removeToken, tokens, type FacetKey } from '../query';
   import { navigate, param, setParams } from '../router.svelte';
+  import { defaultPageSize } from '../stores.svelte';
 
   const sortFields = [
     { value: 'title', label: 'Title' },
@@ -32,7 +33,8 @@
   const pageSizes = [20, 40, 60, 80, 100];
   const maxPageSize = 100;
   const wantedLimit = $derived(Math.floor(Number(param('limit', ''))));
-  const baseLimit = $derived(wantedLimit >= 1 ? Math.min(wantedLimit, maxPageSize) : pageSizes[0]);
+  const configuredSize = $derived(Math.min(defaultPageSize.value ?? pageSizes[0], maxPageSize));
+  const baseLimit = $derived(wantedLimit >= 1 ? Math.min(wantedLimit, maxPageSize) : configuredSize);
 
   // How many covers stand in a row of the shelf, from the width of the column. This is what the grid below is told to use.
   const minCover = 152;
@@ -48,7 +50,7 @@
   const columns = $derived(view === 'grid' ? (narrow ? 2 : Math.max(1, Math.floor((mainWidth + shelfGap) / (minCover + shelfGap)))) : 1);
 
   // A size from the list is rounded to whole rows, so the shelf is full on every page but the last.
-  const fit = (size: number) => (pageSizes.includes(size) ? Math.max(columns, Math.min(Math.round(size / columns) * columns, Math.floor(maxPageSize / columns) * columns)) : size);
+  const fit = (size: number) => (pageSizes.includes(size) || size === configuredSize ? Math.max(columns, Math.min(Math.round(size / columns) * columns, Math.floor(maxPageSize / columns) * columns)) : size);
   const limit = $derived(fit(baseLimit));
   const sizeChoices = $derived(pageSizes.includes(baseLimit) ? pageSizes : [...pageSizes, baseLimit].sort((a, b) => a - b));
 
@@ -59,7 +61,7 @@
 
   // Fetches again whenever the address changes. An answer that comes late for an older address is dropped.
   $effect(() => {
-    if (mainWidth === 0) {
+    if (mainWidth === 0 || defaultPageSize.value === null) {
       return;
     }
     const params = { q, sort, order, offset, limit };

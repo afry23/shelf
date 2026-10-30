@@ -1,4 +1,4 @@
-@F-WEB-1 @F-WEB-2 @M4
+@F-WEB-1 @F-WEB-2 @F-WEB-6 @M4
 Feature: Settings of the web server
   As a user of shelf
   I want to set the port, the address and the token of the web server in the global config
@@ -19,6 +19,10 @@ Feature: Settings of the web server
       | # nothing                | web.token |           |
       | web.token = 'abc'        | web.token | abc       |
       | web.token = ''           | web.token |           |
+      | # nothing                | web.page_size | 20    |
+      | web.page_size = 50       | web.page_size | 50    |
+      | web.page_size = 1        | web.page_size | 1     |
+      | web.page_size = 100      | web.page_size | 100   |
 
   Scenario Outline: Invalid web settings are rejected with the key and the file
     Given the global config contains the line "<line>"
@@ -33,6 +37,9 @@ Feature: Settings of the web server
       | web.bind = ''    | global.toml: web.bind: must not be empty         |
       | web.bind = 3     | global.toml: web.bind: expected string, found integer |
       | web.token = 3    | global.toml: web.token: expected string, found integer |
+      | web.page_size = 0   | global.toml: web.page_size: must be between 1 and 100 |
+      | web.page_size = 101 | global.toml: web.page_size: must be between 1 and 100 |
+      | web.page_size = 'x' | global.toml: web.page_size: expected integer, found string |
 
   Scenario Outline: The per-library config cannot set the web server, so that a token does not travel with a library folder
     Given the library config contains the line "<line>"
@@ -45,3 +52,4 @@ Feature: Settings of the web server
       | web.token = 'abc' | web.token |           |
       | web.port = 9000   | web.port  | 8420      |
       | web.bind = '::'   | web.bind  | 127.0.0.1 |
+      | web.page_size = 50 | web.page_size | 20    |

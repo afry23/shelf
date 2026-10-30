@@ -9,7 +9,8 @@ namespace Shelf.Web;
 public sealed record ApiProblem(int Status, string Title, string? Detail);
 
 /// <summary>What <c>GET /api/v1/status</c> answers.</summary>
-public sealed record StatusResponse(string Version, int Works, int Files);
+/// <param name="PageSize">The number of works per page that the library view starts with (<c>web.page_size</c>).</param>
+public sealed record StatusResponse(string Version, int Works, int Files, int PageSize);
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(ApiProblem))]

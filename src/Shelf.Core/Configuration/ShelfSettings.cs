@@ -58,10 +58,15 @@ public sealed record ReaderSettings(string PreferredFormat)
 /// <param name="Port">The port; 0 lets the system choose one.</param>
 /// <param name="Bind">The IP address to listen on; a loopback address unless a token is set.</param>
 /// <param name="Token">The access token; null when none is set (an empty value counts as none).</param>
-public sealed record WebSettings(int Port, string Bind, string? Token)
+/// <param name="PageSize">How many works a page of the library view holds when the address does not say (F-WEB-6).</param>
+public sealed record WebSettings(int Port, string Bind, string? Token, int PageSize = WebSettings.DefaultPageSize)
 {
     public const int DefaultPort = 8420;
     public const string DefaultBind = "127.0.0.1";
+    public const int DefaultPageSize = 20;
+
+    /// <summary>The most works a page can hold; the limit of the API.</summary>
+    public const int LargestPageSize = 100;
 
     public static WebSettings Default { get; } = new(DefaultPort, DefaultBind, null);
 }
@@ -91,11 +96,12 @@ public sealed class ShelfSettings
     private const string WebPortKey = "web.port";
     private const string WebBindKey = "web.bind";
     private const string WebTokenKey = "web.token";
+    private const string WebPageSizeKey = "web.page_size";
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
     private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, WebPageSizeKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
@@ -283,8 +289,14 @@ public sealed class ShelfSettings
             throw new ConfigException($"{document.SourceName}: {WebBindKey}: must not be empty", document.SourceName, key: WebBindKey);
         }
 
+        var pageSize = document.GetInteger(WebPageSizeKey);
+        if (pageSize is < 1 or > WebSettings.LargestPageSize)
+        {
+            throw new ConfigException($"{document.SourceName}: {WebPageSizeKey}: must be between 1 and {WebSettings.LargestPageSize}", document.SourceName, key: WebPageSizeKey);
+        }
+
         var token = document.GetString(WebTokenKey);
-        return new WebSettings((int?)port ?? WebSettings.DefaultPort, bind ?? WebSettings.DefaultBind, string.IsNullOrEmpty(token) ? null : token);
+        return new WebSettings((int?)port ?? WebSettings.DefaultPort, bind ?? WebSettings.DefaultBind, string.IsNullOrEmpty(token) ? null : token, (int?)pageSize ?? WebSettings.DefaultPageSize);
     }
 
     private static string? ReadEmail(ConfigDocument document, string key)
