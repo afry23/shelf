@@ -34,9 +34,5 @@ public static class ConfigTemplate
         # The reader of the web interface: the format that "Read" opens when a work has an EPUB and a PDF.
         # [reader]
         # preferred_format = "epub"
-
-        # The web interface: how many works a page of the library view holds (1 to 100).
-        # [web]
-        # page_size = 20
         """ + "\n";
 }
