@@ -62,3 +62,13 @@ Feature: Highlights and notes while reading a PDF
     And I click the "Delete highlight" button
     Then the PDF page shows 0 highlights
     And the file "library/Alander/Event Sourcing in Practice/annotations.json" soon does not exist
+
+  Scenario: The highlight bar is there before anything is selected and stays put
+    Given I open "/read/01J9Z3K0000000000000000002~es.pdf" in the browser
+    And the reader is at page 1 of 2
+    Then the "Highlight" button is shown
+    And the "Highlight" button is disabled
+    When I note the height of the reader toolbar
+    And I select the text "stores every change" on the PDF page
+    Then the "Highlight" button is enabled
+    And the reader toolbar has the noted height

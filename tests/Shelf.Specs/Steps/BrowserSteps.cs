@@ -471,6 +471,20 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
         }
     }
 
+    [Then("the {string} button is enabled")]
+    public void ThenButtonEnabled(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToBeEnabledAsync());
+
+    private int noteToolbarHeight;
+
+    private int ToolbarHeight() =>
+        Page.GetByRole(AriaRole.Toolbar, new() { Name = "Reader" }).EvaluateAsync<int>("e => Math.round(e.getBoundingClientRect().height)").GetAwaiter().GetResult();
+
+    [When("I note the height of the reader toolbar")]
+    public void WhenNoteToolbarHeight() => noteToolbarHeight = ToolbarHeight();
+
+    [Then("the reader toolbar has the noted height")]
+    public void ThenToolbarHasNotedHeight() => Assert.True(Poll(() => ToolbarHeight() == noteToolbarHeight), $"The toolbar is {ToolbarHeight()} px high, it was {noteToolbarHeight} px. {Dump()}");
+
     [Then("the {string} button is disabled")]
     public void ThenButtonDisabled(string name) => Expect(Page.GetByRole(AriaRole.Button, new() { Name = name }).First, e => e.ToBeDisabledAsync());
 
