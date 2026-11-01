@@ -258,7 +258,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** New versions of a book, files in the wrong work, and works without an import can be handled by hand, in the CLI and the web UI.
 
-**Status:** planned; slice plan: [m7-work-files](slices/m7-work-files.md).
+**Status:** implemented; feature files `Add`, `Move`, `Create`, `WebAddFile`, `WebMoveFile`, `WebCreateWork`, `UiWorkFiles`. Slice plan: [m7-work-files](slices/m7-work-files.md).
 
 | Area | Content | PRD |
 |---|---|---|
@@ -273,7 +273,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** A large library can be browsed page by page in the web UI: page count, jump to a page, choose how many works a page holds.
 
-**Status:** planned.
+**Status:** implemented; feature file `UiLibraryPaging.feature`, page size configurable with `web.page_size`.
 
 | Area | Content | PRD |
 |---|---|---|
@@ -389,7 +389,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** An EPUB can be read the way the person likes: in pages or scrolled, on one page or two, with a narrow or wide text column.
 
-**Status:** in progress.
+**Status:** implemented; feature file `UiReaderLayout.feature`.
 
 | Area | Content | PRD |
 |---|---|---|
