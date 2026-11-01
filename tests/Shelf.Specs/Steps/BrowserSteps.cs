@@ -454,6 +454,7 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     public void ThenPanelEntry(string panel, string text) => Assert.True(Wait(Page.Locator($"aside[aria-label='{panel}']").GetByText(text).First), $"The panel '{panel}' has no '{text}'. {Dump()}");
 
     [When("I click the entry {string} in the panel {string}")]
+    [Given("I click the entry {string} in the panel {string}")]
     public void WhenClickEntry(string text, string panel) => Page.Locator($"aside[aria-label='{panel}']").GetByText(text).First.ClickAsync().GetAwaiter().GetResult();
 
     [When("I click the {string} button {int} times")]
@@ -539,6 +540,24 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
                 return false;
             }
         })), $"The text in the book is not {percent} percent. {Dump()}");
+
+    private string? RendererAttribute(string name) =>
+        Page.EvaluateAsync<string?>($"() => document.querySelector('foliate-view')?.renderer?.getAttribute('{name}') ?? null").GetAwaiter().GetResult();
+
+    [Then("the book is shown {string}")]
+    public void ThenBookFlow(string flow) =>
+        Assert.True(Poll(() => RendererAttribute("flow") == flow), $"The book is shown '{RendererAttribute("flow")}', not '{flow}'. {Dump()}");
+
+    [Then("the book is shown with at most {int} columns")]
+    public void ThenBookColumns(int columns) =>
+        Assert.True(Poll(() => RendererAttribute("max-column-count") == columns.ToString()), $"The book has at most '{RendererAttribute("max-column-count")}' columns, not {columns}. {Dump()}");
+
+    [Then("the text column of the book is {int} pixels wide at most")]
+    public void ThenBookColumnWidth(int pixels) =>
+        Assert.True(Poll(() => RendererAttribute("max-inline-size") == $"{pixels}px"), $"The text column is '{RendererAttribute("max-inline-size")}' wide at most, not {pixels}px. {Dump()}");
+
+    [Then("the panel {string} is closed")]
+    public void ThenPanelClosed(string name) => Assert.True(Gone(Page.Locator($"aside[aria-label='{name}']")), $"The panel '{name}' is open. {Dump()}");
 
     [Then("the script of the book did not run")]
     public void ThenScriptDidNotRun() =>
