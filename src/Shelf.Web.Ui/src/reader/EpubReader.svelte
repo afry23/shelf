@@ -354,9 +354,7 @@
     <BookmarkButton store={annotations} fileId={file.id} locator={loading ? null : here} />
     <button type="button" class="button" aria-expanded={notesOpen} disabled={loading} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
 
-    {#if pending}
-      <SelectionBar bind:color={markerColor} onhighlight={highlight} citable={!!book.citeKey} oncite={() => pending && quote.copy(pending.text, pending.cfi)} />
-    {/if}
+    <SelectionBar active={!!pending} bind:color={markerColor} onhighlight={highlight} citable={!!book.citeKey} oncite={() => pending && quote.copy(pending.text, pending.cfi)} />
     {#if quote.message}
       <span class="quote-status" class:failed={quote.message.failed} role={quote.message.failed ? 'alert' : 'status'}>{quote.message.text}</span>
     {/if}

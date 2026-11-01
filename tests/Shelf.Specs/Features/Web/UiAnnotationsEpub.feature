@@ -90,3 +90,13 @@ Feature: Highlights and notes while reading an EPUB
     When I open the "Highlights and notes" tab
     Then the page shows the text "Highlights and notes"
     And the page shows the text "Mind the workshop"
+
+  Scenario: The highlight bar is there before anything is selected and stays put
+    Given I open "/read/01J9Z3K0000000000000000001~kp.epub" in the browser
+    And the reader shows the text "The sidecar container extends the main container"
+    Then the "Highlight" button is shown
+    And the "Highlight" button is disabled
+    When I note the height of the reader toolbar
+    And I select the text "sidecar container extends" in the book
+    Then the "Highlight" button is enabled
+    And the reader toolbar has the noted height
