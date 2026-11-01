@@ -162,7 +162,8 @@
 
   const tabs = $derived([
     ...(book?.description ? [{ id: 'description', label: 'Description' }] : []),
-    ...((book?.toc.length && tocFile) || similarBooks.length ? [{ id: 'contents', label: 'Contents' }] : []),
+    ...(book?.toc.length && tocFile ? [{ id: 'contents', label: 'Contents' }] : []),
+    ...(similarBooks.length ? [{ id: 'similar', label: 'Similar books', count: similarBooks.length }] : []),
     ...(notes.items.length ? [{ id: 'notes', label: 'Highlights and notes', count: notes.items.length }] : []),
     ...(refs && (refs.total || refs.citedBy.length || refs.doi) ? [{ id: 'references', label: 'References', count: refs.total || undefined }] : []),
     { id: 'files', label: 'Files', count: book?.files.length },
@@ -789,41 +790,29 @@
         <Tabs label="The book" {tabs} {active} onselect={openTab}>
           {#if active === 'description'}
             <p class="description">{book.description}</p>
-          {:else if active === 'contents'}
-            <div class="pair">
-              {#if book.toc.length && tocFile}
-                <section class="group">
-                  <h2>Contents</h2>
-                  <nav aria-label="Table of contents">
-                    <ol class="toc">
-                      {#each book.toc as entry, index (index)}
-                        <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
-                          {#if entry.location}
-                            <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
-                          {:else}
-                            <span>{entry.title}</span>
-                          {/if}
-                        </li>
-                      {/each}
-                    </ol>
-                  </nav>
-                </section>
-              {/if}
-
-              {#if similarBooks.length}
-                <section class="group">
-                  <h2>Similar books</h2>
-                  <ul class="similar" aria-label="Similar books">
-                    {#each similarBooks as item (item.id)}
-                      <li>
-                        <a href={`/works/${item.id}`}>{item.title}</a>
-                        <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
-                      </li>
-                    {/each}
-                  </ul>
-                </section>
-              {/if}
-            </div>
+          {:else if active === 'contents' && book.toc.length && tocFile}
+            <nav aria-label="Table of contents">
+              <ol class="toc">
+                {#each book.toc as entry, index (index)}
+                  <li style:padding-left="{Math.max(0, entry.level - 1) * 1.25}rem">
+                    {#if entry.location}
+                      <a href={readLink(tocFile.id, entry.location)}>{entry.title}</a>
+                    {:else}
+                      <span>{entry.title}</span>
+                    {/if}
+                  </li>
+                {/each}
+              </ol>
+            </nav>
+          {:else if active === 'similar'}
+            <ul class="similar" aria-label="Similar books">
+              {#each similarBooks as item (item.id)}
+                <li>
+                  <a href={`/works/${item.id}`}>{item.title}</a>
+                  <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                </li>
+              {/each}
+            </ul>
           {:else if active === 'notes'}
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
           {:else if active === 'references' && refs}
