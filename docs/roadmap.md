@@ -385,6 +385,18 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for all F-NOTEF requirements, the complete BDD suite is green, `shelf reindex` restores the roles from the sidecars.
 
+### M16 – Reader Layout
+
+**Goal:** An EPUB can be read the way the person likes: in pages or scrolled, on one page or two, with a narrow or wide text column.
+
+**Status:** in progress.
+
+| Area | Content | PRD |
+|---|---|---|
+| Layout | "Display" panel of the EPUB reader: flow (paged, scrolled), pages (one, two), text width | F-RDR-7 |
+
+**Exit criteria:** feature file exists for F-RDR-7, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

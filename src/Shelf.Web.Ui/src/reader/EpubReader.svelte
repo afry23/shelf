@@ -4,6 +4,7 @@
   import { fileUrl, type Annotation, type AnnotationColor, type WorkDetail, type WorkFile } from '../api';
   import { replaceHash, router } from '../router.svelte';
   import { colors, createAnnotations } from './annotations.svelte';
+  import DisplayPanel, { measures, type Flow, type Measure } from './DisplayPanel.svelte';
   import Entries, { type Entry } from './Entries.svelte';
   import BookmarkButton from './BookmarkButton.svelte';
   import NotesPanel from './NotesPanel.svelte';
@@ -11,6 +12,7 @@
   import SelectionBar from './SelectionBar.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
+  import Icon from './Icon.svelte';
 
   let { book, file }: { book: WorkDetail; file: WorkFile } = $props();
 
@@ -44,6 +46,11 @@
   let contents = $state<Entry[]>([]);
   let contentsOpen = $state(false);
   let size = $state(100);
+  // The layout (F-RDR-7): pages or a scroll, one page or two, the width of the text.
+  let flow = $state<Flow>('paginated');
+  let columns = $state<1 | 2>(2);
+  let measure = $state<Measure>('medium');
+  let displayOpen = $state(false);
   let theme = $state<Theme>(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
   let query = $state('');
@@ -88,6 +95,17 @@
     // Whenever the size or the theme changes.
     const css = styles();
     view?.renderer?.setStyles?.(css);
+  });
+
+  $effect(() => {
+    // Whenever the layout changes; the paginator keeps the place of the reader while it lays the book out again.
+    const wanted = { flow, columns: String(columns), width: `${measures[measure].pixels}px` };
+    if (loading || !view?.renderer) {
+      return;
+    }
+    view.renderer.setAttribute('flow', wanted.flow);
+    view.renderer.setAttribute('max-column-count', wanted.columns);
+    view.renderer.setAttribute('max-inline-size', wanted.width);
   });
 
   $effect(() => {
@@ -267,6 +285,7 @@
   function openNotes(): void {
     notesOpen = true;
     contentsOpen = false;
+    displayOpen = false;
   }
 
   async function search(): Promise<void> {
@@ -306,18 +325,20 @@
   const hits = $derived(groups.reduce((n, g) => n + g.subitems.length, 0));
   const found = $derived(hits === 1 ? '1 match' : `${hits} matches`);
 
-  const entries = $derived(notesOpen ? 'notes' : searchOpen && !contentsOpen ? 'search' : contentsOpen ? 'contents' : 'none');
+  const entries = $derived(displayOpen ? 'display' : notesOpen ? 'notes' : searchOpen && !contentsOpen ? 'search' : contentsOpen ? 'contents' : 'none');
 </script>
 
 <ReaderFrame {book} background={themes[theme].background}>
   {#snippet toolbar()}
-    <button type="button" class="button" disabled={loading} onclick={() => turn(false)}>Previous page</button>
-    <button type="button" class="button" disabled={loading} onclick={() => turn(true)}>Next page</button>
-    <span class="status" role="status">{percent}%</span>
+    <span class="group">
+      <button type="button" class="button icon" disabled={loading} aria-label="Previous page" title="Previous page" onclick={() => turn(false)}><Icon name="prev" /></button>
+      <button type="button" class="button icon" disabled={loading} aria-label="Next page" title="Next page" onclick={() => turn(true)}><Icon name="next" /></button>
+      <span class="status" role="status">{percent}%</span>
+    </span>
 
     <span class="group">
-      <button type="button" class="button" disabled={size <= sizes.min} onclick={() => (size -= sizes.step)}>Smaller text</button>
-      <button type="button" class="button" disabled={size >= sizes.max} onclick={() => (size += sizes.step)}>Larger text</button>
+      <button type="button" class="button icon glyph" disabled={size <= sizes.min} aria-label="Smaller text" title="Smaller text" onclick={() => (size -= sizes.step)}><span aria-hidden="true">A<sup>&minus;</sup></span></button>
+      <button type="button" class="button icon glyph" disabled={size >= sizes.max} aria-label="Larger text" title="Larger text" onclick={() => (size += sizes.step)}><span aria-hidden="true">A<sup>+</sup></span></button>
       <span class="muted">Text {size}%</span>
     </span>
 
@@ -342,17 +363,38 @@
     {#if contents.length}
       <button
         type="button"
-        class="button"
+        class="button icon"
+        aria-label="Contents"
+        title="Contents"
         aria-expanded={contentsOpen}
         onclick={() => {
           contentsOpen = !contentsOpen;
           notesOpen = false;
-        }}>Contents</button
+          displayOpen = false;
+        }}><Icon name="contents" /></button
       >
     {/if}
 
+    <span class="group">
+      <button
+        type="button"
+        class="button icon"
+        aria-label="Display"
+        title="Display: pages, scroll and text width"
+        aria-expanded={displayOpen}
+        disabled={loading}
+        onclick={() => {
+          displayOpen = !displayOpen;
+          if (displayOpen) {
+            notesOpen = false;
+            contentsOpen = false;
+          }
+        }}><Icon name="display" /></button
+      >
+    </span>
+
     <BookmarkButton store={annotations} fileId={file.id} locator={loading ? null : here} />
-    <button type="button" class="button" aria-expanded={notesOpen} disabled={loading} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
+    <button type="button" class="button icon" aria-expanded={notesOpen} disabled={loading} aria-label="Notes" title="Notes" onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}><Icon name="notes" /></button>
 
     <SelectionBar active={!!pending} bind:color={markerColor} onhighlight={highlight} citable={!!book.citeKey} oncite={() => pending && quote.copy(pending.text, pending.cfi)} />
     {#if quote.message}
@@ -361,7 +403,9 @@
   {/snippet}
 
   {#snippet side()}
-    {#if entries === 'notes'}
+    {#if entries === 'display'}
+      <DisplayPanel bind:flow bind:columns bind:measure />
+    {:else if entries === 'notes'}
       <NotesPanel store={annotations} fileId={file.id} go={goTo} onrecolor={recolored} onremove={removed} selected={selectedNote} />
     {:else if entries === 'contents'}
       <aside class="side" aria-label="Contents"><Entries items={contents} /></aside>
@@ -413,19 +457,6 @@
     margin: 1rem;
   }
 
-  .group {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .group[role='group'] .button[aria-pressed='true'] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-ink);
-  }
-
   .side {
     flex: 0 0 18rem;
     max-width: 40%;
@@ -436,7 +467,10 @@
   }
 
   .side h3 {
-    margin: 0.5rem 0 0.25rem;
+    margin: 0.75rem 0 0.25rem;
+    padding: 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--muted);
   }
 
   .side ul {

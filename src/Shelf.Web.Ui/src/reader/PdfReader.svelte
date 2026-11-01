@@ -11,6 +11,7 @@
   import NotesPanel from './NotesPanel.svelte';
   import { createProgress } from './progress';
   import ReaderFrame from './ReaderFrame.svelte';
+  import Icon from './Icon.svelte';
   import { createQuoteCopy } from './quote.svelte';
   import SelectionBar from './SelectionBar.svelte';
 
@@ -285,15 +286,17 @@
 
 <ReaderFrame {book}>
   {#snippet toolbar()}
-    <button type="button" class="button" disabled={page <= 1} onclick={() => viewer?.previousPage()}>Previous page</button>
-    <button type="button" class="button" disabled={pages === 0 || page >= pages} onclick={() => viewer?.nextPage()}>Next page</button>
-    <input class="page" aria-label="Page" inputmode="numeric" size="3" disabled={pages === 0} bind:value={pageInput} onkeydown={goToPage} />
-    <span class="status" role="status">Page {page} of {pages}</span>
+    <span class="group">
+      <button type="button" class="button icon" disabled={page <= 1} aria-label="Previous page" title="Previous page" onclick={() => viewer?.previousPage()}><Icon name="prev" /></button>
+      <button type="button" class="button icon" disabled={pages === 0 || page >= pages} aria-label="Next page" title="Next page" onclick={() => viewer?.nextPage()}><Icon name="next" /></button>
+      <input class="page" aria-label="Page" inputmode="numeric" size="3" disabled={pages === 0} bind:value={pageInput} onkeydown={goToPage} />
+      <span class="status" role="status">Page {page} of {pages}</span>
+    </span>
 
     <span class="group">
-      <button type="button" class="button" onclick={() => viewer?.decreaseScale()}>Zoom out</button>
-      <button type="button" class="button" onclick={() => viewer?.increaseScale()}>Zoom in</button>
-      <button type="button" class="button" onclick={() => viewer && (viewer.currentScaleValue = 'page-width')}>Fit width</button>
+      <button type="button" class="button icon" aria-label="Zoom out" title="Zoom out" onclick={() => viewer?.decreaseScale()}><Icon name="minus" /></button>
+      <button type="button" class="button icon" aria-label="Zoom in" title="Zoom in" onclick={() => viewer?.increaseScale()}><Icon name="plus" /></button>
+      <button type="button" class="button icon" aria-label="Fit width" title="Fit width" onclick={() => viewer && (viewer.currentScaleValue = 'page-width')}><Icon name="fit" /></button>
       <span class="muted">{scaleLabel}</span>
     </span>
 
@@ -306,8 +309,8 @@
         bind:value={query}
         onkeydown={(e) => e.key === 'Enter' && find(false)}
       />
-      <button type="button" class="button" disabled={!matches?.total} onclick={() => find(true, true)}>Previous match</button>
-      <button type="button" class="button" disabled={!matches?.total} onclick={() => find(true)}>Next match</button>
+      <button type="button" class="button icon" disabled={!matches?.total} aria-label="Previous match" title="Previous match" onclick={() => find(true, true)}><Icon name="up" /></button>
+      <button type="button" class="button icon" disabled={!matches?.total} aria-label="Next match" title="Next match" onclick={() => find(true)}><Icon name="down" /></button>
       {#if searched}
         <span class="muted" role="status">{found || `Nothing found for ${query.trim()}`}</span>
       {/if}
@@ -316,17 +319,19 @@
     {#if outline.length}
       <button
         type="button"
-        class="button"
+        class="button icon"
+        aria-label="Contents"
+        title="Contents"
         aria-expanded={outlineOpen}
         onclick={() => {
           outlineOpen = !outlineOpen;
           notesOpen = false;
-        }}>Contents</button
+        }}><Icon name="contents" /></button
       >
     {/if}
 
     <BookmarkButton store={annotations} fileId={file.id} locator={pages === 0 ? null : `page=${page}`} />
-    <button type="button" class="button" aria-expanded={notesOpen} disabled={pages === 0} onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}>Notes</button>
+    <button type="button" class="button icon" aria-expanded={notesOpen} disabled={pages === 0} aria-label="Notes" title="Notes" onclick={() => (notesOpen ? (notesOpen = false) : openNotes())}><Icon name="notes" /></button>
 
     <SelectionBar active={!!pending} bind:color={markerColor} onhighlight={highlight} citable={!!book.citeKey} oncite={() => pending && quote.copy(pending.text, `page=${pending.page}`)} />
     {#if quote.message}
@@ -381,6 +386,15 @@
     overflow: auto;
   }
 
+  /* The pages lie on the desk like sheets: a little air around them and a soft edge. */
+  .pages :global(.pdfViewer .page) {
+    margin: 0.75rem auto;
+    border: 0;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent),
+      0 0.25rem 1rem color-mix(in srgb, var(--ink) 14%, transparent);
+  }
+
   .problem {
     margin: 1rem;
   }
@@ -388,13 +402,6 @@
   .page {
     width: 3.2rem;
     text-align: center;
-  }
-
-  .group {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
   }
 
   .side {

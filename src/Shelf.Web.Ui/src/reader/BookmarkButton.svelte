@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
   import type { Annotations } from './annotations.svelte';
 
   // Sets a bookmark at the place the reader is at, or removes the one that is there (F-RDR-6). `locator` is null while the place is not known.
@@ -15,6 +16,12 @@
   }
 </script>
 
-<button type="button" class="button" aria-pressed={bookmark !== undefined} disabled={!locator} onclick={toggle}>
-  {bookmark ? 'Remove bookmark' : 'Add bookmark'}
-</button>
+<button
+  type="button"
+  class="button icon"
+  aria-pressed={bookmark !== undefined}
+  disabled={!locator}
+  aria-label={bookmark ? 'Remove bookmark' : 'Add bookmark'}
+  title={bookmark ? 'Remove bookmark' : 'Add bookmark'}
+  onclick={toggle}><Icon name="bookmark" filled={bookmark !== undefined} /></button
+>

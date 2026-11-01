@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AnnotationColor } from '../api';
   import { colors } from './annotations.svelte';
+  import Icon from './Icon.svelte';
 
   // Always in the toolbar, so the layout does not move when a passage is selected; the buttons work while one is (active). Mark it, in the color that is chosen, or copy it as a quote (needs a cite key).
   let {
@@ -13,13 +14,16 @@
 </script>
 
 <span class="group" role="group" aria-label="Selection">
-  <button type="button" class="button" disabled={!active} onclick={onhighlight}>Highlight</button>
+  <button type="button" class="button icon" disabled={!active} title={active ? 'Highlight' : 'Highlight (select a passage first)'} aria-label="Highlight" onclick={onhighlight}>
+    <Icon name="highlight" />
+  </button>
   <button
     type="button"
-    class="button"
+    class="button icon"
     disabled={!active || !citable}
-    title={!citable ? 'Set a cite key on the book page first' : active ? 'Copy the passage with its cite key and place' : 'Select a passage first'}
-    onclick={oncite}>Copy as quote</button
+    aria-label="Copy as quote"
+    title={!citable ? 'Copy as quote (set a cite key on the book page first)' : active ? 'Copy as quote: the passage with its cite key and place' : 'Copy as quote (select a passage first)'}
+    onclick={oncite}><Icon name="quote" /></button
   >
   {#each Object.entries(colors) as [name, value] (name)}
     <button
@@ -27,6 +31,7 @@
       class="swatch"
       style:background={value}
       aria-label={`Marker ${name}`}
+      title={`Marker ${name}`}
       aria-pressed={color === name}
       onclick={() => (color = name as AnnotationColor)}
     ></button>
@@ -34,22 +39,22 @@
 </span>
 
 <style>
-  .group {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
   .swatch {
     width: 1.1rem;
     height: 1.1rem;
     padding: 0;
     border-radius: 50%;
-    border: 2px solid transparent;
+    border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+    transition: transform 0.12s;
+  }
+
+  .swatch:hover {
+    transform: scale(1.15);
   }
 
   .swatch[aria-pressed='true'] {
-    border-color: var(--ink);
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--ink);
   }
 </style>

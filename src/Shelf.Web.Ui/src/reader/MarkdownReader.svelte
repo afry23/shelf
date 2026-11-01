@@ -56,40 +56,71 @@
 </ReaderFrame>
 
 <style>
+  /* The article sits on the paper of the interface (so it follows the dark mode), in a column of about 65 characters. */
   .scroll {
     position: absolute;
     inset: 0;
     overflow: auto;
-    background: var(--bg, #fbfaf7);
+    background: var(--surface);
   }
 
   .article {
-    max-width: 42rem;
+    max-width: 40rem;
     margin: 0 auto;
-    padding: 2rem var(--gutter) 4rem;
+    padding: 2.5rem var(--gutter) 5rem;
     font-family: var(--serif);
-    font-size: 1.125rem;
-    line-height: 1.65;
+    font-size: 1.1875rem;
+    line-height: 1.7;
+    hanging-punctuation: first last;
+  }
+
+  .article :global(h1),
+  .article :global(h2),
+  .article :global(h3) {
+    margin: 2rem 0 0.75rem;
+    line-height: 1.25;
+  }
+
+  .article :global(h1:first-child) {
+    margin-top: 0;
+  }
+
+  .article :global(p),
+  .article :global(ul),
+  .article :global(ol) {
+    margin: 0 0 1.1em;
   }
 
   .article :global(img) {
     display: block;
     max-width: 100%;
     height: auto;
-    margin: 1.25rem auto;
+    margin: 1.5rem auto;
+    border-radius: var(--radius);
   }
 
   .article :global(pre) {
     overflow: auto;
     padding: 0.75rem 1rem;
-    background: var(--line);
-    border-radius: 4px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .article :global(pre code) {
+    border: 0;
+    padding: 0;
+    background: none;
   }
 
   .article :global(blockquote) {
-    margin-left: 0;
-    padding-left: 1rem;
-    border-left: 3px solid var(--line);
+    margin: 0 0 1.1em;
+    padding-left: 1.1rem;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+    font-style: italic;
   }
 
   .notice {

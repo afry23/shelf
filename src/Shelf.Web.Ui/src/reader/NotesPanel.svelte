@@ -50,7 +50,7 @@
     flex: 0 0 22rem;
     max-width: 45%;
     overflow: auto;
-    padding: 0.75rem;
+    padding: 1rem;
     background: var(--surface);
     border-right: 1px solid var(--line);
   }
