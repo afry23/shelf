@@ -1132,6 +1132,12 @@
     padding-top: 1rem;
   }
 
+  /* Under the tab bar the line above a group would be a second rule right below the first. */
+  .pair .group {
+    border-top: 0;
+    padding-top: 0;
+  }
+
   .details {
     display: grid;
     gap: 0.75rem;
