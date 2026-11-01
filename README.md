@@ -206,6 +206,7 @@ Missing files are fine. Unknown keys produce a warning on stderr. Invalid values
 | `web.port` | `8420` | global | Port of `shelf serve` |
 | `web.bind` | `127.0.0.1` | global | Address of `shelf serve` and `shelf mcp --http` |
 | `web.token` | none | global | Access token for web and MCP over HTTP |
+| `web.page_size` | `20` | global | Works per page in the library view of the web UI (1 to 100); the page size chosen in the UI and in the address takes precedence |
 | `default_library` | none | global | Library name used outside any library folder |
 | `[[libraries]]` | none | global | Named libraries (`name`, `path`) |
 
