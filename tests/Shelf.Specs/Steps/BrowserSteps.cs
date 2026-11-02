@@ -423,6 +423,9 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the rendered note shows {string} in bold")]
     public void ThenRenderedNoteBold(string text) => Assert.True(Wait(Page.Locator("aside[aria-label='Notes'] strong", new() { HasText = text }).First), $"No bold '{text}' in the notes. {Dump()}");
 
+    [Then("the highlights show {string} in bold")]
+    public void ThenHighlightsBold(string text) => Assert.True(Wait(Page.Locator("ul[aria-label='Highlights'] strong", new() { HasText = text }).First), $"No bold '{text}' in the highlights. {Dump()}");
+
     [Then("the title of the page is not {string}")]
     public void ThenTitleIsNot(string title) => Assert.NotEqual(title, Page.TitleAsync().GetAwaiter().GetResult());
 

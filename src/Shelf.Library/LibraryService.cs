@@ -760,6 +760,116 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    /// <summary>
+    /// The highlights and notes of all works, or of the works that match <paramref name="query"/> (F-ANN-9). Nothing is written. With
+    /// <c>markdown</c> a work without a cite key is left out and named in <see cref="NotesBulkExport.Skipped"/>.
+    /// </summary>
+    /// <param name="format"><c>markdown</c> or <c>readwise-csv</c>.</param>
+    /// <exception cref="LibraryException">Invalid: an unknown format or a query that cannot be read.</exception>
+    public NotesBulkExport ExportAllAnnotations(string? query = null, string format = "markdown")
+    {
+        var markdown = string.Equals(format, "markdown", StringComparison.OrdinalIgnoreCase);
+        var csv = string.Equals(format, "readwise-csv", StringComparison.OrdinalIgnoreCase);
+        if (!markdown && !csv)
+        {
+            throw new LibraryException($"Unknown format '{format}'; use markdown or readwise-csv");
+        }
+
+        var works = CollectNotes(query);
+        if (csv)
+        {
+            var content = ReadwiseCsv.Render(works.Select(w => (w.Sidecar, w.Annotations)));
+            return new NotesBulkExport("readwise-csv", works.Count, [], [new NotesExportFile("shelf-highlights.csv", content)]);
+        }
+
+        var files = new List<NotesExportFile>();
+        var skipped = new List<string>();
+        foreach (var w in works)
+        {
+            if (string.IsNullOrWhiteSpace(w.Sidecar.CiteKey))
+            {
+                skipped.Add(w.Sidecar.Title);
+                continue;
+            }
+
+            files.Add(new NotesExportFile(WorkExport.FileName(w.Sidecar), WorkExport.Render(w.Sidecar, w.Annotations)));
+        }
+
+        return new NotesBulkExport("markdown", files.Count, [.. skipped], [.. files]);
+    }
+
+    /// <summary>
+    /// A few highlights of the library for a day (F-ANN-10). Only highlights with a quote are picked; the same date gives the same
+    /// highlights. Nothing is written.
+    /// </summary>
+    /// <param name="count">1 to <see cref="Resurface.MaxCount"/> (default <see cref="Resurface.DefaultCount"/>).</param>
+    /// <param name="date"><c>yyyy-MM-dd</c>; default today (UTC).</param>
+    /// <exception cref="LibraryException">Invalid: the count is out of range or the date is not a date.</exception>
+    public ResurfaceResult ResurfaceHighlights(int? count = null, string? date = null)
+    {
+        var number = count ?? Resurface.DefaultCount;
+        if (number is < 1 or > Resurface.MaxCount)
+        {
+            throw new LibraryException($"count must be between 1 and {Resurface.MaxCount}");
+        }
+
+        var day = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (date is not null && !Resurface.TryParseDate(date, out day))
+        {
+            throw new LibraryException($"date must be a date as yyyy-MM-dd, not '{date}'");
+        }
+
+        IReadOnlyList<(WorkNotes Work, Annotation Annotation)> picked;
+        try
+        {
+            picked = LibraryNotes.Resurface(root, day, number);
+        }
+        catch (Exception e) when (e is IndexException or SidecarException)
+        {
+            throw new LibraryException(e.Message);
+        }
+
+        return new ResurfaceResult(
+            day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            [.. picked.Select(c => new ResurfacedHighlight(
+                c.Annotation.Id.ToString(),
+                c.Work.Work.Id.ToString(),
+                c.Work.Sidecar.Title,
+                [.. c.Work.Sidecar.Authors],
+                FileIds.Make(c.Work.Work.Id.ToString(), c.Annotation.File),
+                c.Annotation.Locator,
+                c.Annotation.Locator is null ? null : Locators.Describe(c.Annotation.Locator),
+                c.Annotation.Quote!.Exact,
+                c.Annotation.Color,
+                c.Annotation.Note,
+                Time(c.Annotation.CreatedAt)))]);
+    }
+
+    private IReadOnlyList<WorkNotes> CollectNotes(string? query)
+    {
+        SearchQuery? parsed = null;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            try
+            {
+                parsed = QueryParser.Parse(query);
+            }
+            catch (QueryException e)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+
+        try
+        {
+            return LibraryNotes.Collect(root, parsed);
+        }
+        catch (Exception e) when (e is IndexException or SidecarException)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
     /// <summary>A passage of a file as a quote with the cite key and the place (F-ANN-8). Nothing is written.</summary>
     /// <exception cref="LibraryException">Invalid: the quote is empty or too long, the place does not fit the format, or the work has no cite key. NotFound: no such file.</exception>
     public PassageCitation QuotePassage(string fileId, string quote, string? locator)

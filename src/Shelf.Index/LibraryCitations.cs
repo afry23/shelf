@@ -64,7 +64,7 @@ public static class LibraryCitations
         return new CitationExport(CitationFormats.Render(format, sidecars), sidecars.Count, skipped);
     }
 
-    private static List<LibraryWork> AllWorks(Microsoft.Data.Sqlite.SqliteConnection connection)
+    internal static List<LibraryWork> AllWorks(Microsoft.Data.Sqlite.SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT id, dir_path, title FROM works ORDER BY author_sort, year, title_norm";

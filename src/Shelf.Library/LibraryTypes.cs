@@ -136,6 +136,32 @@ public sealed record MarkdownExport(string FileName, string Content);
 /// </summary>
 public sealed record CitationsExport(string Format, string Content, int Works, string[] Skipped, string FileName);
 
+/// <summary>One file of a bulk export of highlights and notes (F-ANN-9).</summary>
+public sealed record NotesExportFile(string FileName, string Content);
+
+/// <summary>
+/// The highlights and notes of many works (F-ANN-9): <c>markdown</c> has one file per work, <c>readwise-csv</c> one file.
+/// <paramref name="Skipped"/> names the works left out because they have no cite key.
+/// </summary>
+public sealed record NotesBulkExport(string Format, int Works, string[] Skipped, NotesExportFile[] Files);
+
+/// <summary>A highlight that comes back (F-ANN-10), with its work and its place.</summary>
+public sealed record ResurfacedHighlight(
+    string Id,
+    string Work,
+    string Title,
+    string[] Authors,
+    string File,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Locator,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Place,
+    string Quote,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Color,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    string CreatedAt);
+
+/// <summary>The highlights of a day (<c>yyyy-MM-dd</c>).</summary>
+public sealed record ResurfaceResult(string Date, ResurfacedHighlight[] Highlights);
+
 /// <summary>The highlights and notes of a work.</summary>
 public sealed record AnnotationList(string Id, string Title, AnnotationView[] Annotations);
 

@@ -421,6 +421,32 @@ export interface ReadingList {
 /** The works on the reading list, the one put on first at the top. */
 export const readingList = () => request<ReadingList>('GET', '/reading-list');
 
+/** A highlight that comes back (F-ANN-10): the quote and the note, the work and the place in the file. */
+export interface ResurfacedHighlight {
+  id: string;
+  work: string;
+  title: string;
+  authors: string[];
+  file: string;
+  locator: string | null;
+  place: string | null;
+  quote: string;
+  color: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface Resurfaced {
+  date: string;
+  highlights: ResurfacedHighlight[];
+}
+
+/** A few highlights of the library for today; the same day gives the same ones. */
+export const resurface = (count?: number) => request<Resurfaced>('GET', `/annotations/resurface${count ? `?count=${count}` : ''}`);
+
+/** The address that downloads the highlights and notes of all works (F-ANN-9). */
+export const exportAddress = (format: 'markdown' | 'readwise-csv') => `/api/v1/annotations/export?format=${format}`;
+
 export const addToReadingList = (id: string) => request<WorkDetail>('PUT', `/works/${encodeURIComponent(id)}/reading-list`);
 
 export const removeFromReadingList = (id: string) => request<WorkDetail>('DELETE', `/works/${encodeURIComponent(id)}/reading-list`);
