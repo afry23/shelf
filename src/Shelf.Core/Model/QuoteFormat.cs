@@ -32,13 +32,15 @@ public static partial class QuoteFormat
             text.Append(line.Length == 0 ? ">" : "> " + line).Append('\n');
         }
 
-        text.Append("\n[@").Append(citeKey);
-        if (Pandoc(locator) is { } place)
-        {
-            text.Append(", ").Append(place);
-        }
+        return text.Append('\n').Append(Citation(citeKey, locator)).ToString();
+    }
 
-        return text.Append(']').ToString();
+    /// <summary>The Pandoc citation alone, <c>[@key, p. 12]</c>; a place that is none of a page or a section is left out.</summary>
+    /// <exception cref="ArgumentException">The cite key is empty.</exception>
+    public static string Citation(string citeKey, string? locator)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(citeKey);
+        return Pandoc(locator) is { } place ? $"[@{citeKey}, {place}]" : $"[@{citeKey}]";
     }
 
     /// <summary>The place for people ("page 12", "section 3"), or null if the locator is none of both.</summary>

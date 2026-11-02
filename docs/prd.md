@@ -226,6 +226,7 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-SEM-8 | The model is replaceable. Changing the model triggers a re-indexing of the embeddings. | S |
 | F-SEM-9 | Text that is no prose is not embedded: table of contents, front matter (preface, foreword, acknowledgments, copyright), index, bibliography, glossary and source code. It stays in the full-text index. | S |
 | F-SEM-10 | Title scope for semantic and hybrid search: one extra embedding per work from title and subtitle only; `--title-only` compares the query with it (works only, no passages). | S |
+| F-SEM-11 | **Passages for a question** through MCP: the tool `find_passages(question, limit, id, maxChars)` returns, in one call, the passages that fit a question: for each the text of the place (cut at `maxChars`, default 1500, with `truncated`), the work (ID, title, authors, year), the file, the location (`location`, `where`), the score and, if the work has a cite key, the cite key and a Pandoc citation with the place (`[@key, p. 12]`). It searches by full text and meaning together (`mode` `hybrid`); a question that hybrid cannot take (filters, exclusions) is searched by meaning only (`mode` `semantic`). `id` restricts the search to one work, `limit` is 1 to 20 (default 5). Needs the embeddings for meaning (the `note` says if they are missing or incomplete). Read-only; nothing is stored. | S |
 
 ### 6.8 Duplicate Detection
 
@@ -355,6 +356,7 @@ Further requirements for the CLI:
 |---|---|
 | `search_books` | Metadata/full-text search with the same query language as the CLI |
 | `semantic_search` | Semantic search at work or chunk level, with locations |
+| `find_passages` | The passages that fit a question, with text, work, location and citation in one call (read-only) |
 | `get_book` | Metadata, formats, tags, and table of contents of a work |
 | `read_passage` | Text excerpt at a location (page/CFI). Parameter `maxChars`: default 4,000, hard maximum 20,000 (configurable) |
 | `similar_books` | Similar works to a work |

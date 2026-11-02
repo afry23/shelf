@@ -47,6 +47,14 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("Compare the query with titles and subtitles only, not with descriptions, tags or the text; only with level 'work' (default false)")] bool titleOnly = false) =>
         Run(() => service.SemanticSearch(query, level, hybrid, limit, titleOnly));
 
+    [Description("The passages of the books that fit a question, best first, in one call: the text of each place, the work, the location, and for a work with a cite key the citation to paste, e.g. [@alander2021event, p. 2]. Use it to answer a question about the books and to cite the answer. Searches by words and by meaning together; for the meaning it needs the embeddings (shelf reindex --embeddings), and the note says if they are missing or incomplete. Nothing is changed.")]
+    public FindPassagesResult FindPassages(
+        [Description("The question or what the passages should be about, as a sentence or a few words, in any language the model knows")] string question,
+        [Description("Largest number of passages, 1 to 20 (default 5)")] int limit = LibraryService.DefaultPassages,
+        [Description("Look only in this work: its ID, or the start of it (default: all works)")] string? id = null,
+        [Description("Largest number of characters per passage (default 1500; the hard maximum is set with mcp.max_chars)")] int? maxChars = null) =>
+        Run(() => service.FindPassages(question, limit, id, maxChars));
+
     [Description("The works most like a given work, best first (without the work itself), by the meaning of title, description and tags. Needs the embeddings (shelf reindex --embeddings); the note says if they are missing or incomplete.")]
     public SimilarBooksResult SimilarBooks(
         [Description("The ID of a work, or the start of it")] string id,

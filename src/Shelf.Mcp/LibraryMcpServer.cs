@@ -15,13 +15,13 @@ namespace Shelf.Mcp;
 public static class LibraryMcpServer
 {
     private const string Instructions =
-        "Tools for an e-book library. Use search_books to find works and places in their text by words, semantic_search to find "
+        "Tools for an e-book library. Use find_passages to get the passages that answer a question, with their text and citation, search_books to find works and places in their text by words, semantic_search to find "
         + "them by meaning (also across languages), get_book for the details and table of contents of a work, and read_passage "
         + "to read the text at a location from any of them. Locations such as 'page=12' are given in the results; pass them on "
         + "unchanged. get_annotations gives the highlights and notes that a person made in a work, resurface_highlights a few of their highlights for a day. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. get_reading_list gives the works a person wants to read next. suggest_tags gives the tags of the most similar works. add_tags and remove_tags change the tags of a work, add_to_reading_list and remove_from_reading_list change the reading list, add_note adds a note and add_bookmark sets a bookmark; nothing else is changed, and no file is deleted or moved.";
 
     private const string ReadOnlyInstructions =
-        "Tools for an e-book library. This server is read-only. Use search_books to find works and places in their text by words, "
+        "Tools for an e-book library. This server is read-only. Use find_passages to get the passages that answer a question, with their text and citation, search_books to find works and places in their text by words, "
         + "semantic_search to find them by meaning (also across languages), get_book for the details and table of contents of a "
         + "work, and read_passage to read the text at a location from any of them. Locations such as 'page=12' are given in the "
         + "results; pass them on unchanged. get_annotations gives the highlights and notes that a person made in a work, resurface_highlights a few of their highlights for a day. export_citations gives BibTeX, CSL-JSON or RIS for works to cite cite_passage a quote with its citation get_references the references of a paper and the works that cite it, and get_stats what was read and when. get_reading_list gives the works a person wants to read next. suggest_tags gives the tags of the most similar works.";
@@ -93,6 +93,7 @@ public static class LibraryMcpServer
         collection.Add(McpServerTool.Create((Func<string, int, TagSuggestionsResult>)tools.SuggestTags, Read("suggest_tags", json)));
         collection.Add(McpServerTool.Create((Func<string, BookDetails>)tools.GetBook, Read("get_book", json)));
         collection.Add(McpServerTool.Create((Func<string, AnnotationList>)tools.GetAnnotations, Read("get_annotations", json)));
+        collection.Add(McpServerTool.Create((Func<string, int, string?, int?, FindPassagesResult>)tools.FindPassages, Read("find_passages", json)));
         collection.Add(McpServerTool.Create((Func<int?, string?, ResurfaceResult>)tools.ResurfaceHighlights, Read("resurface_highlights", json)));
         collection.Add(McpServerTool.Create((Func<string?, string, string?, CitationsExport>)tools.ExportCitations, Read("export_citations", json)));
         collection.Add(McpServerTool.Create((Func<StatsResult>)tools.GetStats, Read("get_stats", json)));
