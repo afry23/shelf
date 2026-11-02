@@ -3,6 +3,7 @@
   import { handleLinkClick, navigate, param, router } from './router.svelte';
   import { duplicateCount, refreshDuplicateCount, refreshVersion, version } from './stores.svelte';
   import Duplicates from './views/Duplicates.svelte';
+  import Highlights from './views/Highlights.svelte';
   import Library from './views/Library.svelte';
   import Reader from './views/Reader.svelte';
   import ReadingList from './views/ReadingList.svelte';
@@ -13,7 +14,7 @@
   import Tags from './views/Tags.svelte';
   import Work from './views/Work.svelte';
 
-  // The route is the path: /library, /search, /reading-list, /works/{id}, /tags, /review, /organize, /duplicates, /stats, /read/{fileId}. The root leads to the library.
+  // The route is the path: /library, /search, /reading-list, /works/{id}, /tags, /review, /organize, /duplicates, /stats, /highlights, /read/{fileId}. The root leads to the library.
   const route = $derived.by(() => {
     const path = router.path.replace(/\/+$/, '') || '/';
     const segments = path.split('/').filter(Boolean).map(decodeURIComponent);
@@ -35,6 +36,8 @@
         return { name: 'duplicates' } as const;
       case 'stats':
         return { name: 'stats' } as const;
+      case 'highlights':
+        return { name: 'highlights' } as const;
       case 'works':
         return segments[1] ? ({ name: 'work', id: segments[1] } as const) : ({ name: 'missing' } as const);
       case 'read':
@@ -94,6 +97,7 @@
   <nav aria-label="Main">
     <a href="/library" aria-current={here('library')}>Library</a>
     <a href="/reading-list" aria-current={here('reading-list')}>Reading list</a>
+    <a href="/highlights" aria-current={here('highlights')}>Highlights</a>
     <a href="/tags" aria-current={here('tags')}>Tags</a>
     <a href="/review" aria-current={here('review')}>Review</a>
     <a href="/organize" aria-current={here('organize')}>Organize</a>
@@ -121,6 +125,8 @@
     <Duplicates />
   {:else if route.name === 'stats'}
     <Stats />
+  {:else if route.name === 'highlights'}
+    <Highlights />
   {:else if route.name === 'work'}
     <Work id={route.id} />
   {:else if route.name === 'read'}

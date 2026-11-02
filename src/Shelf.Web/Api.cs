@@ -132,6 +132,25 @@ internal static class Api
             .WithName("ExportWork")
             .Produces(StatusCodes.Status200OK, contentType: "text/markdown");
 
+        api.MapGet("/annotations/export", (
+                [FromServices] LibraryHandle library,
+                HttpContext http,
+                [FromQuery] string? format,
+                [FromQuery] string? q) =>
+            NotesDownload(http, () => library.Service.ExportAllAnnotations(
+                q,
+                format ?? throw new LibraryException("format is required: markdown or readwise-csv"))))
+            .WithName("ExportAllAnnotations")
+            .Produces(StatusCodes.Status200OK);
+
+        api.MapGet("/annotations/resurface", (
+                [FromServices] LibraryHandle library,
+                [FromQuery] int? count,
+                [FromQuery] string? date) =>
+            Run(WebJsonContext.Default.ResurfaceResult, () => library.Service.ResurfaceHighlights(count, date)))
+            .WithName("ResurfaceHighlights")
+            .Produces<ResurfaceResult>(StatusCodes.Status200OK);
+
         api.MapGet("/citations", (
                 [FromServices] LibraryHandle library,
                 HttpContext http,
@@ -841,6 +860,31 @@ internal static class Api
         catch (IndexException e)
         {
             return new ProblemResult(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    // The notes of the whole library as one download: Markdown as one file with the works one after the other, or the Readwise CSV.
+    private static IResult NotesDownload(HttpContext http, Func<NotesBulkExport> call)
+    {
+        try
+        {
+            var export = call();
+            http.Response.Headers["X-Shelf-Works"] = export.Works.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            http.Response.Headers["X-Shelf-Skipped"] = export.Skipped.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (export.Format == "readwise-csv")
+            {
+                var file = export.Files[0];
+                return Results.File(Encoding.UTF8.GetBytes(file.Content), "text/csv; charset=utf-8", file.FileName);
+            }
+
+            return Results.File(
+                Encoding.UTF8.GetBytes(string.Join("\n", export.Files.Select(f => f.Content))),
+                "text/markdown; charset=utf-8",
+                "shelf-highlights.md");
+        }
+        catch (LibraryException e)
+        {
+            return Problem(e);
         }
     }
 

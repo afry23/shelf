@@ -397,6 +397,20 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature file exists for F-RDR-7, the complete BDD suite is green.
 
+### M17 – Notes Out and Back
+
+**Goal:** Highlights and notes leave the library in bulk, and old highlights come back.
+
+**Status:** implemented; feature files `NotesExportAll`, `NotesResurface`, `WebNotesExportAll`, `WebNotesResurface`, `McpResurface`, `UiHighlights`.
+
+| Area | Content | PRD |
+|---|---|---|
+| Bulk export | `shelf notes export --all`: Markdown files per work (Obsidian-ready) or one Readwise CSV; REST `/api/v1/annotations/export` | F-ANN-9 |
+| Resurface | `shelf notes resurface`, REST `/api/v1/annotations/resurface`, MCP `resurface_highlights`; deterministic per date | F-ANN-10 |
+| Web view | "Highlights" (`/highlights`): the highlights of the day and the two downloads | F-ANN-9, F-ANN-10 |
+
+**Exit criteria:** feature files exist for F-ANN-9 and F-ANN-10, the complete BDD suite is green, every new CLI command has `--json` output and a test.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

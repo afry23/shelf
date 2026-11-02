@@ -19,6 +19,12 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("Look only at titles and subtitles, not at authors, tags, descriptions or the text; the places in the text are then empty (default false)")] bool titleOnly = false) =>
         Run(() => service.SearchBooks(query, limit, titleOnly));
 
+    [Description("A few highlights that the person made in their books, for one day: the quote, the note, the work and the place. The same day gives the same highlights, so the tool is good for a daily reminder of what was read.")]
+    public ResurfaceResult ResurfaceHighlights(
+        [Description("How many highlights, 1 to 100 (default 3)")] int? count = null,
+        [Description("The day as yyyy-MM-dd (default: today, UTC)")] string? date = null) =>
+        Run(() => service.ResurfaceHighlights(count, date));
+
     [Description("Metadata, files, tags and table of contents of a work. Locations in the table of contents can be given to read_passage.")]
     public BookDetails GetBook([Description("The ID of a work, or the start of it (at least one character that names exactly one work)")] string id) =>
         Run(() => service.GetBook(id));

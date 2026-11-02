@@ -59,6 +59,7 @@ Feature: The MCP server over Streamable HTTP
       | read_passage         |
       | remove_from_reading_list |
       | remove_tags          |
+      | resurface_highlights |
       | search_books         |
       | semantic_search      |
       | similar_books        |
@@ -110,6 +111,7 @@ Feature: The MCP server over Streamable HTTP
       | list_tags            |
       | propose_organization |
       | read_passage         |
+      | resurface_highlights |
       | search_books         |
       | semantic_search      |
       | similar_books        |

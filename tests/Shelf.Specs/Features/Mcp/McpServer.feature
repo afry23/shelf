@@ -58,6 +58,7 @@ Feature: The MCP server
       | read_passage         |
       | remove_from_reading_list |
       | remove_tags          |
+      | resurface_highlights |
       | search_books         |
       | semantic_search      |
       | similar_books        |
@@ -92,6 +93,7 @@ Feature: The MCP server
     Examples:
       | tool                 |
       | search_books         |
+      | resurface_highlights |
       | semantic_search      |
       | similar_books        |
       | suggest_tags         |
@@ -171,4 +173,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_bookmark, add_note, add_tags, add_to_reading_list, cite_passage, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, get_reading_list, get_references, get_stats, list_tags, propose_organization, read_passage, remove_from_reading_list, remove_tags, search_books, semantic_search, similar_books, suggest_tags"
+    Then the tool names sorted are "add_bookmark, add_note, add_tags, add_to_reading_list, cite_passage, export_citations, find_duplicates, find_probable_duplicates, get_annotations, get_book, get_reading_list, get_references, get_stats, list_tags, propose_organization, read_passage, remove_from_reading_list, remove_tags, resurface_highlights, search_books, semantic_search, similar_books, suggest_tags"

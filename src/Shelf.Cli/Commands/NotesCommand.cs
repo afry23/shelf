@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Shelf.Core.Model;
+using Shelf.Core.Search;
 using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
@@ -10,12 +11,13 @@ internal static class NotesCommand
 {
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
-        var command = new Command("notes", "Highlights, notes and bookmarks of a work: list, add, bookmark, rm, export");
+        var command = new Command("notes", "Highlights, notes and bookmarks of a work: list, add, bookmark, rm, export, resurface");
         command.Subcommands.Add(List(json, stdout, stderr, environment));
         command.Subcommands.Add(Add(json, stdout, stderr, environment));
         command.Subcommands.Add(Bookmark(json, stdout, stderr, environment));
         command.Subcommands.Add(Remove(json, stdout, stderr, environment));
-        command.Subcommands.Add(Export(stdout, stderr, environment));
+        command.Subcommands.Add(Export(json, stdout, stderr, environment));
+        command.Subcommands.Add(Resurface(json, stdout, stderr, environment));
         command.Subcommands.Add(Files(json, stdout, stderr, environment));
         return command;
     }
@@ -265,19 +267,58 @@ internal static class NotesCommand
         return command;
     }
 
-    private static Command Export(TextWriter stdout, TextWriter stderr, CliEnvironment environment)
+    private static Command Export(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
-        var work = WorkSupport.Argument();
-        var output = new Option<string?>("--out") { Description = "Write <cite key>.md into this folder instead of standard output" };
+        var work = new Argument<string?>("work")
+        {
+            Description = "ID of the work, or the start of it (not with --all)",
+            Arity = ArgumentArity.ZeroOrOne,
+        };
+        var all = new Option<bool>("--all") { Description = "Export all works that have highlights or notes, not one work" };
+        var query = new Option<string?>("--query") { Description = "With --all: only the works that match, with the same words and filters as search" };
+        var format = new Option<string>("--format")
+        {
+            Description = "With --all: markdown (one <cite key>.md per work) or readwise-csv (one CSV for the Readwise import)",
+            DefaultValueFactory = _ => "markdown",
+        };
+        var output = new Option<string?>("--out") { Description = "Write the files into this folder (with --all and markdown), the CSV to this file (readwise-csv), or <cite key>.md into this folder instead of standard output" };
         var library = LibraryContext.CreateOption();
-        var command = new Command("export", "Write the metadata, highlights and notes of a work as Markdown");
+        var command = new Command("export", "Write the metadata, highlights and notes of a work as Markdown, or of all works (--all)");
         command.Arguments.Add(work);
+        command.Options.Add(all);
+        command.Options.Add(query);
+        command.Options.Add(format);
         command.Options.Add(output);
         command.Options.Add(library);
         command.SetAction(parseResult =>
         {
+            var reference = parseResult.GetValue(work);
+            var everything = parseResult.GetValue(all);
+            if (everything && reference is not null)
+            {
+                stderr.WriteLine("error: give either a work or --all, not both");
+                return ExitCodes.Error;
+            }
+
+            if (!everything && reference is null)
+            {
+                stderr.WriteLine("error: give a work, or --all for all works");
+                return ExitCodes.Error;
+            }
+
+            if (!everything && parseResult.GetValue(query) is not null)
+            {
+                stderr.WriteLine("error: --query needs --all");
+                return ExitCodes.Error;
+            }
+
+            if (everything)
+            {
+                return ExportAll(parseResult.GetValue(json), stdout, stderr, environment, parseResult.GetValue(library), parseResult.GetValue(query), parseResult.GetValue(format)!, parseResult.GetValue(output));
+            }
+
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
-            var found = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(work));
+            var found = WorkSupport.Resolve(context, environment, reference!);
             var sidecar = LibraryEditor.Read(context.Root, found);
             string name;
             string text;
@@ -299,11 +340,197 @@ internal static class NotesCommand
             }
 
             var path = Path.Combine(Path.GetFullPath(folder, environment.WorkingDirectory), name);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var temporary = path + ".tmp";
-            File.WriteAllText(temporary, text, new System.Text.UTF8Encoding(false));
-            File.Move(temporary, path, overwrite: true);
+            WriteAtomically(path, text);
             stdout.WriteLine($"Wrote {path}");
+            return ExitCodes.Success;
+        });
+        return command;
+    }
+
+    private static int ExportAll(bool json, TextWriter stdout, TextWriter stderr, CliEnvironment environment, string? libraryOption, string? queryText, string format, string? output)
+    {
+        var markdown = string.Equals(format, "markdown", StringComparison.OrdinalIgnoreCase);
+        var csv = string.Equals(format, "readwise-csv", StringComparison.OrdinalIgnoreCase);
+        if (!markdown && !csv)
+        {
+            stderr.WriteLine($"error: unknown format '{format}'; use markdown or readwise-csv");
+            return ExitCodes.Error;
+        }
+
+        if (markdown && output is null)
+        {
+            stderr.WriteLine("error: --out <folder> is needed to export the notes of all works as Markdown (one file per work)");
+            return ExitCodes.Error;
+        }
+
+        SearchQuery? query = null;
+        if (!string.IsNullOrWhiteSpace(queryText))
+        {
+            try
+            {
+                query = QueryParser.Parse(queryText);
+            }
+            catch (QueryException e)
+            {
+                stderr.WriteLine($"error: {e.Message}");
+                return ExitCodes.Error;
+            }
+        }
+
+        var context = LibraryContext.Open(libraryOption, environment, stderr);
+        var works = LibraryNotes.Collect(context.Root, query);
+        var written = new List<string>();
+        var skipped = new List<string>();
+        if (csv)
+        {
+            var text = ReadwiseCsv.Render(works.Select(w => (w.Sidecar, w.Annotations)));
+            if (output is null)
+            {
+                stdout.Write(text);
+                return ExitCodes.Success;
+            }
+
+            var file = Path.GetFullPath(output, environment.WorkingDirectory);
+            WriteAtomically(file, text);
+            written.Add(file);
+        }
+        else
+        {
+            var folder = Path.GetFullPath(output!, environment.WorkingDirectory);
+            foreach (var w in works)
+            {
+                if (string.IsNullOrWhiteSpace(w.Sidecar.CiteKey))
+                {
+                    skipped.Add(w.Sidecar.Title);
+                    continue;
+                }
+
+                var file = Path.Combine(folder, WorkExport.FileName(w.Sidecar));
+                WriteAtomically(file, WorkExport.Render(w.Sidecar, w.Annotations));
+                written.Add(file);
+            }
+        }
+
+        if (json)
+        {
+            stdout.WriteLine(JsonOutput.Write(writer =>
+            {
+                writer.WriteStartObject();
+                JsonOutput.Property(writer, "format", csv ? "readwise-csv" : "markdown");
+                writer.WriteNumber("works", csv ? works.Count : written.Count);
+                WorkSupport.WriteStrings(writer, "files", written);
+                WorkSupport.WriteStrings(writer, "skipped", skipped);
+                writer.WriteEndObject();
+            }));
+            return ExitCodes.Success;
+        }
+
+        stdout.WriteLine(csv
+            ? $"Wrote {written[0]}"
+            : $"Exported {TextFormat.Plural(written.Count, "work", "works")} to {Path.GetFullPath(output!, environment.WorkingDirectory)}");
+        foreach (var title in skipped)
+        {
+            stdout.WriteLine($"Skipped '{title}': it has no cite key");
+        }
+
+        return ExitCodes.Success;
+    }
+
+    private static void WriteAtomically(string path, string text)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + ".tmp";
+        File.WriteAllText(temporary, text, new System.Text.UTF8Encoding(false));
+        File.Move(temporary, path, overwrite: true);
+    }
+
+    private static Command Resurface(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
+    {
+        var count = new Option<int>("--count")
+        {
+            Description = $"How many highlights, 1 to {Core.Model.Resurface.MaxCount}",
+            DefaultValueFactory = _ => Core.Model.Resurface.DefaultCount,
+        };
+        var date = new Option<string?>("--date") { Description = "The day as yyyy-MM-dd (default: today, UTC); the same day gives the same highlights" };
+        var library = LibraryContext.CreateOption();
+        var command = new Command("resurface", "Show a few highlights of the library for a day");
+        command.Options.Add(count);
+        command.Options.Add(date);
+        command.Options.Add(library);
+        command.SetAction(parseResult =>
+        {
+            var number = parseResult.GetValue(count);
+            if (number is < 1 or > Core.Model.Resurface.MaxCount)
+            {
+                stderr.WriteLine($"error: --count must be between 1 and {Core.Model.Resurface.MaxCount}");
+                return ExitCodes.Error;
+            }
+
+            var day = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (parseResult.GetValue(date) is { } text && !Core.Model.Resurface.TryParseDate(text, out day))
+            {
+                stderr.WriteLine($"error: --date must be a date as yyyy-MM-dd, not '{text}'");
+                return ExitCodes.Error;
+            }
+
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
+            var picked = LibraryNotes.Resurface(context.Root, day, number);
+            var dayText = day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            if (parseResult.GetValue(json))
+            {
+                stdout.WriteLine(JsonOutput.Write(writer =>
+                {
+                    writer.WriteStartObject();
+                    JsonOutput.Property(writer, "date", dayText);
+                    writer.WriteStartArray("highlights");
+                    foreach (var (work, a) in picked)
+                    {
+                        writer.WriteStartObject();
+                        JsonOutput.Property(writer, "id", a.Id.ToString());
+                        JsonOutput.Property(writer, "work", work.Work.Id.ToString());
+                        JsonOutput.Property(writer, "title", work.Sidecar.Title);
+                        WorkSupport.WriteStrings(writer, "authors", work.Sidecar.Authors);
+                        JsonOutput.Property(writer, "file", a.File);
+                        JsonOutput.Property(writer, "locator", a.Locator);
+                        JsonOutput.Property(writer, "quote", a.Quote!.Exact);
+                        JsonOutput.Property(writer, "color", a.Color);
+                        JsonOutput.Property(writer, "note", a.Note);
+                        JsonOutput.Property(writer, "createdAt", WorkSupport.Time(a.CreatedAt));
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
+                    writer.WriteEndObject();
+                }));
+                return ExitCodes.Success;
+            }
+
+            if (picked.Count == 0)
+            {
+                stdout.WriteLine("No highlights yet: select text in the reader to make one");
+                return ExitCodes.Success;
+            }
+
+            foreach (var (work, a) in picked)
+            {
+                var place = a.Locator is null ? string.Empty : $", {Locators.Describe(a.Locator)}";
+                stdout.WriteLine($"{work.Sidecar.Title}{place}");
+                foreach (var line in a.Quote!.Exact.ReplaceLineEndings("\n").Split('\n'))
+                {
+                    stdout.WriteLine($"  > {line}");
+                }
+
+                if (a.Note is { Length: > 0 } note)
+                {
+                    foreach (var line in note.ReplaceLineEndings("\n").Split('\n'))
+                    {
+                        stdout.WriteLine($"  {line}");
+                    }
+                }
+
+                stdout.WriteLine();
+            }
+
             return ExitCodes.Success;
         });
         return command;

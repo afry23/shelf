@@ -12,6 +12,7 @@ namespace Shelf.Specs.Steps;
 public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps workspace)
 {
     private readonly StringWriter _stdout = new();
+    private readonly Dictionary<string, string> _notedOutputs = [];
     private readonly StringWriter _stderr = new();
     private bool _stdoutIsTerminal;
     private string _standardInput = string.Empty;
@@ -42,7 +43,7 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
     public void GivenIHaveRunShelfWithArguments(string arguments)
     {
         WhenIRunShelfWithArguments(arguments);
-        Assert.Equal(0, _exitCode);
+        Assert.True(_exitCode == 0, $"'shelf {arguments}' ended with exit code {_exitCode}: {_stderr}");
         _stdout.GetStringBuilder().Clear();
         _stderr.GetStringBuilder().Clear();
         _exitCode = -1;
@@ -160,6 +161,13 @@ public sealed class CliSteps(ScenarioEnvironment environment, ConfigSteps worksp
 
     [Then("standard output is {string}")]
     public void ThenStandardOutputIs(string expected) => Assert.Equal(expected, _stdout.ToString().TrimEnd('\r', '\n'));
+
+    [When("I note the standard output as {string}")]
+    [Then("I note the standard output as {string}")]
+    public void NoteStandardOutput(string name) => _notedOutputs[name] = _stdout.ToString();
+
+    [Then("the standard output is the noted {string}")]
+    public void ThenStandardOutputIsTheNoted(string name) => Assert.Equal(_notedOutputs[name], _stdout.ToString());
 
     [Then("standard output is empty")]
     public void ThenStandardOutputIsEmpty() => Assert.Equal(string.Empty, _stdout.ToString());
