@@ -36,13 +36,14 @@ internal static class ExportCommand
                 return ExitCodes.Usage;
             }
 
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             SearchQuery? query = null;
             var text = string.Join(' ', parseResult.GetValue(words) ?? []);
             if (text.Length > 0)
             {
                 try
                 {
-                    query = QueryParser.Parse(text);
+                    query = LibraryQueries.Parse(context.Root, text);
                 }
                 catch (QueryException e)
                 {
@@ -51,7 +52,6 @@ internal static class ExportCommand
                 }
             }
 
-            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var export = LibraryCitations.Export(context.Root, citationFormat, query);
             foreach (var title in export.Skipped)
             {

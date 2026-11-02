@@ -421,6 +421,26 @@ export interface ReadingList {
 /** The works on the reading list, the one put on first at the top. */
 export const readingList = () => request<ReadingList>('GET', '/reading-list');
 
+export interface SavedSearch {
+  name: string;
+  query: string;
+}
+
+/** The searches the person saved (F-SRC-8). */
+export const savedSearches = () => request<{ searches: SavedSearch[] }>('GET', '/saved-searches');
+
+/** Saves a search under a name; a search with this name is replaced. */
+export const saveSearch = (name: string, query: string) =>
+  request<SavedSearch>('PUT', `/saved-searches/${encodeURIComponent(name)}`, { query });
+
+export const removeSavedSearch = async (name: string): Promise<void> => {
+  const response = await fetch(`/api/v1/saved-searches/${encodeURIComponent(name)}`, { method: 'DELETE', credentials: 'same-origin' });
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as Problem | null;
+    throw new ApiError(problem?.detail ?? problem?.title ?? `HTTP ${response.status}`, response.status);
+  }
+};
+
 /** A highlight that comes back (F-ANN-10): the quote and the note, the work and the place in the file. */
 export interface ResurfacedHighlight {
   id: string;

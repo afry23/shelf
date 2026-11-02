@@ -136,6 +136,12 @@ public sealed record MarkdownExport(string FileName, string Content);
 /// </summary>
 public sealed record CitationsExport(string Format, string Content, int Works, string[] Skipped, string FileName);
 
+/// <summary>A saved search (F-SRC-8): its name and its query.</summary>
+public sealed record SavedSearchItem(string Name, string Query);
+
+/// <summary>The saved searches of the library, in the order they were saved.</summary>
+public sealed record SavedSearchList(SavedSearchItem[] Searches);
+
 /// <summary>One file of a bulk export of highlights and notes (F-ANN-9).</summary>
 public sealed record NotesExportFile(string FileName, string Content);
 

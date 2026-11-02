@@ -89,6 +89,9 @@ public sealed record TagSuggestionsResponse(
 /// <summary>The body of <c>POST /files/{id}/quote</c>: the passage and, optionally, its place in the file. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record QuoteRequest(JsonNode? Quote, JsonNode? Locator);
 
+/// <summary>The body of <c>PUT /saved-searches/{name}</c>: the query. Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record SaveSearchRequest(JsonNode? Query);
+
 /// <summary>The body of <c>PUT /works/{id}/tags</c>. Any JSON is read so that a wrong type is answered with a reason, not a bare 400.</summary>
 public sealed record TagsRequest(JsonNode? Tags);
 

@@ -211,6 +211,10 @@ Acceptance check (criterion 1, `Features/Grouping/Calibration.feature`): generat
 | F-SRC-5 | Content hits with snippet and location: page (PDF) or chapter + CFI (EPUB). | M |
 | F-SRC-6 | Language-dependent stemming for German and English. | S |
 | F-SRC-7 | Title scope: `--title-only` searches only title and subtitle (words, phrases, prefixes, stemming; filters still apply). | S |
+| F-SRC-8 | **Saved searches:** a search can be kept under a name. `shelf searches add <name> <query…> [--replace]`, `shelf searches list [--json]`, `shelf searches rm <name>`. A name has letters, digits, `_`, `.` and `-` (at most 40, not case sensitive). The query is checked when it is saved; a saved search cannot use another one. They are stored in `.shelf/searches.json` (schema 1, source of truth like `review.json`; atomic writes; a reindex does not lose them). | S |
+| F-SRC-9 | A word `@name` in a query (outside quotation marks) stands for the saved query, together with the other words and filters of the query: `shelf search @ddd year:>=2020`. It works wherever a query is accepted: `shelf search`, `export`, `tag --query`, `notes export --query`, the library list over REST, `search_books`. A name that is not saved is an error. | S |
+| F-SRC-10 | REST: `GET /api/v1/saved-searches`, `PUT /api/v1/saved-searches/{name}` with `{ "query": … }` (saves or replaces), `DELETE /api/v1/saved-searches/{name}`. The sidebar of the library view lists the saved searches as links to the library with their query, offers to remove one and, while filters are set, to save them under a name. | S |
+| F-SRC-11 | MCP: the read-only tool `list_saved_searches`; `search_books` takes `@name`. | S |
 
 ### 6.7 Semantic Search
 

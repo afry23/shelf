@@ -363,12 +363,13 @@ internal static class NotesCommand
             return ExitCodes.Error;
         }
 
+        var context = LibraryContext.Open(libraryOption, environment, stderr);
         SearchQuery? query = null;
         if (!string.IsNullOrWhiteSpace(queryText))
         {
             try
             {
-                query = QueryParser.Parse(queryText);
+                query = LibraryQueries.Parse(context.Root, queryText);
             }
             catch (QueryException e)
             {
@@ -377,7 +378,6 @@ internal static class NotesCommand
             }
         }
 
-        var context = LibraryContext.Open(libraryOption, environment, stderr);
         var works = LibraryNotes.Collect(context.Root, query);
         var written = new List<string>();
         var skipped = new List<string>();

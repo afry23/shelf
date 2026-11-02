@@ -12,7 +12,7 @@ namespace Shelf.Mcp;
 /// </summary>
 internal sealed class LibraryTools(LibraryService service)
 {
-    [Description("Search titles, authors, tags and the text of the books with the shelf query language: words, \"phrases\", prefix*, -excluded, and author: title: tag: publisher: lang: year: format: status: type: series: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
+    [Description("Search titles, authors, tags and the text of the books with the shelf query language (a saved search can be used as @name): words, \"phrases\", prefix*, -excluded, and author: title: tag: publisher: lang: year: format: status: type: series: filters. Returns works, best first, with places in the text (location) that read_passage accepts.")]
     public SearchBooksResult SearchBooks(
         [Description("The query, e.g. 'event sourcing tag:architektur year:>=2015'")] string query,
         [Description("Largest number of works, 1 to 100 (default 20)")] int limit = LibrarySearch.DefaultLimit,
@@ -24,6 +24,9 @@ internal sealed class LibraryTools(LibraryService service)
         [Description("How many highlights, 1 to 100 (default 3)")] int? count = null,
         [Description("The day as yyyy-MM-dd (default: today, UTC)")] string? date = null) =>
         Run(() => service.ResurfaceHighlights(count, date));
+
+    [Description("The searches that the person saved, each with its name and its query. A name written as @name in the query of search_books (and of other searches) stands for the saved query, e.g. '@ddd year:>=2020'.")]
+    public SavedSearchList ListSavedSearches() => Run(() => service.ListSavedSearches());
 
     [Description("Metadata, files, tags and table of contents of a work. Locations in the table of contents can be given to read_passage.")]
     public BookDetails GetBook([Description("The ID of a work, or the start of it (at least one character that names exactly one work)")] string id) =>

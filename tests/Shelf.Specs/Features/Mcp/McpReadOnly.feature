@@ -54,6 +54,7 @@ Feature: A read-only MCP server
       | get_reading_list     |
       | get_references       |
       | get_stats            |
+      | list_saved_searches  |
       | list_tags            |
       | propose_organization |
       | read_passage         |
