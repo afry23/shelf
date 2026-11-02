@@ -20,6 +20,7 @@ namespace Shelf.Mcp;
 [JsonSerializable(typeof(StatsResult))]
 [JsonSerializable(typeof(CitationsExport))]
 [JsonSerializable(typeof(AnnotationList))]
+[JsonSerializable(typeof(FindPassagesResult))]
 [JsonSerializable(typeof(ResurfaceResult))]
 [JsonSerializable(typeof(AnnotationView))]
 [JsonSerializable(typeof(TagChange))]

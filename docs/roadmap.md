@@ -411,6 +411,18 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-ANN-9 and F-ANN-10, the complete BDD suite is green, every new CLI command has `--json` output and a test.
 
+### M18 – Passages for Questions
+
+**Goal:** An assistant gets the passages that answer a question, with text and citation, in one MCP call.
+
+**Status:** implemented; feature file `McpFindPassages.feature`.
+
+| Area | Content | PRD |
+|---|---|---|
+| MCP | `find_passages`: hybrid chunk search, text of each place, cite key and citation | F-SEM-11 |
+
+**Exit criteria:** feature file exists for F-SEM-11, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

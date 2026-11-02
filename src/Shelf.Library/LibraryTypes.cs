@@ -251,6 +251,29 @@ public sealed record SemanticSearchResult(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
     SemanticItem[] Results);
 
+/// <summary>A passage that fits a question (F-SEM-11): its text, its work, its place and, with a cite key, the citation.</summary>
+public sealed record FoundPassage(
+    string WorkId,
+    string Title,
+    string[] Authors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? CiteKey,
+    string File,
+    string Location,
+    string Where,
+    string Text,
+    bool Truncated,
+    double Score,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Citation);
+
+/// <summary>The passages for a question, best first. <paramref name="Mode"/> is <c>hybrid</c> or <c>semantic</c>.</summary>
+public sealed record FindPassagesResult(
+    string Query,
+    string Mode,
+    int Total,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note,
+    FoundPassage[] Passages);
+
 /// <summary>The works most like the work <paramref name="Id"/> (F-SEM-6), best first, without the work itself.</summary>
 public sealed record SimilarBooksResult(
     string Id,

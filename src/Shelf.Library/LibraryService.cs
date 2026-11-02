@@ -250,6 +250,78 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
                 h.Passage is { } p ? new PassageRef(p.File, p.Format, p.Locator, p.Where, p.Snippet) : null))]);
     }
 
+    public const int MaxPassages = 20;
+    public const int DefaultPassages = 5;
+    public const int DefaultPassageChars = 1_500;
+
+    /// <summary>
+    /// The passages that fit a question, with their text, their work, their place and, if the work has a cite key, the citation (F-SEM-11).
+    /// Searched by full text and meaning together; a question that hybrid cannot take is searched by meaning only. Nothing is written.
+    /// </summary>
+    /// <param name="limit">1 to <see cref="MaxPassages"/>.</param>
+    /// <param name="id">Only this work (an ID or the start of it).</param>
+    /// <param name="maxChars">Largest number of characters per passage.</param>
+    /// <exception cref="LibraryException">Invalid: the question is empty or a number is out of range. NotFound: no such work.</exception>
+    public FindPassagesResult FindPassages(string question, int limit = DefaultPassages, string? id = null, int? maxChars = null)
+    {
+        if (limit is < 1 or > MaxPassages)
+        {
+            throw new LibraryException($"limit must be between 1 and {MaxPassages}.");
+        }
+
+        var hardMax = settings.Mcp.MaxChars;
+        var wanted = maxChars ?? Math.Min(DefaultPassageChars, hardMax);
+        if (wanted < 1 || wanted > hardMax)
+        {
+            throw new LibraryException($"maxChars must be between 1 and {hardMax.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        var only = id is null ? (Ulid?)null : Find(id).Id;
+        var fetch = only is null ? limit : MaxLimit;
+        SemanticSearchResult found;
+        try
+        {
+            found = SemanticSearch(question, "chunk", hybrid: true, fetch);
+        }
+        catch (LibraryException)
+        {
+            found = SemanticSearch(question, "chunk", hybrid: false, fetch);
+        }
+
+        var hits = found.Results
+            .Where(h => h.Passage is not null && (only is null || h.Id == only.ToString()))
+            .Take(limit)
+            .ToList();
+        var cache = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var passages = new List<FoundPassage>();
+        foreach (var hit in hits)
+        {
+            var place = hit.Passage!;
+            var text = ReadPassage(hit.Id, place.Location, wanted, 0, System.IO.Path.GetFileName(place.File));
+            if (!cache.TryGetValue(hit.Id, out var citeKey))
+            {
+                citeKey = ReadSidecar(Find(hit.Id)).CiteKey;
+                cache[hit.Id] = citeKey;
+            }
+
+            passages.Add(new FoundPassage(
+                hit.Id,
+                hit.Title,
+                hit.Authors,
+                hit.Year,
+                string.IsNullOrWhiteSpace(citeKey) ? null : citeKey,
+                place.File,
+                place.Location,
+                place.Where,
+                text.Text,
+                text.Truncated,
+                hit.Score,
+                string.IsNullOrWhiteSpace(citeKey) ? null : QuoteFormat.Citation(citeKey, place.Location)));
+        }
+
+        return new FindPassagesResult(found.Query, found.Mode, passages.Count, found.Note, [.. passages]);
+    }
+
     /// <summary>The tags that the works most like a work carry and the work does not, best first (F-TAG-6). Nothing is changed.</summary>
     /// <exception cref="LibraryException">Invalid: the limit is out of range. NotFound: no such work.</exception>
     public TagSuggestionsResult SuggestTags(string id, int limit = 10)

@@ -48,6 +48,7 @@ Feature: A read-only MCP server
       | export_citations     |
       | find_duplicates      |
       | find_probable_duplicates |
+      | find_passages        |
       | get_annotations      |
       | get_book             |
       | get_reading_list     |
