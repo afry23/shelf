@@ -136,6 +136,18 @@ public sealed record MarkdownExport(string FileName, string Content);
 /// </summary>
 public sealed record CitationsExport(string Format, string Content, int Works, string[] Skipped, string FileName);
 
+/// <summary>One field that a bulk edit changes: the value before and after, null for none (F-BLK-3).</summary>
+public sealed record BulkEditField(
+    string Field,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? From,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? To);
+
+/// <summary>A work that a bulk edit changes.</summary>
+public sealed record BulkEditWork(string Id, string Title, BulkEditField[] Changes);
+
+/// <summary>What a bulk edit did (<paramref name="Applied"/>) or would do: the works found and the works that change.</summary>
+public sealed record BulkEditResult(bool Applied, int Matched, int Changed, BulkEditWork[] Works);
+
 /// <summary>A saved search (F-SRC-8): its name and its query.</summary>
 public sealed record SavedSearchItem(string Name, string Query);
 

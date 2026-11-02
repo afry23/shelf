@@ -1,18 +1,28 @@
 using System.CommandLine;
 using System.Globalization;
 using Shelf.Core.Model;
+using Shelf.Core.Search;
 using Shelf.Index;
 
 namespace Shelf.Cli.Commands;
 
-/// <summary><c>shelf edit &lt;work&gt; --title ...</c>: changes the metadata of a work in its sidecar.</summary>
+/// <summary>
+/// <c>shelf edit &lt;work&gt; --title ...</c>: changes the metadata of a work in its sidecar. With <c>--query</c> (repeatable, joined by OR)
+/// instead of a work, one change is shown for, and with <c>--apply</c> made to, all the works that are found (F-BLK-1, F-BLK-2).
+/// </summary>
 internal static class EditCommand
 {
     private static readonly string[] Statuses = ["unread", "reading", "read"];
 
     public static Command Create(Option<bool> json, TextWriter stdout, TextWriter stderr, CliEnvironment environment)
     {
-        var reference = WorkSupport.Argument();
+        var reference = new Argument<string?>("work")
+        {
+            Description = "ID of the work, or the start of it (not with --query)",
+            Arity = ArgumentArity.ZeroOrOne,
+        };
+        var queries = Many("--query", "Change all works that this search finds, as shelf search does (repeat for several: a work found by any of them is changed). Shows the change; --apply writes it");
+        var apply = new Option<bool>("--apply") { Description = "With --query: write the change (without it, the change is only shown)" };
         var title = Text("--title", "New title");
         var subtitle = Text("--subtitle", "Subtitle; \"\" removes it");
         var authors = Many("--author", "Author (repeat for several); replaces all authors");
@@ -36,7 +46,7 @@ internal static class EditCommand
 
         var command = new Command("edit", "Change the metadata of a work");
         command.Arguments.Add(reference);
-        foreach (var option in new Option[] { title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, citeKey, description, tags, addTags, removeTags, addRelated, removeRelated, rating, status, library })
+        foreach (var option in new Option[] { queries, apply, title, subtitle, authors, year, language, isbn, publisher, series, seriesIndex, edition, citeKey, description, tags, addTags, removeTags, addRelated, removeRelated, rating, status, library })
         {
             command.Options.Add(option);
         }
@@ -141,6 +151,31 @@ internal static class EditCommand
                 changed.Add("related");
             }
 
+            var searches = parseResult.GetValue(queries) ?? [];
+            var named = parseResult.GetValue(reference);
+            if (searches.Length > 0)
+            {
+                // One value for many works: what has to be unique per work cannot be set this way.
+                var refused = new (bool Given, string Option)[]
+                {
+                    (Given(title), "--title"), (Given(subtitle), "--subtitle"), (Given(isbn), "--isbn"), (Given(citeKey), "--cite-key"),
+                    (Given(description), "--description"), (Given(seriesIndex), "--series-index"), (Given(tags), "--tag (use --add-tag and --remove-tag)"),
+                    (relatedAdd.Length > 0, "--add-related"), (relatedRemove.Length > 0, "--remove-related"),
+                }.FirstOrDefault(r => r.Given);
+                if (refused.Given)
+                {
+                    problem ??= $"{refused.Option} cannot be used with --query: it would give many works the same value";
+                }
+                else if (named is not null)
+                {
+                    problem ??= "give either a work or --query, not both";
+                }
+            }
+            else if (named is null)
+            {
+                problem ??= "give a work or --query";
+            }
+
             if (problem is null && changed.Count == 0)
             {
                 problem = "nothing to change; give at least one option such as --title";
@@ -153,7 +188,12 @@ internal static class EditCommand
             }
 
             var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
-            var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
+            if (searches.Length > 0)
+            {
+                return Bulk(context, searches, changed, edits, parseResult.GetValue(apply), parseResult.GetValue(json), stdout, stderr);
+            }
+
+            var work = WorkSupport.Resolve(context, environment, named!);
             if (edits.Count > 0)
             {
                 LibraryEditor.Update(context.Root, work, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)));
@@ -187,6 +227,110 @@ internal static class EditCommand
             return ExitCodes.Success;
         });
         return command;
+    }
+
+    private static int Bulk(LibraryContext context, string[] texts, List<string> changed, List<Func<WorkSidecar, WorkSidecar>> edits, bool apply, bool json, TextWriter stdout, TextWriter stderr)
+    {
+        var searches = new List<SearchQuery>();
+        try
+        {
+            foreach (var text in texts)
+            {
+                var query = LibraryQueries.Parse(context.Root, text);
+                if (query.IsEmpty)
+                {
+                    stderr.WriteLine("error: the query has nothing to search for");
+                    return ExitCodes.Usage;
+                }
+
+                searches.Add(query);
+            }
+        }
+        catch (QueryException e)
+        {
+            stderr.WriteLine($"error: {e.Message}");
+            return ExitCodes.Usage;
+        }
+
+        var ids = LibraryBulkEdit.Select(context.Root, searches);
+        var fields = changed.Select(f => f == "status" ? "readStatus" : f).ToList();
+        BulkEditOutcome outcome;
+        try
+        {
+            outcome = ids.Count == 0
+                ? new BulkEditOutcome(0, [], Applied: false)
+                : LibraryBulkEdit.Run(context.Root, ids, fields, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)), apply, $"edit {ids.Count} works");
+        }
+        catch (Exception e) when (e is SidecarException or LibraryEditException)
+        {
+            stderr.WriteLine($"error: {e.Message}");
+            return ExitCodes.Error;
+        }
+
+        if (json)
+        {
+            stdout.WriteLine(JsonOutput.Write(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WriteBoolean("applied", outcome.Applied);
+                writer.WriteNumber("matched", outcome.Matched);
+                writer.WriteNumber("changed", outcome.Changes.Count);
+                writer.WriteStartArray("works");
+                foreach (var change in outcome.Changes)
+                {
+                    writer.WriteStartObject();
+                    JsonOutput.Property(writer, "id", change.Work.ToString());
+                    JsonOutput.Property(writer, "title", change.Title);
+                    writer.WriteStartArray("changes");
+                    foreach (var field in change.Fields)
+                    {
+                        writer.WriteStartObject();
+                        JsonOutput.Property(writer, "field", field.Field);
+                        if (field.From is null) { writer.WriteNull("from"); } else { writer.WriteString("from", field.From); }
+                        if (field.To is null) { writer.WriteNull("to"); } else { writer.WriteString("to", field.To); }
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }));
+            return ExitCodes.Success;
+        }
+
+        if (outcome.Matched == 0)
+        {
+            stdout.WriteLine("No works match.");
+            return ExitCodes.Success;
+        }
+
+        if (outcome.Changes.Count == 0)
+        {
+            stdout.WriteLine($"Nothing to change: the {TextFormat.Plural(outcome.Matched, "work", "works")} found already {(outcome.Matched == 1 ? "has" : "have")} these values.");
+            return ExitCodes.Success;
+        }
+
+        stdout.WriteLine(outcome.Applied
+            ? $"Changed {TextFormat.Plural(outcome.Changes.Count, "work", "works")} of {outcome.Matched} found. shelf undo takes the change back."
+            : $"{outcome.Changes.Count} of {TextFormat.Plural(outcome.Matched, "matching work", "matching works")} would change:");
+        foreach (var change in outcome.Changes)
+        {
+            stdout.WriteLine($"  {change.Work}  {change.Title}");
+            foreach (var field in change.Fields)
+            {
+                stdout.WriteLine($"      {field.Field}: {field.From ?? "(none)"} -> {field.To ?? "(none)"}");
+            }
+        }
+
+        if (!outcome.Applied)
+        {
+            stdout.WriteLine("Nothing is written. Run again with --apply to change them.");
+        }
+
+        return ExitCodes.Success;
     }
 
     private static Option<string?> Text(string name, string description) => new(name) { Description = description };

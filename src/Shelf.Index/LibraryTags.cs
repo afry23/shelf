@@ -147,7 +147,7 @@ public static class LibraryTags
         return new TagResult(selected.Count, replacements.Count);
     }
 
-    private static Dictionary<Ulid, string> Directories(string root)
+    internal static Dictionary<Ulid, string> Directories(string root)
     {
         using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
         using var command = connection.CreateCommand();
@@ -162,7 +162,7 @@ public static class LibraryTags
         return directories;
     }
 
-    private static string Normalize(string root)
+    internal static string Normalize(string root)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
         return Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
