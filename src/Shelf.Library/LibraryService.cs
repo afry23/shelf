@@ -926,6 +926,9 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         return result;
     }
 
+    /// <summary>The health check of the library (F-DOC-3). Nothing is written.</summary>
+    public DoctorReport Doctor() => LibraryDoctor.Run(root);
+
     // ---- saved searches (F-SRC-8) ----
 
     /// <summary>The saved searches of the library.</summary>

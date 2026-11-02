@@ -14,6 +14,7 @@ public sealed record StatusResponse(string Version, int Works, int Files, int Pa
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(ApiProblem))]
+[JsonSerializable(typeof(DoctorReport))]
 [JsonSerializable(typeof(BulkEditResult))]
 [JsonSerializable(typeof(BulkEditRequest))]
 [JsonSerializable(typeof(SavedSearchList))]

@@ -142,6 +142,11 @@ internal static class Api
             .WithName("BulkEditWorks")
             .Produces<BulkEditResult>(StatusCodes.Status200OK);
 
+        api.MapGet("/doctor", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.DoctorReport, () => library.Service.Doctor()))
+            .WithName("Doctor")
+            .Produces<DoctorReport>(StatusCodes.Status200OK);
+
         api.MapGet("/saved-searches", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.SavedSearchList, () => library.Service.ListSavedSearches()))
             .WithName("ListSavedSearches")
