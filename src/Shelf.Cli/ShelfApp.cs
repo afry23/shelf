@@ -83,6 +83,7 @@ public static class ShelfApp
         root.Subcommands.Add(ReadingListCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(NotesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(SearchesCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(DoctorCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(CiteCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(RefsCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(DupesCommand.Create(json, stdout, stderr, environment));

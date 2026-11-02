@@ -315,6 +315,14 @@ A **notes file** is a PDF or TXT file that belongs to a work but is not a book: 
 | F-BLK-2 | A bulk edit may set `--author`, `--year`, `--language`, `--publisher`, `--series`, `--edition`, `--rating`, `--status` (`""` removes an optional field) and add or remove tags with `--add-tag` and `--remove-tag`. What must be unique or personal per work is refused with `--query`: `--title`, `--subtitle`, `--isbn`, `--cite-key`, `--description`, `--series-index`, `--tag` (replace all) and the related-work options. Every new sidecar is checked first; one that is refused changes nothing. The change is one journal entry, so `shelf undo` takes back all of it. | S |
 | F-BLK-3 | REST `POST /api/v1/works/bulk-edit` with `{ "queries": [...], "set": { "language": "en" }, "addTags": [...], "removeTags": [...], "apply": false }` answers with the works found and the changes (`applied`, `matched`, `changed`, `works[].changes[]` with `field`, `from`, `to`); `apply` defaults to false. Same rules as F-BLK-2 (`set` uses the field names of `book.json`, e.g. `readStatus`). Not offered via MCP. | S |
 
+### 6.14 Health Check
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-DOC-1 | `shelf doctor [--strict] [--json]` checks the library and changes nothing. Each check ends `ok`, `note` (could be better), `warning` (needs attention) or `error` (data is broken) and names the first five works or files concerned and the command that fixes it. Exit code 1 if there is an error, with `--strict` also for a warning. | S |
+| F-DOC-2 | The checks: `index` (usable), `sidecars` (every `book.json` and `annotations.json` valid), `files` (every file named in a sidecar exists), `index-sync` (the works in the folders and in the index are the same), `metadata` (works without year or language), `covers`, `cite-keys` (papers), `text` (files that cannot be read, have no text layer or are not read yet), `review` (entries in the review queue), `duplicates` (identical files), `embeddings` (only if semantic search is set up), `searches` (saved searches that do not parse). Without a usable index the checks that need it say so and the others still run. | S |
+| F-DOC-3 | REST `GET /api/v1/doctor` answers with the same report as JSON (`works`, `errors`, `warnings`, `notes`, `checks[]` with `id`, `status`, `summary`, `count`, `examples[]`, `hint`). A problem of the library is part of the report, not an error of the request. Not offered via MCP. | S |
+
 ## 7. Interfaces
 
 ### 7.1 CLI
@@ -333,6 +341,7 @@ shelf model install [<folder>]            Install the embedding model (download,
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
 shelf edit --query <q> [--query <q>] ...  Change many works at once (dry run; --apply writes; F-BLK-1)
+shelf doctor [--strict]                   Health check of the library (F-DOC-1)
 shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
 shelf fetch <doi or arXiv ID>                 Load a paper (metadata + open-access PDF) as a new work
 shelf clip <url> | --html <file> [--url <address>]  Keep a web article as Markdown with its images as a new work (--html: a page saved in a browser)

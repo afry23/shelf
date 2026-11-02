@@ -452,6 +452,20 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-BLK-1 to F-BLK-3, the complete BDD suite is green.
 
+### M21 – Health Check
+
+**Goal:** One command shows what is broken or incomplete in the library and how to fix it.
+
+**Status:** implemented; feature files `Doctor`, `DoctorEmbeddings`, `WebDoctor`.
+
+| Area | Content | PRD |
+|---|---|---|
+| CLI | `shelf doctor [--strict] [--json]`, read-only | F-DOC-1, F-DOC-2 |
+| Checks | index, sidecars, files, index-sync, metadata, covers, cite-keys, text, review, duplicates, embeddings, searches | F-DOC-2 |
+| REST | `GET /api/v1/doctor` | F-DOC-3 |
+
+**Exit criteria:** feature files exist for F-DOC-1 to F-DOC-3, the complete BDD suite is green, the native binary passes `tests/e2e/native.sh`.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:
