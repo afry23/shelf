@@ -82,6 +82,7 @@ public static class ShelfApp
         root.Subcommands.Add(TagCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ReadingListCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(NotesCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(SearchesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(CiteCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(RefsCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(DupesCommand.Create(json, stdout, stderr, environment));
@@ -101,7 +102,8 @@ public static class ShelfApp
             return ExitCodes.Usage;
         });
 
-        var parseResult = root.Parse(args);
+        // A word that starts with @ is a saved search (F-SRC-9), not a response file.
+        var parseResult = root.Parse(args, new ParserConfiguration { ResponseFileTokenReplacer = null });
         ShelfAppLog.Parsed(logger, parseResult.Tokens.Count, parseResult.Errors.Count);
         if (parseResult.Errors.Count > 0)
         {

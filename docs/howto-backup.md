@@ -4,7 +4,7 @@
 
 ## What to back up
 
-Back up the whole library folder: books, sidecars (`book.json`, `annotations.json`), covers, `.shelf/config.toml`, `.shelf/review.json` and `.shelf/trash/`.
+Back up the whole library folder: books, sidecars (`book.json`, `annotations.json`), covers, `.shelf/config.toml`, `.shelf/review.json`, `.shelf/searches.json` and `.shelf/trash/`.
 
 Leave out:
 

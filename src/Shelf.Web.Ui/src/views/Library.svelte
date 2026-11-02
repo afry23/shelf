@@ -1,5 +1,17 @@
 <script lang="ts">
-  import { citationsUrl, clipArticle, createWork, fetchPaper, works, type FacetValue, type WorkList } from '../api';
+  import {
+    citationsUrl,
+    clipArticle,
+    createWork,
+    fetchPaper,
+    removeSavedSearch,
+    saveSearch,
+    savedSearches,
+    works,
+    type FacetValue,
+    type SavedSearch,
+    type WorkList,
+  } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural } from '../format';
@@ -53,6 +65,47 @@
   const fit = (size: number) => (pageSizes.includes(size) || size === configuredSize ? Math.max(columns, Math.min(Math.round(size / columns) * columns, Math.floor(maxPageSize / columns) * columns)) : size);
   const limit = $derived(fit(baseLimit));
   const sizeChoices = $derived(pageSizes.includes(baseLimit) ? pageSizes : [...pageSizes, baseLimit].sort((a, b) => a - b));
+
+  // Saved searches (F-SRC-8): the sidebar lists them as links to the library with their query; the filters of the view can be saved.
+  let saved = $state<SavedSearch[]>([]);
+  let searchName = $state('');
+  let savedError = $state<string | null>(null);
+
+  async function loadSaved(): Promise<void> {
+    try {
+      saved = (await savedSearches()).searches;
+    } catch (e) {
+      savedError = (e as Error).message;
+    }
+  }
+
+  $effect(() => {
+    void loadSaved();
+  });
+
+  async function saveCurrent(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    try {
+      await saveSearch(searchName.trim(), q);
+      searchName = '';
+      savedError = null;
+      await loadSaved();
+    } catch (e) {
+      savedError = (e as Error).message;
+    }
+  }
+
+  async function removeSaved(name: string): Promise<void> {
+    try {
+      await removeSavedSearch(name);
+      savedError = null;
+      await loadSaved();
+    } catch (e) {
+      savedError = (e as Error).message;
+    }
+  }
+
+  const savedLink = (query: string) => `/library?${new URLSearchParams({ q: query }).toString()}`;
 
   let list = $state<WorkList | null>(null);
   let error = $state<string | null>(null);
@@ -274,6 +327,28 @@
 
   <div class="layout">
     <aside id="filters" class="filters" class:open={filtersOpen} aria-label="Filters">
+      {#if saved.length || q}
+        <section class="saved">
+          <h3>Saved searches</h3>
+          {#if savedError}<p role="alert">{savedError}</p>{/if}
+          {#if saved.length}
+            <ul>
+              {#each saved as item (item.name)}
+                <li>
+                  <a href={savedLink(item.query)} title={item.query}>{item.name}</a>
+                  <button type="button" class="remove" aria-label={`Remove saved search ${item.name}`} onclick={() => removeSaved(item.name)}>×</button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if q}
+            <form onsubmit={saveCurrent}>
+              <input type="text" aria-label="Name of the search" placeholder="Name of the search" bind:value={searchName} />
+              <button type="submit">Save search</button>
+            </form>
+          {/if}
+        </section>
+      {/if}
       {#if list}
         {#each facetGroups as group (group.key)}
           {@const values = list.facets[group.key]}
@@ -773,5 +848,25 @@
     .filters li button {
       padding-inline: 0.6rem;
     }
+  }
+
+  .saved li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .saved .remove {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .saved form {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
   }
 </style>

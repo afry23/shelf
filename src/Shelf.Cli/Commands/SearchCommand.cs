@@ -37,10 +37,11 @@ internal static class SearchCommand
         command.SetAction(parseResult =>
         {
             var text = string.Join(' ', parseResult.GetRequiredValue(words));
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             SearchQuery query;
             try
             {
-                query = QueryParser.Parse(text);
+                query = LibraryQueries.Parse(context.Root, text);
             }
             catch (QueryException e)
             {
@@ -54,7 +55,6 @@ internal static class SearchCommand
                 return ExitCodes.Usage;
             }
 
-            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(context.Root));
             var hits = LibrarySearch.Search(connection, query, parseResult.GetValue(limit), titleOnly: parseResult.GetValue(titleOnly));
             var fuzzy = false;

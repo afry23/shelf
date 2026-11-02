@@ -423,6 +423,21 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature file exists for F-SEM-11, the complete BDD suite is green.
 
+### M19 – Saved Searches
+
+**Goal:** A search keeps a name, and the name works in every query.
+
+**Status:** implemented; feature files `SavedSearches`, `SavedSearchesUse`, `WebSavedSearches`, `McpSavedSearches`, `UiSavedSearches`.
+
+| Area | Content | PRD |
+|---|---|---|
+| Storage, CLI | `.shelf/searches.json`, `shelf searches add/list/rm` | F-SRC-8 |
+| Use | `@name` in queries (CLI, REST, MCP); response-file expansion of `@` switched off | F-SRC-9 |
+| Web | REST `/api/v1/saved-searches`, sidebar of the library view | F-SRC-10 |
+| MCP | `list_saved_searches`, `search_books` with `@name` | F-SRC-11 |
+
+**Exit criteria:** feature files exist for F-SRC-8 to F-SRC-11, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

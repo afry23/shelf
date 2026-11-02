@@ -147,12 +147,13 @@ internal static class TagCommand
                 return ExitCodes.Usage;
             }
 
+            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             SearchQuery? search = null;
             if (text is not null)
             {
                 try
                 {
-                    search = QueryParser.Parse(text);
+                    search = LibraryQueries.Parse(context.Root, text);
                 }
                 catch (QueryException e)
                 {
@@ -167,7 +168,6 @@ internal static class TagCommand
                 }
             }
 
-            var context = LibraryContext.Open(parseResult.GetValue(library), environment, stderr);
             var ids = references.Select(r => WorkSupport.Resolve(context, environment, r).Id).ToList();
             if (search is not null)
             {

@@ -75,7 +75,7 @@ Feature: Shell completion
       | shelf ta            | tag                                                                 |
       | shelf tag           | tag                                                                 |
       | shelf tag a         | add                                                                 |
-      | shelf se            | search semantic serve                                               |
+      | shelf se            | search searches semantic serve                                            |
       | shelf serve --b     | --bind                                                              |
       | shelf serve --      | --bind --help --json --library --port --token                       |
       | shelf mcp --h       | --help --http                                                       |

@@ -55,6 +55,7 @@ Feature: The MCP server over Streamable HTTP
       | get_reading_list     |
       | get_references       |
       | get_stats            |
+      | list_saved_searches  |
       | list_tags            |
       | propose_organization |
       | read_passage         |
@@ -110,6 +111,7 @@ Feature: The MCP server over Streamable HTTP
       | get_reading_list     |
       | get_references       |
       | get_stats            |
+      | list_saved_searches  |
       | list_tags            |
       | propose_organization |
       | read_passage         |

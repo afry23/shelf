@@ -42,7 +42,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         SearchQuery parsed;
         try
         {
-            parsed = QueryParser.Parse(query);
+            parsed = LibraryQueries.Parse(root, query);
         }
         catch (QueryException e)
         {
@@ -555,7 +555,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         SearchQuery parsed;
         try
         {
-            parsed = QueryParser.Parse(query ?? string.Empty);
+            parsed = LibraryQueries.Parse(root, query ?? string.Empty);
         }
         catch (QueryException e)
         {
@@ -832,6 +832,61 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    // ---- saved searches (F-SRC-8) ----
+
+    /// <summary>The saved searches of the library.</summary>
+    /// <exception cref="LibraryException">Invalid: <c>.shelf/searches.json</c> cannot be read.</exception>
+    public SavedSearchList ListSavedSearches() => new([.. LoadSavedSearches().Items.Select(s => new SavedSearchItem(s.Name, s.Query))]);
+
+    /// <summary>Saves a search under a name; a search with this name is replaced.</summary>
+    /// <exception cref="LibraryException">Invalid: the name or the query cannot be kept.</exception>
+    public SavedSearchItem SaveSearch(string name, string query)
+    {
+        var set = LoadSavedSearches();
+        try
+        {
+            var item = set.Add(name, query, replace: true);
+            set.Save(root);
+            return new SavedSearchItem(item.Name, item.Query);
+        }
+        catch (SavedSearchException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
+    /// <summary>Removes a saved search.</summary>
+    /// <exception cref="LibraryException">NotFound: no saved search has this name.</exception>
+    public void RemoveSavedSearch(string name)
+    {
+        var set = LoadSavedSearches();
+        if (!set.Remove(name))
+        {
+            throw new LibraryException($"no saved search '{name}'", LibraryErrorKind.NotFound);
+        }
+
+        try
+        {
+            set.Save(root);
+        }
+        catch (SavedSearchException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
+    private SavedSearches LoadSavedSearches()
+    {
+        try
+        {
+            return SavedSearches.Load(root);
+        }
+        catch (SavedSearchException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+    }
+
     /// <summary>
     /// The highlights and notes of all works, or of the works that match <paramref name="query"/> (F-ANN-9). Nothing is written. With
     /// <c>markdown</c> a work without a cite key is left out and named in <see cref="NotesBulkExport.Skipped"/>.
@@ -924,7 +979,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             try
             {
-                parsed = QueryParser.Parse(query);
+                parsed = LibraryQueries.Parse(root, query);
             }
             catch (QueryException e)
             {
@@ -1012,7 +1067,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         {
             try
             {
-                parsed = QueryParser.Parse(query);
+                parsed = LibraryQueries.Parse(root, query);
             }
             catch (QueryException e)
             {

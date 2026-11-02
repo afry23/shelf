@@ -93,6 +93,7 @@ public static class LibraryMcpServer
         collection.Add(McpServerTool.Create((Func<string, int, TagSuggestionsResult>)tools.SuggestTags, Read("suggest_tags", json)));
         collection.Add(McpServerTool.Create((Func<string, BookDetails>)tools.GetBook, Read("get_book", json)));
         collection.Add(McpServerTool.Create((Func<string, AnnotationList>)tools.GetAnnotations, Read("get_annotations", json)));
+        collection.Add(McpServerTool.Create((Func<SavedSearchList>)tools.ListSavedSearches, Read("list_saved_searches", json)));
         collection.Add(McpServerTool.Create((Func<string, int, string?, int?, FindPassagesResult>)tools.FindPassages, Read("find_passages", json)));
         collection.Add(McpServerTool.Create((Func<int?, string?, ResurfaceResult>)tools.ResurfaceHighlights, Read("resurface_highlights", json)));
         collection.Add(McpServerTool.Create((Func<string?, string, string?, CitationsExport>)tools.ExportCitations, Read("export_citations", json)));

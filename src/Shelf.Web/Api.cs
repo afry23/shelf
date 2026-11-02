@@ -132,6 +132,25 @@ internal static class Api
             .WithName("ExportWork")
             .Produces(StatusCodes.Status200OK, contentType: "text/markdown");
 
+        api.MapGet("/saved-searches", ([FromServices] LibraryHandle library) =>
+                Run(WebJsonContext.Default.SavedSearchList, () => library.Service.ListSavedSearches()))
+            .WithName("ListSavedSearches")
+            .Produces<SavedSearchList>(StatusCodes.Status200OK);
+
+        api.MapPut("/saved-searches/{name}", ([FromServices] LibraryHandle library, string name, [FromBody] SaveSearchRequest body) =>
+                Run(WebJsonContext.Default.SavedSearchItem, () => library.Service.SaveSearch(name, OptionalText(body.Query, "query") ?? string.Empty)))
+            .WithName("SaveSearch")
+            .Produces<SavedSearchItem>(StatusCodes.Status200OK);
+
+        api.MapDelete("/saved-searches/{name}", ([FromServices] LibraryHandle library, string name) =>
+                Run(WebJsonContext.Default.SavedSearchItem, () =>
+                {
+                    library.Service.RemoveSavedSearch(name);
+                    return null!;
+                }, StatusCodes.Status204NoContent))
+            .WithName("RemoveSavedSearch")
+            .Produces(StatusCodes.Status204NoContent);
+
         api.MapGet("/annotations/export", (
                 [FromServices] LibraryHandle library,
                 HttpContext http,
