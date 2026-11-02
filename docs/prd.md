@@ -307,6 +307,14 @@ A **notes file** is a PDF or TXT file that belongs to a work but is not a book: 
 | F-NOTEF-6 | `shelf notes files <work>` lists the notes files of a work (`--json`); A notes file is removed like any file of a work, with `shelf delete` and the work details (F-DUP-7). REST: the files of a work in `GET /api/v1/works/{id}` carry their `role`. MCP: `get_book` lists the files with their role and `search_books` finds the text of a notes file. | S |
 | F-NOTEF-7 | The work page of the web interface lists the notes files in an own block "Notes files" with upload, download and removal; a hit in the search view opens the file (a PDF at the page). | S |
 
+### 6.13 Bulk Edit
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-BLK-1 | `shelf edit --query "<search>" [--query …] <options>` changes many works at once instead of one work. The query is the one of `shelf search` (also `@name`, F-SRC-9). Several `--query` are joined by **OR**: a work that any of them finds is changed, once; words and filters inside one query are joined by AND. Without `--apply` the change is only shown per work (`field: old -> new`; works that have the values already are left out); `--apply` writes it. `--json` gives the same. | S |
+| F-BLK-2 | A bulk edit may set `--author`, `--year`, `--language`, `--publisher`, `--series`, `--edition`, `--rating`, `--status` (`""` removes an optional field) and add or remove tags with `--add-tag` and `--remove-tag`. What must be unique or personal per work is refused with `--query`: `--title`, `--subtitle`, `--isbn`, `--cite-key`, `--description`, `--series-index`, `--tag` (replace all) and the related-work options. Every new sidecar is checked first; one that is refused changes nothing. The change is one journal entry, so `shelf undo` takes back all of it. | S |
+| F-BLK-3 | REST `POST /api/v1/works/bulk-edit` with `{ "queries": [...], "set": { "language": "en" }, "addTags": [...], "removeTags": [...], "apply": false }` answers with the works found and the changes (`applied`, `matched`, `changed`, `works[].changes[]` with `field`, `from`, `to`); `apply` defaults to false. Same rules as F-BLK-2 (`set` uses the field names of `book.json`, e.g. `readStatus`). Not offered via MCP. | S |
+
 ## 7. Interfaces
 
 ### 7.1 CLI
@@ -324,6 +332,7 @@ shelf semantic <text> [--chunks] [--hybrid] [--title-only] [--json]  Semantic se
 shelf model install [<folder>]            Install the embedding model (download, or offline from a folder)
 shelf show <work-id|path>                 Details of a work
 shelf edit <work-id> [--title ...]        Change metadata (also --add-related / --remove-related)
+shelf edit --query <q> [--query <q>] ...  Change many works at once (dry run; --apply writes; F-BLK-1)
 shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
 shelf fetch <doi or arXiv ID>                 Load a paper (metadata + open-access PDF) as a new work
 shelf clip <url> | --html <file> [--url <address>]  Keep a web article as Markdown with its images as a new work (--html: a page saved in a browser)

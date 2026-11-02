@@ -438,6 +438,20 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-SRC-8 to F-SRC-11, the complete BDD suite is green.
 
+### M20 – Bulk Edit
+
+**Goal:** One value for many works, chosen by filters, with a preview and one undo.
+
+**Status:** implemented; feature files `BulkEdit`, `WebBulkEdit`.
+
+| Area | Content | PRD |
+|---|---|---|
+| CLI | `shelf edit --query … [--query …] --language en --apply`; OR over several queries, dry run by default | F-BLK-1, F-BLK-2 |
+| Journal | one journal entry for the whole change, `shelf undo` | F-BLK-2 |
+| REST | `POST /api/v1/works/bulk-edit` | F-BLK-3 |
+
+**Exit criteria:** feature files exist for F-BLK-1 to F-BLK-3, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

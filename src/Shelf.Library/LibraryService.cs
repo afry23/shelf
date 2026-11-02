@@ -832,6 +832,100 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         }
     }
 
+    private static readonly string[] BulkSetFields = ["authors", "year", "language", "publisher", "series", "edition", "rating", "readStatus"];
+    private static readonly string[] BulkRefusedFields = ["title", "subtitle", "isbn", "citeKey", "description", "seriesIndex"];
+
+    /// <summary>
+    /// One change for all the works that at least one of the <paramref name="queries"/> finds (F-BLK-3). <paramref name="set"/> is a JSON
+    /// merge patch of <c>authors</c>, <c>year</c>, <c>language</c>, <c>publisher</c>, <c>series</c>, <c>edition</c>, <c>rating</c> and
+    /// <c>readStatus</c> (null removes a field); tags are added and removed with <paramref name="addTags"/> and <paramref name="removeTags"/>.
+    /// Without <paramref name="apply"/> the change is only shown. One journal: <c>shelf undo</c> takes it back as a whole.
+    /// </summary>
+    /// <exception cref="LibraryException">Invalid: no query, a query that cannot be read, nothing to change, or a field or value that is not valid.</exception>
+    public BulkEditResult BulkEdit(string[]? queries, JsonObject? set, string[]? addTags, string[]? removeTags, bool apply)
+    {
+        if (queries is null || queries.Length == 0)
+        {
+            throw new LibraryException("queries is required: a list of searches, joined by OR");
+        }
+
+        var searches = new List<SearchQuery>();
+        foreach (var text in queries)
+        {
+            SearchQuery parsed;
+            try
+            {
+                parsed = LibraryQueries.Parse(root, text);
+            }
+            catch (QueryException e)
+            {
+                throw new LibraryException(e.Message);
+            }
+
+            searches.Add(parsed.IsEmpty ? throw new LibraryException("a query has nothing to search for") : parsed);
+        }
+
+        var edits = new List<Func<WorkSidecar, WorkSidecar>>();
+        var fields = new List<string>();
+        foreach (var (name, value) in set ?? [])
+        {
+            if (BulkRefusedFields.Contains(name))
+            {
+                throw new LibraryException($"{name}: cannot be set for many works at once, it would give them all the same value");
+            }
+
+            edits.Add(MetadataPatch.Edit(name, value));
+            if (BulkSetFields.Contains(name))
+            {
+                fields.Add(name);
+            }
+        }
+
+        var additions = BulkTags(addTags, "addTags");
+        var removals = BulkTags(removeTags, "removeTags");
+        if (additions.Count + removals.Count > 0)
+        {
+            fields.Add("tags");
+            edits.Add(s => s with { Tags = [.. s.Tags.Concat(additions).Where(t => !removals.Contains(t)).Distinct(StringComparer.Ordinal)] });
+        }
+
+        if (edits.Count == 0)
+        {
+            throw new LibraryException("nothing to change; give set, addTags or removeTags");
+        }
+
+        lock (_writeGate)
+        {
+            try
+            {
+                var ids = LibraryBulkEdit.Select(root, searches);
+                var outcome = ids.Count == 0
+                    ? new BulkEditOutcome(0, [], Applied: false)
+                    : LibraryBulkEdit.Run(root, ids, fields, sidecar => edits.Aggregate(sidecar, (current, edit) => edit(current)), apply, $"edit {ids.Count} works");
+                return new BulkEditResult(
+                    outcome.Applied,
+                    outcome.Matched,
+                    outcome.Changes.Count,
+                    [.. outcome.Changes.Select(c => new BulkEditWork(c.Work.ToString(), c.Title, [.. c.Fields.Select(f => new BulkEditField(f.Field, f.From, f.To))]))]);
+            }
+            catch (Exception e) when (e is LibraryEditException or SidecarException or IndexException)
+            {
+                throw new LibraryException(e.Message);
+            }
+        }
+    }
+
+    private static List<string> BulkTags(string[]? names, string field)
+    {
+        var result = new List<string>();
+        foreach (var name in names ?? [])
+        {
+            result.Add(TagNames.TryNormalize(name, out var tag, out var error) ? tag : throw new LibraryException($"{field}: '{name}': {error}"));
+        }
+
+        return result;
+    }
+
     // ---- saved searches (F-SRC-8) ----
 
     /// <summary>The saved searches of the library.</summary>

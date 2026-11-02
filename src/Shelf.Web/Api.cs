@@ -132,6 +132,16 @@ internal static class Api
             .WithName("ExportWork")
             .Produces(StatusCodes.Status200OK, contentType: "text/markdown");
 
+        api.MapPost("/works/bulk-edit", ([FromServices] LibraryHandle library, [FromBody] BulkEditRequest body) =>
+                Run(WebJsonContext.Default.BulkEditResult, () => library.Service.BulkEdit(
+                    TextArray(body.Queries, "queries"),
+                    body.Set is null ? null : body.Set as JsonObject ?? throw new LibraryException("set must be an object"),
+                    TextArray(body.AddTags, "addTags"),
+                    TextArray(body.RemoveTags, "removeTags"),
+                    OptionalFlag(body.Apply, "apply") ?? false)))
+            .WithName("BulkEditWorks")
+            .Produces<BulkEditResult>(StatusCodes.Status200OK);
+
         api.MapGet("/saved-searches", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.SavedSearchList, () => library.Service.ListSavedSearches()))
             .WithName("ListSavedSearches")
@@ -657,6 +667,12 @@ internal static class Api
     /// <summary>The ID of a work, or a refusal. The service also reads folder and file paths; a web client must not probe the disk with them.</summary>
     private static string RequireId(string id) =>
         WorkLookup.LooksLikeId(id) ? id : throw new LibraryException($"no work matches '{id}'", LibraryErrorKind.NotFound);
+
+    /// <summary>A list of text, or null when the field is missing.</summary>
+    private static string[]? TextArray(JsonNode? node, string name) =>
+        node is null ? null
+        : node is JsonArray array && array.All(t => t is not null && t.GetValueKind() == System.Text.Json.JsonValueKind.String) ? [.. array.Select(t => t!.GetValue<string>())]
+        : throw new LibraryException($"{name} must be a list of text");
 
     private static string[] TagList(TagsRequest body)
     {
