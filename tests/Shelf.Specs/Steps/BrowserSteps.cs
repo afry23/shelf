@@ -166,6 +166,14 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the {string} tab is not shown")]
     public void ThenTabNotShown(string name) => Assert.True(Gone(Tab(name)), $"The tab '{name}' is shown. {Dump()}");
 
+    [Then("the {string} tab comes right after the {string} tab")]
+    public void ThenTabAfter(string name, string before)
+    {
+        var names = Page.GetByRole(AriaRole.Tab).AllInnerTextsAsync().GetAwaiter().GetResult().ToList();
+        var index = names.FindIndex(n => n.Contains(before));
+        Assert.True(index >= 0 && index + 1 < names.Count && names[index + 1].Contains(name), $"Tabs: {string.Join(" | ", names)}. {Dump()}");
+    }
+
     [Then("the tab {string} shows the number {int}")]
     public void ThenTabNumber(string name, int number) => Expect(Tab(name).First, e => e.ToContainTextAsync(number.ToString()));
 

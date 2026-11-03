@@ -163,10 +163,10 @@
   const tabs = $derived([
     ...(book?.description ? [{ id: 'description', label: 'Description' }] : []),
     ...(book?.toc.length && tocFile ? [{ id: 'contents', label: 'Contents' }] : []),
-    ...(similarBooks.length ? [{ id: 'similar', label: 'Similar books', count: similarBooks.length }] : []),
     ...(notes.items.length ? [{ id: 'notes', label: 'Highlights and notes', count: notes.items.length }] : []),
     ...(refs && (refs.total || refs.citedBy.length || refs.doi) ? [{ id: 'references', label: 'References', count: refs.total || undefined }] : []),
     { id: 'files', label: 'Files', count: book?.files.length },
+    ...(similarBooks.length ? [{ id: 'similar', label: 'Similar books', count: similarBooks.length }] : []),
     { id: 'manage', label: 'Manage' },
   ]);
   const active = $derived(tabs.find((tab) => tab.id === chosen)?.id ?? tabs[0].id);
