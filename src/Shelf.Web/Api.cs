@@ -13,7 +13,7 @@ namespace Shelf.Web;
 /// <summary>The endpoints of <c>/api/v1</c> that read and change the library (PRD 7.3). The rules are those of <see cref="LibraryService"/>.</summary>
 internal static class Api
 {
-    private const int DefaultSearchLimit = 20;
+    private const int DefaultSearchLimit = 50;
     private const int DefaultSimilarLimit = 10;
 
     /// <summary>The largest file that can be uploaded (Kestrel's own limit is 30 MB, too small for a scanned book).</summary>
