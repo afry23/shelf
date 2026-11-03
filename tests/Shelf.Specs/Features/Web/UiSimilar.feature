@@ -46,6 +46,12 @@ Feature: Similar books in the book view
     Then the "Similar books" tab is selected
     And the browser address contains "#similar"
 
+  Scenario: The Similar books tab sits right next to the Files tab
+    Given the web server is running on the library "library"
+    When I open "/works/01J9Z3K0000000000000000001" in the browser
+    Then the "Similar books" tab is shown
+    And the "Similar books" tab comes right after the "Files" tab
+
   Scenario: The most similar book is listed first, and the book itself is not
     Given the web server is running on the library "library"
     When I open "/works/01J9Z3K0000000000000000001#similar" in the browser
