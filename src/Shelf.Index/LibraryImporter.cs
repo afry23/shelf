@@ -8,7 +8,15 @@ using Shelf.Extraction;
 
 namespace Shelf.Index;
 
-public sealed record ImportOptions(bool Move = false, bool DryRun = false);
+public sealed record ImportOptions(bool Move = false, bool DryRun = false, ImportKind Kind = ImportKind.Book);
+
+/// <summary>What the files of an import are (F-IMP-1): books by default, Markdown articles from a web clipper, or PDF papers.</summary>
+public enum ImportKind
+{
+    Book,
+    Article,
+    Paper,
+}
 
 public enum ImportAction
 {
@@ -38,7 +46,8 @@ public sealed record ImportItem(
     string? Title,
     double Confidence,
     string? Message,
-    int ReviewEntries);
+    int ReviewEntries,
+    IReadOnlyList<string>? Warnings = null);
 
 public sealed record ImportResult(IReadOnlyList<ImportItem> Items, int Ignored);
 
@@ -67,7 +76,17 @@ public static class LibraryImporter
         ArgumentNullException.ThrowIfNull(settings);
         root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
 
-        var (files, ignored) = Collect(sources);
+        if (options.Kind == ImportKind.Article)
+        {
+            return LibraryArticles.Import(root, sources, options.DryRun);
+        }
+
+        var paper = options.Kind == ImportKind.Paper;
+        var (collected, ignored) = Collect(sources, paper);
+
+        // A file named on the command line that does not fit the kind is an error of that file; folders only yield fitting files.
+        var refused = paper ? collected.Where(f => !IsPdf(f)).ToList() : [.. collected.Where(BookExtractor.IsMarkdown)];
+        var files = collected.Except(refused).ToList();
         using var connection = IndexDatabase.OpenWrite(IndexDatabase.PathFor(root));
         using var writer = new IndexWriter(connection);
 
@@ -82,7 +101,7 @@ public static class LibraryImporter
         }
 
         var run = new Run(root, options, connection, writer, queue, new WorkMatcher(settings, WorkCandidateStore.Load(connection)));
-        var items = new List<ImportItem>();
+        var items = new List<ImportItem>(refused.Select(f => new ImportItem(f, ImportAction.Error, null, null, null, 0, paper ? $"{f}: not a PDF file" : $"{f}: a Markdown file is no book (use --article)", 0)));
         try
         {
             FileAnalyzer.ForEach(
@@ -109,7 +128,9 @@ public static class LibraryImporter
         return new ImportResult(items, ignored);
     }
 
-    private static (List<string> Files, int Ignored) Collect(IReadOnlyList<string> sources)
+    private static bool IsPdf(string path) => string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase);
+
+    private static (List<string> Files, int Ignored) Collect(IReadOnlyList<string> sources, bool pdfOnly)
     {
         var files = new List<string>();
         var ignored = 0;
@@ -124,7 +145,7 @@ public static class LibraryImporter
             {
                 foreach (var path in Directory.EnumerateFiles(full, "*", LibraryReindexer.Recursive).Order(StringComparer.Ordinal))
                 {
-                    if (BookExtractor.IsSupported(path) && !BookExtractor.IsMarkdown(path))
+                    if (BookExtractor.IsSupported(path) && !BookExtractor.IsMarkdown(path) && (!pdfOnly || IsPdf(path)))
                     {
                         files.Add(path);
                     }
@@ -274,6 +295,11 @@ public static class LibraryImporter
                 Added = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero),
                 Files = [new SidecarFile(name)],
             }.From(metadata);
+
+            if (options.Kind == ImportKind.Paper)
+            {
+                sidecar = sidecar with { Kind = WorkKind.Paper };
+            }
 
             if (CiteKeyOf(sidecar) is { } citeKey)
             {

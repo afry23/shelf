@@ -88,7 +88,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 |---|---|---|
 | F-LIB-1 | One library = one root folder. Multiple libraries are possible via configuration. | M |
 | F-LIB-2 | Supported formats: EPUB, PDF. | M |
-| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT) are tracked as files but not indexed by content. Markdown is indexed as the text of an article (F-ART-7); a Markdown file outside a work is no book and is not taken in by `import` or `scan`. A TXT file attached as a notes file is indexed (F-NOTEF-3). | S |
+| F-LIB-3 | Further formats (MOBI, AZW3, CBZ, TXT) are tracked as files but not indexed by content. Markdown is indexed as the text of an article (F-ART-7); a Markdown file outside a work is no book and is not taken in by `import` (without `--article`) or `scan`. A TXT file attached as a notes file is indexed (F-NOTEF-3). | S |
 | F-LIB-4 | The data model separates **Work** and **File**. A work has 1..n files. | M |
 | F-LIB-5 | Each work has a sidecar file `book.json` in the work folder. It is the **source of truth** for metadata, tags, reading progress, and "not a duplicate" markings, and holds the work ID (ULID, generated once, never changed). | M |
 | F-LIB-6 | The SQLite database is exclusively an index and cache. `shelf reindex` rebuilds it completely from the file system and sidecars. | M |
@@ -108,7 +108,7 @@ Priority according to MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 
 | ID | Requirement | Prio |
 |---|---|---|
-| F-IMP-1 | `shelf import <path>` takes files from any folder into the library. Default is copy; `--move` moves. | M |
+| F-IMP-1 | `shelf import <path>` takes files from any folder into the library. Default is copy; `--move` moves. The kind of the files is named by one of `--book` (default), `--article` (Markdown from a web clipper, F-ART-2) or `--paper` (PDF files that are papers, F-PAP-2); the three exclude each other. | M |
 | F-IMP-2 | Metadata is extracted from EPUB (OPF) and PDF (info dictionary, XMP). | M |
 | F-IMP-3 | Fallback heuristic: if metadata is missing, it is parsed from the file name, e.g. `Author - Title (Year).pdf`. | M |
 | F-IMP-4 | ISBN detection via regex in the first and last pages of the text. | S |
@@ -251,7 +251,7 @@ A work is a **book** (default) or a **paper**. Papers are identified by DOI or a
 | ID | Requirement | Prio |
 |---|---|---|
 | F-PAP-1 | `book.json` has an optional field `kind` (`book` or `paper`; a missing field means `book`, `schema` stays 1). Papers add the optional fields DOI, arXiv ID, PMID, venue, volume, issue, pages, abstract and keywords; the authors stay a list of names. | M |
-| F-PAP-2 | On import, the DOI is detected by regex in the PDF info dictionary, XMP and the first page, the arXiv ID in the file name (`2301.12345v2.pdf`, `hep-th/9901001.pdf`) and the first page. A work with a DOI or arXiv ID gets `kind: paper`. | M |
+| F-PAP-2 | On import, the DOI is detected by regex in the PDF info dictionary, XMP and the first page, the arXiv ID in the file name (`2301.12345v2.pdf`, `hep-th/9901001.pdf`) and the first page. A work with a DOI or arXiv ID gets `kind: paper`. With `shelf import --paper` every imported PDF becomes a paper, with or without DOI or arXiv ID; `--paper` with a file that is no PDF is an error for that file. | M |
 | F-PAP-3 | `shelf enrich` also works for papers: by DOI Crossref is asked, by arXiv ID the arXiv API, without either by title and author (same exact-match rule as F-IMP-6). Preview unless `--apply`, only empty fields are filled unless `--overwrite`, only on explicit command. Title, authors, venue, year and abstract are taken over. | M |
 | F-PAP-4 | A cite key is generated as `<first author surname><year><first significant title word>` in lower case, ASCII only (`vaswani2017attention`), with a letter suffix on a clash. Existing cite keys are never changed. | M |
 | F-PAP-5 | Export as BibTeX, CSL-JSON and RIS for one work or for the result of a query: `shelf export --format bibtex [query]`; in the web interface a download on the work page ("Cite as", `GET /api/v1/works/{id}/citation?format=`) and in the library view ("Export citations" for the filter shown, `GET /api/v1/citations?format=&query=`); MCP tool `export_citations` (`query`, `format`, `id`; always offered, it only reads). `shelf export` gives a work without a cite key one first; the web interface and MCP write nothing and leave such a work out (response headers `X-Shelf-Works` and `X-Shelf-Skipped`, field `skipped`), `shelf citekeys` gives the keys. | M |
@@ -265,15 +265,15 @@ A work is a **book** (default) or a **paper**. Papers are identified by DOI or a
 
 ### 6.10 Web Articles
 
-A work is a **book** (default), a **paper** or an **article**. An article is a blog post or a news story kept as a Markdown file with the images that belong to it. Everything else (tags, annotations, search) works as for books. Content behind a paywall comes in through a page the user saved in a browser where they are signed in; shelf never handles cookies or passwords.
+A work is a **book** (default), a **paper** or an **article**. An article is a blog post or a news story kept as a Markdown file with the images that belong to it. Everything else (tags, annotations, search) works as for books. Articles come in through a web clipper that saved the page as Markdown in the user's own browser (also behind a paywall); shelf never loads a page and never handles cookies or passwords.
 
 | ID | Requirement | Prio |
 |---|---|---|
 | F-ART-1 | `book.json` accepts `kind: article` (`schema` stays 1). Articles add the optional fields source URL, site, published date and capture date; the authors stay a list of names. | M |
-| F-ART-2 | `shelf clip <url>` and "Add article" in the library view (REST `POST /api/v1/works/clip`) load a public page, extract the article and create the work. Only on explicit command: import, scan and reindex never go online. | M |
-| F-ART-3 | `shelf clip --html <file> [--url <original url>]` creates the work from a page saved in a browser (HTML, or MHTML with the images inside). This is the way for pages behind a paywall. Nothing goes online. | M |
-| F-ART-4 | Only the article is kept: title, headings, paragraphs, lists, quotes, code, tables and figure captions. Navigation, ads, comments, related links and scripts are dropped. The title, author, site, published date and canonical URL come from the page metadata (Open Graph, JSON-LD, `<meta>`). | M |
-| F-ART-5 | The article is written as `article.md`; images that belong to it are saved in `images/` next to it and linked relative (`![caption](images/01-3fa9c2d1.jpg)`), so the folder reads in any Markdown editor. Of a `srcset` the largest image counts, lazy-load attributes (`data-src`) are followed; icons, tracking pixels, avatars and images outside the article are skipped. An image that cannot be loaded stays a link to its source URL and is reported. Identical images are saved once. | M |
+| F-ART-2 | `shelf import --article <file or folder>` takes an article that a web clipper (for example the Obsidian Web Clipper) saved as Markdown: one `.md` file, or a folder with the `.md` file and the images it links. The page is never loaded by shelf (cookie banners, paywalls and scripts are the browser's business). Import, scan and reindex never go online. A folder with several `.md` files makes one article per file. | M |
+| F-ART-3 | The title, authors, source URL, site and published date come from the YAML front matter of the file (`title`, `source`, `author`, `published`; `author` as text, list or `[[wikilink]]`). Without front matter or without a field: the first `# heading`, then the file name for the title; no author means the site, else the unknown author. | M |
+| F-ART-4 | The Markdown text is kept as it is (front matter removed). `import --article` writes it as `article.md`. | M |
+| F-ART-5 | Images the text links with a relative path (`![caption](attachments/a.png)`) or as an Obsidian embed (`![[a.png]]`) are copied to `images/` next to `article.md` and linked relative (`![caption](images/01-3fa9c2d1.png)`), so the folder reads in any Markdown editor. Only files below the folder of the Markdown file count; a link that leaves it, a missing file, or a file that is no image stays unchanged and is reported. Links to `http(s)` addresses stay links. Identical images are saved once. | M |
 | F-ART-6 | An article with the same canonical URL (fragment and tracking parameters such as `utm_*` ignored) is in the library already: nothing is created, the existing work is reported. | M |
 | F-ART-7 | The text of an article is part of the full-text index and of the work embedding; the search filters `type:article` and `site:` work. | M |
 | F-ART-8 | The web reader shows an article with its images (served from the library only, never from the source site). | S |
@@ -331,7 +331,7 @@ Goal: cold start to first output < 150 ms (Native AOT, see chapter 9).
 
 ```
 shelf init <root>                         Create library
-shelf import <path> [--move] [--dry-run]  Import files
+shelf import <path> [--book|--article|--paper] [--move] [--dry-run]  Import files (--book is the default; --article: Markdown from a web clipper; --paper: PDF, kept as a paper)
 shelf import --from rclone:<spec> [--dry-run]  Import files from a cloud folder via rclone
 shelf scan                                Incremental scan
 shelf reindex [--embeddings]              Rebuild index; --embeddings only makes the missing embeddings
@@ -344,7 +344,6 @@ shelf edit --query <q> [--query <q>] ...  Change many works at once (dry run; --
 shelf doctor [--strict]                   Health check of the library (F-DOC-1)
 shelf enrich <work-id> [--apply] [--overwrite] [--pick n] [--source s] [--no-cover]  Load metadata and cover online (preview unless --apply)
 shelf fetch <doi or arXiv ID>                 Load a paper (metadata + open-access PDF) as a new work
-shelf clip <url> | --html <file> [--url <address>]  Keep a web article as Markdown with its images as a new work (--html: a page saved in a browser)
 shelf export [query] [--format bibtex|csl-json|ris] [--out file]  Citations of all works or of a search result
 shelf import-bib <file> [--apply] [--overwrite]  Take over DOIs, venues and cite keys from a BibTeX file (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
@@ -404,7 +403,6 @@ Requirements for the MCP server:
 
 - REST/JSON under `/api/v1/…`. Feature parity with the CLI applies for read operations, tagging, metadata editing, duplicate review, merging works, and adding, moving and creating (F-GRP-7 to F-GRP-9; a file is uploaded as the body of the request, its name in `?name=`).
 - Files are served via `/api/v1/files/{id}`, with HTTP range requests for large PDFs. The images of an article are served via `/api/v1/files/{id}/assets/{name}` (only from the `images/` folder next to the file).
-- `POST /api/v1/works/clip` (`{"url": …}`) keeps a public page as an article (F-ART-2).
 - `GET /api/v1/reading-list` and `PUT`/`DELETE /api/v1/works/{id}/reading-list` manage the reading list (F-RLS-5).
 - An OpenAPI specification is generated automatically.
 

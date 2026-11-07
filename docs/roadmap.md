@@ -346,8 +346,8 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 | Area | Content | PRD |
 |---|---|---|
 | Data model | `kind: article`, source URL, site, dates in `book.json` | F-ART-1 |
-| Clip | `shelf clip <url>`, `shelf clip --html <file>` (saved page, MHTML), REST `POST /works/clip` | F-ART-2, F-ART-3 |
-| Extraction | article text to Markdown, metadata, images in `images/`, duplicates by canonical URL | F-ART-4 to F-ART-6 |
+| Import | `shelf import --article <md file or folder>` (Markdown from a web clipper, YAML front matter) | F-ART-2, F-ART-3 |
+| Images | linked images copied to `images/`, links rewritten, duplicates by source URL | F-ART-4 to F-ART-6 |
 | Search, reader | full text, `type:article`, `site:`, Markdown reader with library images | F-ART-7, F-ART-8 |
 | Folder as a unit | organize, undo, trash, scan and reindex treat `images/` as part of the work | F-ART-9 |
 

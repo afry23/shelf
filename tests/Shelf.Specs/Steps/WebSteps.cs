@@ -312,7 +312,7 @@ public sealed class WebSteps(ScenarioEnvironment environment, ConfigSteps worksp
         }
 
         // The server never reaches the internet: enrich asks the fake catalogs.
-        shelf = shelf.WithMetadataSources(environment.Online.Sources).WithPages(environment.Online.Web);
+        shelf = shelf.WithMetadataSources(environment.Online.Sources);
 
         _server = Task.Run(() => ShelfApp.Run([.. args], _stdout, _stderr, shelf));
 

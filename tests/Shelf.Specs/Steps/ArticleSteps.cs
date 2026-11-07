@@ -9,7 +9,7 @@ namespace Shelf.Specs.Steps;
 
 /// <summary>Steps of the article features (F-ART-*): saved pages, a fake web, and the folder of an article.</summary>
 [Binding]
-public sealed class ArticleSteps(ConfigSteps workspace, ScenarioEnvironment environment, BrowserSteps browser)
+public sealed class ArticleSteps(ConfigSteps workspace, BrowserSteps browser)
 {
     private const string Library = "library";
 
@@ -17,97 +17,27 @@ public sealed class ArticleSteps(ConfigSteps workspace, ScenarioEnvironment envi
 
     private string LibraryRoot => Path.Combine(workspace.WorkingDirectory, Library);
 
-    // ---- saved pages ----
+    // ---- Markdown saved by a web clipper ----
 
-    [Given("a saved web page {string} with content:")]
-    public void GivenASavedWebPage(string name, string content) => WritePage(name, content);
-
-    [Given("""^a saved web page "(.*)" with the article "(.*)" and the image markup (.*)$""")]
-    public void GivenASavedWebPageWithImages(string name, string title, string markup) => WritePage(name, Essay(title, markup));
-
-    [Given("""^the image "(.*)" of the saved page "(.*)" is a (\d+) by (\d+) picture$""")]
-    public void GivenTheImageIsAPicture(string image, string page, int width, int height)
-    {
-        var path = Path.Combine(Path.GetDirectoryName(Path.Combine(workspace.WorkingDirectory, page))!, image);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, image.EndsWith(".gif", StringComparison.Ordinal) ? Picture.Gif(width, height) : Picture.Jpeg(width, height, (byte)image.GetHashCode(StringComparison.Ordinal)));
-    }
-
-    [Given("the image {string} of the saved page {string} is the same picture as {string}")]
-    public void GivenTheImageIsTheSamePicture(string image, string page, string other)
-    {
-        var directory = Path.GetDirectoryName(Path.Combine(workspace.WorkingDirectory, page))!;
-        File.Copy(Path.Combine(directory, other), Path.Combine(directory, image), overwrite: true);
-    }
-
-    [Given("a saved MHTML page {string} with the article {string} and one {int} by {int} image")]
-    public void GivenASavedMhtmlPage(string name, string title, int width, int height)
-    {
-        var html = Essay(title, """<img src="https://cdn.example.com/harbour.jpg" alt="Harbour">""");
-        var image = Convert.ToBase64String(Picture.Jpeg(width, height), Base64FormattingOptions.InsertLineBreaks);
-        var mhtml = $"""
-            From: <Saved by shelf tests>
-            Subject: {title}
-            MIME-Version: 1.0
-            Content-Type: multipart/related; type="text/html"; boundary="----=_Part_1"
-
-            ------=_Part_1
-            Content-Type: text/html; charset="utf-8"
-            Content-Transfer-Encoding: 8bit
-            Content-Location: https://blog.example.com/harbour
-
-            {html}
-            ------=_Part_1
-            Content-Type: image/jpeg
-            Content-Transfer-Encoding: base64
-            Content-Location: https://cdn.example.com/harbour.jpg
-
-            {image}
-            ------=_Part_1--
-            """;
-        WritePage(name, mhtml.Replace("\r\n", "\n", StringComparison.Ordinal));
-    }
-
-    private void WritePage(string name, string content)
+    [Given("a Markdown file {string} with content:")]
+    public void GivenAMarkdownFile(string name, string content)
     {
         var path = Path.Combine(workspace.WorkingDirectory, name);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, content);
+        File.WriteAllText(path, content.Replace("\\n", "\n", StringComparison.Ordinal));
     }
 
-    private static string Essay(string title, string markup) => $"""
-        <html><head><title>{title}</title></head><body><article><h1>{title}</h1>
-        <p>{Filler}</p>
-        {markup}
-        <p>By noon the nets are back and the quay smells of salt, diesel and fried fish, as it has done for a hundred years.</p>
-        </article></body></html>
-        """;
-
-    // ---- the fake web ----
-
-    [Given("the online source {string} serves the article at {string} titled {string} by {string} with one image")]
-    public void GivenTheWebServesAnArticle(string source, string url, string title, string author)
+    [Given("an image {string} that is a {int} by {int} picture")]
+    public void GivenAnImage(string name, int width, int height)
     {
-        Assert.Equal("web", source);
-        var origin = new Uri(url).GetLeftPart(UriPartial.Authority);
-        environment.Online.Web.Serve(url, "text/html", Encoding.UTF8.GetBytes($"""
-            <html lang="en"><head><title>{title} | Example Blog</title>
-            <meta property="og:title" content="{title}"><meta property="og:site_name" content="Example Blog">
-            <meta name="author" content="{author}"></head>
-            <body><nav>Home About</nav><article><h1>{title}</h1><p>{Filler}</p>
-            <img src="/images/photo.jpg" alt="Photo">
-            <p>By noon the nets are back and the quay smells of salt, diesel and fried fish, as it has done for a hundred years.</p>
-            </article></body></html>
-            """));
-        environment.Online.Web.Serve(origin + "/images/photo.jpg", "image/jpeg", Picture.Jpeg(1200, 800));
+        var path = Path.Combine(workspace.WorkingDirectory, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, name.EndsWith(".png", StringComparison.Ordinal) ? Picture.Png(width, height) : Picture.Jpeg(width, height, (byte)name.GetHashCode(StringComparison.Ordinal)));
     }
 
-    [Given("the online source {string} serves the same article also at {string}")]
-    public void GivenTheWebServesTheSameArticleAlso(string source, string url)
-    {
-        Assert.Equal("web", source);
-        environment.Online.Web.Alias(url);
-    }
+    [Given("the image {string} is the same picture as {string}")]
+    public void GivenTheImageIsTheSamePicture(string image, string other) =>
+        File.Copy(Path.Combine(workspace.WorkingDirectory, other), Path.Combine(workspace.WorkingDirectory, image), overwrite: true);
 
     // ---- articles on disk ----
 
@@ -283,40 +213,20 @@ public sealed class ArticleSteps(ConfigSteps workspace, ScenarioEnvironment envi
     }
 }
 
-/// <summary>Pages and images that <c>shelf clip</c> gets instead of the internet; every request is noted as a call of the source "web".</summary>
-public sealed class FakeWeb(FakeOnline online, FakeSource source) : IHttpGetter
-{
-    private readonly Dictionary<string, (string Type, byte[] Body)> _served = new(StringComparer.Ordinal);
-    private string? _last;
-
-    public void Serve(string url, string contentType, byte[] body)
-    {
-        _served[url] = (contentType, body);
-        _last = url;
-    }
-
-    /// <summary>The page served last is served at this address, too.</summary>
-    public void Alias(string url) => _served[url] = _served[_last!];
-
-    public HttpAnswer Get(string url, CancellationToken cancellation)
-    {
-        online.Calls.Add($"web:GET {url}");
-        if (source.FailWith is { } failure)
-        {
-            return new HttpAnswer(int.TryParse(failure, out var status) ? (HttpStatusCode)status : HttpStatusCode.InternalServerError, "text/plain", []);
-        }
-
-        return _served.TryGetValue(url, out var found)
-            ? new HttpAnswer(HttpStatusCode.OK, found.Type, found.Body)
-            : new HttpAnswer(HttpStatusCode.NotFound, "text/plain", []);
-    }
-}
-
 /// <summary>Header-only pictures: enough for <c>ImageProbe</c>, no decoder is involved.</summary>
 internal static class Picture
 {
     public static byte[] Jpeg(int width, int height, byte salt = 0) =>
         [0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x0B, 0x08, (byte)(height >> 8), (byte)height, (byte)(width >> 8), (byte)width, 0x01, 0x01, 0x11, salt, 0xFF, 0xD9];
+
+    public static byte[] Png(int width, int height)
+    {
+        var bytes = new byte[33];
+        new byte[] { 0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(bytes, 0);
+        bytes[16] = (byte)(width >> 24); bytes[17] = (byte)(width >> 16); bytes[18] = (byte)(width >> 8); bytes[19] = (byte)width;
+        bytes[20] = (byte)(height >> 24); bytes[21] = (byte)(height >> 16); bytes[22] = (byte)(height >> 8); bytes[23] = (byte)height;
+        return bytes;
+    }
 
     public static byte[] Gif(int width, int height) =>
         [.. Encoding.ASCII.GetBytes("GIF89a"), (byte)width, (byte)(width >> 8), (byte)height, (byte)(height >> 8), 0, 0, 0];

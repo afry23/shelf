@@ -16,11 +16,17 @@ internal static class ImportCommand
         };
         var from = new Option<string?>("--from") { Description = "Fetch the books of a cloud folder with rclone first, e.g. rclone:gdrive:Books" };
         var move = new Option<bool>("--move") { Description = "Delete the source after the copy was verified" };
+        var book = new Option<bool>("--book") { Description = "The files are books (EPUB, PDF); this is the default" };
+        var article = new Option<bool>("--article") { Description = "The files are articles: Markdown saved by a web clipper, a file or a folder with the images it links" };
+        var paper = new Option<bool>("--paper") { Description = "The files are PDF papers; they are kept as papers even without a DOI or arXiv ID" };
         var dryRun = new Option<bool>("--dry-run") { Description = "Show what would happen and change nothing" };
         var library = LibraryContext.CreateOption();
         var command = new Command("import", "Copy files into the library and group them into works");
         command.Arguments.Add(paths);
         command.Options.Add(from);
+        command.Options.Add(book);
+        command.Options.Add(article);
+        command.Options.Add(paper);
         command.Options.Add(move);
         command.Options.Add(dryRun);
         command.Options.Add(library);
@@ -28,7 +34,15 @@ internal static class ImportCommand
         {
             var givenPaths = parseResult.GetValue(paths) ?? [];
             var remote = parseResult.GetValue(from);
-            var usage = Usage(givenPaths.Length, remote, parseResult.GetValue(move));
+            var kind = (parseResult.GetValue(book), parseResult.GetValue(article), parseResult.GetValue(paper)) switch
+            {
+                (_, true, false) => ImportKind.Article,
+                (_, false, true) => ImportKind.Paper,
+                _ => ImportKind.Book,
+            };
+            var usage = new[] { parseResult.GetValue(book), parseResult.GetValue(article), parseResult.GetValue(paper) }.Count(f => f) > 1
+                ? "give only one of --book, --article and --paper"
+                : Usage(givenPaths.Length, remote, parseResult.GetValue(move), kind);
             if (usage is not null)
             {
                 stderr.WriteLine($"error: {usage}");
@@ -61,7 +75,7 @@ internal static class ImportCommand
                     sources.Add(download);
                 }
 
-                result = LibraryImporter.Import(context.Root, sources, new ImportOptions(parseResult.GetValue(move), isDryRun), context.Settings.Grouping);
+                result = LibraryImporter.Import(context.Root, sources, new ImportOptions(parseResult.GetValue(move), isDryRun, kind), context.Settings.Grouping);
                 if (download is not null)
                 {
                     result = ShowRemote(result, download, remote!["rclone:".Length..]);
@@ -87,6 +101,11 @@ internal static class ImportCommand
                 stderr.WriteLine($"warning: {item.Message}");
             }
 
+            foreach (var warning in result.Items.SelectMany(i => i.Warnings ?? []))
+            {
+                stderr.WriteLine($"warning: {warning}");
+            }
+
             if (parseResult.GetValue(json))
             {
                 stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, result, counts, isDryRun)));
@@ -107,8 +126,13 @@ internal static class ImportCommand
     }
 
     /// <summary>Why the arguments cannot work, or null. Checked before rclone runs.</summary>
-    private static string? Usage(int pathCount, string? remote, bool move)
+    private static string? Usage(int pathCount, string? remote, bool move, ImportKind kind)
     {
+        if (kind == ImportKind.Article && (remote is not null || move))
+        {
+            return remote is not null ? "--from cannot be used with --article" : "--move cannot be used with --article";
+        }
+
         if (remote is null)
         {
             return pathCount == 0 ? "Required argument missing: give a path to import, or --from rclone:<remote>:<path>" : null;

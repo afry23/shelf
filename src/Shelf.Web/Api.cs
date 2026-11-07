@@ -294,13 +294,6 @@ internal static class Api
             .Accepts<byte[]>("application/octet-stream")
             .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);
 
-        api.MapPost("/works/clip", ([FromServices] LibraryHandle library, [FromBody] ClipRequest? body) =>
-                Run(WebJsonContext.Default.ClipArticleOutcome, () =>
-                    library.Service.ClipArticle(OptionalText(body?.Url, "url") ?? throw new LibraryException("url is required"), CancellationToken.None)))
-            .WithName("ClipArticle")
-            .Accepts<ClipRequest>("application/json")
-            .Produces<ClipArticleOutcome>(StatusCodes.Status200OK);
-
         api.MapPost("/works/fetch", ([FromServices] LibraryHandle library, [FromBody] FetchRequest? body) =>
                 Run(WebJsonContext.Default.FetchPaperOutcome, () =>
                     library.Service.FetchPaper(OptionalText(body?.Paper, "paper") ?? throw new LibraryException("paper is required"), CancellationToken.None)))
