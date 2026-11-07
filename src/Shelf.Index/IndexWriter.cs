@@ -101,6 +101,7 @@ internal sealed class IndexWriter : IDisposable
         BindWork(command, s, dirPath, sidecarModifiedUtc);
         var seq = ScalarOf(command);
         Execute("DELETE FROM work_tags WHERE work_id = $id", ("$id", id));
+        Execute("DELETE FROM work_links WHERE work_id = $id", ("$id", id));
         Execute("DELETE FROM dupe_ignores WHERE owner = $id", ("$id", id));
         Execute("DELETE FROM works_fts WHERE rowid = $seq", ("$seq", seq));
         InsertDetails(s, dirPath, seq);
@@ -350,6 +351,11 @@ internal sealed class IndexWriter : IDisposable
             Bind(insertWorkTag, "$work", id);
             Bind(insertWorkTag, "$tag", tagId);
             NonQuery(insertWorkTag);
+        }
+
+        foreach (var link in s.Links)
+        {
+            Execute("INSERT OR REPLACE INTO work_links(work_id, other_id, note) VALUES ($work, $other, $note)", ("$work", id), ("$other", link.Work.ToString()), ("$note", link.Note));
         }
 
         foreach (var other in s.NotDuplicates.Works)

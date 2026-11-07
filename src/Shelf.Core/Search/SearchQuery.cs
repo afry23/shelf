@@ -23,6 +23,8 @@ public enum FieldKind
     Series,
     Site,
     ReadingList,
+    Linked,
+    Has,
 }
 
 /// <summary>A word, a quoted phrase, or a word with a prefix star. Always compared as whole words after folding case and accents.</summary>

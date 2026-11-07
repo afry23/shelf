@@ -81,6 +81,7 @@ public static class LibraryDeleter
     {
         var sidecar = LibraryEditor.Read(root, work);
         var directory = Path.Combine(root, work.Directory);
+        LibraryLinks.ForgetWork(root, work);
         var journal = FileJournal.Begin(root, "delete", undoable: true);
         try
         {

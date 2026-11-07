@@ -51,6 +51,7 @@ Feature: A read-only MCP server
       | find_passages        |
       | get_annotations      |
       | get_book             |
+      | get_links            |
       | get_reading_list     |
       | get_references       |
       | get_stats            |
@@ -87,6 +88,8 @@ Feature: A read-only MCP server
       | remove_tags              |
       | add_to_reading_list      |
       | remove_from_reading_list |
+      | link_works               |
+      | unlink_works             |
 
   Scenario: The read tools keep working
     Given the config file of the library "library" contains the line "mcp.read_only = true"

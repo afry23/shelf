@@ -111,6 +111,7 @@ public static class LibraryDoctor
         checks.Add(Metadata(works));
         checks.Add(Covers(works));
         checks.Add(CiteKeys(works));
+        checks.Add(Links(works));
         checks.Add(connection is null ? Skipped("text") : Text(connection));
         checks.Add(Review(root));
         checks.Add(connection is null ? Skipped("duplicates") : Duplicates(root));
@@ -237,6 +238,17 @@ public static class LibraryDoctor
         return without.Count == 0
             ? Check("cite-keys", "ok", papers.Count == 0 ? "no papers" : "every paper has a cite key", 0, [], null)
             : Check("cite-keys", "note", $"{Plural(without.Count, "paper has", "papers have")} no cite key", without.Count, without, "shelf citekeys");
+    }
+
+    private static DoctorCheck Links(List<Found> works)
+    {
+        var known = works.Select(w => w.Sidecar.Id).ToHashSet();
+        var dangling = works
+            .SelectMany(w => w.Sidecar.Links.Where(l => !known.Contains(l.Work)).Select(l => new DoctorExample(w.Sidecar.Id.ToString(), w.Sidecar.Title, $"link to {l.Work} (no such work)")))
+            .ToList();
+        return dangling.Count == 0
+            ? Check("links", "ok", "every link points to a work", 0, [], null)
+            : Check("links", "warning", $"{Plural(dangling.Count, "link points", "links point")} to a work that does not exist", dangling.Count, dangling, "remove the link from the book.json of the work; shelf ignores it until then");
     }
 
     private static DoctorCheck Text(SqliteConnection connection)

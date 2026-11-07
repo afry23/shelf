@@ -43,6 +43,30 @@ internal static class Api
             .WithName("GetWork")
             .Produces<WorkDetail>(StatusCodes.Status200OK);
 
+        api.MapGet("/works/{id}/links", ([FromServices] LibraryHandle library, string id) =>
+                Run(WebJsonContext.Default.LinksResult, () => library.Service.GetLinks(RequireId(id))))
+            .WithName("GetLinks")
+            .Produces<LinksResult>(StatusCodes.Status200OK);
+
+        api.MapPut("/works/{id}/links/{other}", ([FromServices] LibraryHandle library, string id, string other, [FromBody] LinkRequest? body) =>
+                Run(WebJsonContext.Default.LinksResult, () =>
+                {
+                    var outcome = library.Service.LinkWorks(RequireId(id), RequireId(other), OptionalText(body?.Note, "note"), OptionalText(body?.OtherNote, "otherNote"));
+                    return library.Service.GetLinks(outcome.Id);
+                }))
+            .WithName("LinkWorks")
+            .Accepts<LinkRequest>("application/json")
+            .Produces<LinksResult>(StatusCodes.Status200OK);
+
+        api.MapDelete("/works/{id}/links/{other}", ([FromServices] LibraryHandle library, string id, string other) =>
+                Run(WebJsonContext.Default.LinksResult, () =>
+                {
+                    var outcome = library.Service.UnlinkWorks(RequireId(id), RequireId(other));
+                    return library.Service.GetLinks(outcome.Id);
+                }))
+            .WithName("UnlinkWorks")
+            .Produces<LinksResult>(StatusCodes.Status200OK);
+
         api.MapGet("/reading-list", ([FromServices] LibraryHandle library) =>
                 Run(WebJsonContext.Default.ReadingListResponse, () =>
                 {

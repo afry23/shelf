@@ -447,3 +447,18 @@ public sealed record FetchPaperOutcome(string Work, string Title, string File, s
 
 /// <summary>A file moved to another work (F-GRP-8): the work it came from, the work that has it now, its name there, and whether the work it came from went along.</summary>
 public sealed record MoveFileOutcome(string Work, string Target, string File, bool WorkRemoved);
+
+/// <summary>A work that is linked with another one (F-LNK-5): the work, and the note of the side that was asked about.</summary>
+public sealed record LinkItem(
+    string Id,
+    string Title,
+    string[] Authors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Year,
+    string Kind,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note);
+
+/// <summary>The links a person made from one work (F-LNK-5, F-LNK-6).</summary>
+public sealed record LinksResult(string Id, string Title, int Total, LinkItem[] Links);
+
+/// <summary>What linking two works or unlinking them did. <paramref name="Changed"/> is false when nothing was different afterwards (F-LNK-2).</summary>
+public sealed record LinkOutcome(string Id, string Other, bool Changed);

@@ -471,6 +471,32 @@ export const addToReadingList = (id: string) => request<WorkDetail>('PUT', `/wor
 
 export const removeFromReadingList = (id: string) => request<WorkDetail>('DELETE', `/works/${encodeURIComponent(id)}/reading-list`);
 
+/** A work that a person linked with another one by hand (F-LNK-5), with the note of the side that was asked about. */
+export interface LinkItem {
+  id: string;
+  title: string;
+  authors: string[];
+  year: number | null;
+  kind: string;
+  note: string | null;
+}
+
+export interface LinkList {
+  id: string;
+  title: string;
+  total: number;
+  links: LinkItem[];
+}
+
+export const workLinks = (id: string) => request<LinkList>('GET', `/works/${encodeURIComponent(id)}/links`);
+
+/** Links two works, or replaces the notes of an existing link; a note that is left out stays as it is. */
+export const linkWorks = (id: string, other: string, notes: { note?: string; otherNote?: string } = {}) =>
+  request<LinkList>('PUT', `/works/${encodeURIComponent(id)}/links/${encodeURIComponent(other)}`, notes);
+
+export const unlinkWorks = (id: string, other: string) =>
+  request<LinkList>('DELETE', `/works/${encodeURIComponent(id)}/links/${encodeURIComponent(other)}`);
+
 export const setTags = (id: string, tags: string[]) =>
   request<{ id: string; tags: string[]; added: number; removed: number }>('PUT', `/works/${encodeURIComponent(id)}/tags`, { tags });
 

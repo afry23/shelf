@@ -24,14 +24,15 @@ internal static class ShowCommand
             var work = WorkSupport.Resolve(context, environment, parseResult.GetRequiredValue(reference));
             var sidecar = LibraryEditor.Read(context.Root, work);
             var related = WorkLookup.Labels(context.Root, sidecar.Related);
+            var links = LibraryLinks.List(context.Root, work.Id);
             var files = sidecar.Files.Select(f => (File: f, Info: new FileInfo(LibraryEditor.FilePath(context.Root, work, f.Name)))).ToList();
             if (parseResult.GetValue(json))
             {
-                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, sidecar, work, files, related)));
+                stdout.WriteLine(JsonOutput.Write(writer => WriteJson(writer, sidecar, work, files, related, links)));
             }
             else
             {
-                WriteText(stdout, Palette.For(environment, json: false), sidecar, work, files, related);
+                WriteText(stdout, Palette.For(environment, json: false), sidecar, work, files, related, links);
             }
 
             return ExitCodes.Success;
@@ -39,7 +40,7 @@ internal static class ShowCommand
         return command;
     }
 
-    private static void WriteText(TextWriter stdout, Palette palette, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related)
+    private static void WriteText(TextWriter stdout, Palette palette, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related, IReadOnlyList<LinkedWork> links)
     {
         void Line(string label, string? value)
         {
@@ -73,6 +74,11 @@ internal static class ShowCommand
             first = false;
         }
 
+        for (var i = 0; i < links.Count; i++)
+        {
+            Line(i == 0 ? "Links" : string.Empty, LinkCommand.Line(links[i]));
+        }
+
         if (!string.IsNullOrWhiteSpace(s.Description))
         {
             stdout.WriteLine();
@@ -94,7 +100,7 @@ internal static class ShowCommand
         }
     }
 
-    private static void WriteJson(Utf8JsonWriter writer, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related)
+    private static void WriteJson(Utf8JsonWriter writer, WorkSidecar s, LibraryWork work, List<(SidecarFile File, FileInfo Info)> files, Dictionary<Ulid, string> related, IReadOnlyList<LinkedWork> links)
     {
         writer.WriteStartObject();
         JsonOutput.Property(writer, "id", s.Id.ToString());
@@ -122,6 +128,17 @@ internal static class ShowCommand
             writer.WriteStartObject();
             JsonOutput.Property(writer, "id", id.ToString());
             JsonOutput.Property(writer, "title", related[id]);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteStartArray("links");
+        foreach (var link in links)
+        {
+            writer.WriteStartObject();
+            JsonOutput.Property(writer, "id", link.Id.ToString());
+            JsonOutput.Property(writer, "title", link.Title);
+            JsonOutput.Property(writer, "note", link.Note);
             writer.WriteEndObject();
         }
 
