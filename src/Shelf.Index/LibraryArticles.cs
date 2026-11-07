@@ -69,6 +69,42 @@ public static class LibraryArticles
         return new ImportResult(items, ignored);
     }
 
+    /// <summary>
+    /// One article from one Markdown file, made by hand (F-GRP-10): the title, authors and year of the front matter are replaced by
+    /// the values that are given. An article whose address is in the library already is not made again (F-ART-6).
+    /// </summary>
+    /// <exception cref="LibraryEditException"/>
+    internal static CreateResult CreateByHand(string root, string file, string shownAs, WorkValues values)
+    {
+        ClippedArticle article;
+        try
+        {
+            article = MarkdownArticle.Read(File.ReadAllText(file), Path.GetFileName(file), Path.GetDirectoryName(file)!);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or DecoderFallbackException)
+        {
+            throw new LibraryEditException($"{shownAs}: {e.Message}");
+        }
+
+        if (article.SourceUrl is not null && Existing(root, article.SourceUrl) is { } known)
+        {
+            throw new LibraryEditException($"{shownAs}: the article \"{known.Title}\" is already in the library (same source)");
+        }
+
+        if (!string.IsNullOrWhiteSpace(values.Title))
+        {
+            article = article with { Title = values.Title };
+        }
+
+        if (values.Authors is { Count: > 0 } authors)
+        {
+            article = article with { Authors = [.. authors] };
+        }
+
+        var created = Create(root, article, values.Year);
+        return new CreateResult(created.Work, created.File, created.Folder);
+    }
+
     private static (List<string> Files, int Ignored) CollectMarkdown(IReadOnlyList<string> sources)
     {
         var files = new List<string>();
@@ -186,10 +222,14 @@ public static class LibraryArticles
         };
     }
 
-    private static ClipResult Create(string root, ClippedArticle article)
+    private static ClipResult Create(string root, ClippedArticle article, int? year = null)
     {
         var now = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero);
         var sidecar = Sidecar(article, now);
+        if (year is not null)
+        {
+            sidecar = sidecar with { Year = year };
+        }
 
         var folder = FolderNames.FreeFolder(Path.Combine(root, RelativeFolder(sidecar).Replace('/', Path.DirectorySeparatorChar)));
         var sidecarPath = Path.Combine(folder, SidecarStore.FileName);

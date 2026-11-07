@@ -161,6 +161,7 @@
   let createTitle = $state('');
   let createAuthor = $state('');
   let createYear = $state('');
+  let createKind = $state('');
 
   async function submitCreate(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -172,7 +173,7 @@
     createError = null;
     createBusy = true;
     try {
-      const outcome = await createWork(file, { title: createTitle, author: createAuthor, year: createYear });
+      const outcome = await createWork(file, { title: createTitle, author: createAuthor, year: createYear, kind: createKind });
       navigate(`/works/${outcome.work}`);
     } catch (e) {
       createError = (e as Error).message;
@@ -249,6 +250,16 @@
     <form id="new-work" aria-label="New work" onsubmit={submitCreate}>
       <p class="muted">Makes a work of one file without grouping it into a work it matches. What you leave empty is read from the file.</p>
       <p><input type="file" aria-label="File of the new work" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={createInput} /></p>
+      <p>
+        <label>Type
+          <select aria-label="Type" bind:value={createKind}>
+            <option value="">Let the file decide</option>
+            <option value="book">Book</option>
+            <option value="paper">Paper</option>
+            <option value="article">Article (Markdown file)</option>
+          </select>
+        </label>
+      </p>
       <p><input type="text" aria-label="Title" placeholder="Title" bind:value={createTitle} /></p>
       <p><input type="text" aria-label="Author" placeholder="Author" bind:value={createAuthor} /></p>
       <p><input type="text" inputmode="numeric" aria-label="Year" placeholder="Year" bind:value={createYear} /></p>

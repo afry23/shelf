@@ -69,13 +69,13 @@ public sealed partial class LibraryService
 
     /// <summary>Makes a work from an uploaded file (F-GRP-9), as <c>shelf create</c> does. It can be undone with <c>shelf undo</c>.</summary>
     /// <exception cref="LibraryException">Conflict: the file is in the library already.</exception>
-    public CreateWorkOutcome CreateWork(ReceivedFile file, WorkValues values)
+    public CreateWorkOutcome CreateWork(ReceivedFile file, WorkValues values, string? kind = null)
     {
         lock (_writeGate)
         {
             try
             {
-                var result = LibraryFiles.CreateWork(root, file.Path, values, move: false, root);
+                var result = LibraryFiles.CreateWork(root, file.Path, values, move: false, root, WorkKinds.Parse(kind));
 
                 // A file without a cover is no reason to fail a work that was made.
                 LibraryCovers.FillWorks(root, [result.Work]);
