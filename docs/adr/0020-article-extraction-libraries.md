@@ -1,5 +1,7 @@
 # ADR 0020: Libraries for extracting web articles
 
+> **Superseded (2026-11-07).** `shelf clip` loaded pages itself and failed on cookie banners, paywalls and scripted pages. Articles now come in as Markdown that a web clipper saved in the user's browser (`shelf import --article`, F-ART-2). AngleSharp, SmartReader and ReverseMarkdown were removed; `Shelf.Clip` only reads front matter and image links. The text below is kept as the record of the first design.
+
 | | |
 |---|---|
 | **Status** | Accepted for `osx-arm64`: Native AOT publish with the three libraries has 0 `IL*`/`AOT*` warnings and runs; `linux-x64` not verified |

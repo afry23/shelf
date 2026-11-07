@@ -1,9 +1,9 @@
 using System.Globalization;
-using System.Net;
 using System.Text;
 using Shelf.Clip;
 using Shelf.Core.Grouping;
 using Shelf.Core.Model;
+using Shelf.Extraction;
 using Shelf.Organize;
 
 namespace Shelf.Index;
@@ -14,7 +14,7 @@ public sealed record ClipResult(Ulid Work, string Title, string File, string Fol
 
 /// <summary>
 /// Web articles as Markdown with their images (F-ART-2, F-ART-3, F-ART-6): a work folder holds <c>article.md</c>,
-/// <c>images/</c> and <c>book.json</c>. Only <see cref="ClipUrl"/> goes online, and only on explicit command.
+/// <c>images/</c> and <c>book.json</c>. Nothing here goes online.
 /// </summary>
 public static class LibraryArticles
 {
@@ -50,130 +50,109 @@ public static class LibraryArticles
         }
     }
 
-    /// <summary>Loads a public page and its images and creates the article.</summary>
-    /// <exception cref="LibraryEditException">The address is no web address, the page cannot be loaded, or it holds no article.</exception>
-    public static ClipResult ClipUrl(string root, string url, IHttpGetter http, CancellationToken cancellation)
+    /// <summary>
+    /// Takes the Markdown files a web clipper saved (F-ART-2): each source is a file, or a folder whose <c>.md</c> files are
+    /// searched recursively. One article per file; images come from below the folder of the file (F-ART-5). Nothing goes online.
+    /// </summary>
+    /// <exception cref="ImportException">A source does not exist.</exception>
+    public static ImportResult Import(string root, IReadOnlyList<string> sources, bool dryRun)
     {
-        ArgumentNullException.ThrowIfNull(http);
-        var address = SourceUrl.Normalize(url) ?? throw new LibraryEditException($"'{url}' is not a web address (http:// or https://)");
-        if (Existing(root, address) is { } known)
+        ArgumentNullException.ThrowIfNull(sources);
+        var (files, ignored) = CollectMarkdown(sources);
+        var items = new List<ImportItem>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in files)
         {
-            return known;
+            items.Add(ImportFile(root, file, dryRun, seen));
         }
 
-        var page = Load(http, address, cancellation) ?? throw new LibraryEditException($"{address} could not be loaded");
-        ClippedArticle article;
-        try
-        {
-            article = ArticleClipper.Clip(PageText.Decode(page.Body), address, image =>
-            {
-                try
-                {
-                    return Load(http, image, cancellation)?.Body;
-                }
-                catch (LibraryEditException)
-                {
-                    return null; // reported by the clipper as an image that was not saved
-                }
-            });
-        }
-        catch (NoArticleException e)
-        {
-            throw new LibraryEditException($"{e.Message} at {address}");
-        }
-
-        article = article with { SourceUrl = article.SourceUrl ?? address };
-        return Existing(root, article.SourceUrl) ?? Create(root, article);
+        return new ImportResult(items, ignored);
     }
 
-    /// <summary>Creates an article from a page that was saved in a browser (HTML or MHTML); nothing goes online.</summary>
-    /// <param name="url">The address the page came from, if the file does not say.</param>
-    /// <exception cref="LibraryEditException">The file cannot be read or holds no article.</exception>
-    public static ClipResult ClipFile(string root, string path, string? url, string workingDirectory)
+    private static (List<string> Files, int Ignored) CollectMarkdown(IReadOnlyList<string> sources)
     {
-        var full = Path.GetFullPath(path, workingDirectory);
-        if (!File.Exists(full))
+        var files = new List<string>();
+        var ignored = 0;
+        foreach (var source in sources)
         {
-            throw new LibraryEditException($"{path} does not exist");
-        }
-
-        if (url is not null && SourceUrl.Normalize(url) is null)
-        {
-            throw new LibraryEditException($"'{url}' is not a web address (http:// or https://)");
-        }
-
-        var bytes = File.ReadAllBytes(full);
-        var directory = Path.GetDirectoryName(full)!;
-        string html;
-        Func<string, byte[]?> load;
-        string? origin = url;
-        var head = Encoding.Latin1.GetString(bytes, 0, Math.Min(bytes.Length, 256));
-        if (Path.GetExtension(full) is ".mhtml" or ".mht" || Mhtml.Looks(head))
-        {
-            Mhtml saved;
-            try
+            var full = Path.GetFullPath(source);
+            if (File.Exists(full))
             {
-                saved = Mhtml.Parse(bytes);
+                files.Add(full); // a file that is not Markdown is reported as an error of that file
             }
-            catch (FormatException e)
+            else if (Directory.Exists(full))
             {
-                throw new LibraryEditException($"{path}: {e.Message}");
+                foreach (var path in Directory.EnumerateFiles(full, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+                {
+                    if (BookExtractor.IsMarkdown(path))
+                    {
+                        files.Add(path);
+                    }
+                    else
+                    {
+                        ignored++;
+                    }
+                }
             }
-
-            html = saved.Html;
-            origin ??= saved.Location;
-            load = address => saved.Find(address) ?? LocalFile(directory, address);
+            else
+            {
+                throw new ImportException($"{source}: does not exist");
+            }
         }
-        else
+
+        return ([.. files.Distinct(StringComparer.Ordinal)], ignored);
+    }
+
+    private static ImportItem ImportFile(string root, string file, bool dryRun, HashSet<string> seen)
+    {
+        if (!BookExtractor.IsMarkdown(file))
         {
-            html = PageText.Decode(bytes);
-            load = address => LocalFile(directory, address);
+            return Failed(file, "not a Markdown file");
         }
 
         ClippedArticle article;
         try
         {
-            article = ArticleClipper.Clip(html, null, load);
+            article = MarkdownArticle.Read(File.ReadAllText(file), Path.GetFileName(file), Path.GetDirectoryName(file)!);
         }
-        catch (NoArticleException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or DecoderFallbackException)
         {
-            throw new LibraryEditException($"no article found in {Path.GetFileName(path)}");
+            return Failed(file, e.Message);
         }
 
-        article = article with { SourceUrl = SourceUrl.Normalize(origin) ?? article.SourceUrl };
-        return (article.SourceUrl is null ? null : Existing(root, article.SourceUrl)) ?? Create(root, article);
-    }
-
-    private static byte[]? LocalFile(string directory, string address)
-    {
-        if (address.Contains("://", StringComparison.Ordinal) || address.StartsWith("//", StringComparison.Ordinal))
+        var warnings = article.Warnings.Select(w => $"{Path.GetFileName(file)}: {w}").ToList();
+        if (article.SourceUrl is not null)
         {
-            return null; // a saved page does not go online
+            if (Existing(root, article.SourceUrl) is { } known)
+            {
+                return new ImportItem(file, ImportAction.Duplicate, null, known.Work, known.Title, 0, $"same source as \"{known.Title}\"", 0, warnings);
+            }
+
+            if (!seen.Add(article.SourceUrl))
+            {
+                return new ImportItem(file, ImportAction.Duplicate, null, null, article.Title, 0, "same source as an earlier file of this import", 0, warnings);
+            }
         }
 
-        // Only below the folder of the page ("post_files/a.jpg"); a saved page may not reach into the rest of the disk.
-        var file = Path.GetFullPath(Uri.UnescapeDataString(address.Split('?', '#')[0]), directory);
-        return file.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.Ordinal) && File.Exists(file)
-            ? File.ReadAllBytes(file)
-            : null;
-    }
+        if (dryRun)
+        {
+            var planned = RelativeFolder(Sidecar(article, DateTimeOffset.UtcNow));
+            return new ImportItem(file, ImportAction.NewWork, planned + "/" + ArticleFile, null, article.Title, 1, $"{article.Images.Count} images", 0, warnings);
+        }
 
-    private static HttpAnswer? Load(IHttpGetter http, string address, CancellationToken cancellation)
-    {
-        HttpAnswer answer;
         try
         {
-            answer = http.Get(address, cancellation);
+            var created = Create(root, article);
+            return new ImportItem(file, ImportAction.NewWork, created.Folder + "/" + ArticleFile, created.Work, created.Title, 1, created.Images == 0 ? null : $"{created.Images} images", 0, warnings);
         }
-        catch (MetadataSourceException e)
+        catch (Exception e) when (e is LibraryEditException or SidecarException or JournalException or IndexException or IOException)
         {
-            throw new LibraryEditException($"{address}: {e.Message}");
+            return Failed(file, e.Message);
         }
-
-        return answer.Status is >= HttpStatusCode.OK and < HttpStatusCode.Ambiguous
-            ? answer
-            : throw new LibraryEditException($"{address}: the server answered {(int)answer.Status} ({answer.Status})");
     }
+
+    private static ImportItem Failed(string file, string detail) =>
+        new(file, ImportAction.Error, null, null, null, 0, $"{file}: {detail}", 0);
 
     private static ClipResult? Existing(string root, string address)
     {
@@ -187,11 +166,10 @@ public static class LibraryArticles
             : null;
     }
 
-    private static ClipResult Create(string root, ClippedArticle article)
+    private static WorkSidecar Sidecar(ClippedArticle article, DateTimeOffset now)
     {
-        var now = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero);
         var authors = article.Authors.Count > 0 ? article.Authors : [article.Site ?? AuthorNames.UnknownAuthor];
-        var sidecar = new WorkSidecar
+        return new WorkSidecar
         {
             Id = Ulid.New(),
             Title = article.Title,
@@ -206,12 +184,18 @@ public static class LibraryArticles
             Added = now,
             Files = [new SidecarFile(ArticleFile)],
         };
+    }
+
+    private static ClipResult Create(string root, ClippedArticle article)
+    {
+        var now = new DateTimeOffset(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, TimeSpan.Zero);
+        var sidecar = Sidecar(article, now);
 
         var folder = FolderNames.FreeFolder(Path.Combine(root, RelativeFolder(sidecar).Replace('/', Path.DirectorySeparatorChar)));
         var sidecarPath = Path.Combine(folder, SidecarStore.FileName);
         SidecarFormat.Validate(sidecar, sidecarPath);
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        var journal = FileJournal.Begin(root, "clip", undoable: true);
+        var journal = FileJournal.Begin(root, "import", undoable: true);
         try
         {
             Write(journal, Path.Combine(folder, ArticleFile), utf8.GetBytes(article.Markdown));
