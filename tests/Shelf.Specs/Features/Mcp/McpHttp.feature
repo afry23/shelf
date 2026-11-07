@@ -52,9 +52,11 @@ Feature: The MCP server over Streamable HTTP
       | find_passages        |
       | get_annotations      |
       | get_book             |
+      | get_links            |
       | get_reading_list     |
       | get_references       |
       | get_stats            |
+      | link_works           |
       | list_saved_searches  |
       | list_tags            |
       | propose_organization |
@@ -66,7 +68,8 @@ Feature: The MCP server over Streamable HTTP
       | semantic_search      |
       | similar_books        |
       | suggest_tags         |
-    And every tool except "add_bookmark", "add_note", "add_tags", "remove_tags", "add_to_reading_list" and "remove_from_reading_list" is marked read-only
+      | unlink_works         |
+    And every tool except "add_bookmark", "add_note", "add_tags", "remove_tags", "add_to_reading_list", "remove_from_reading_list", "link_works" and "unlink_works" is marked read-only
     And no tool is marked destructive
     And the server offers the resource templates:
       | uri                   |
@@ -108,6 +111,7 @@ Feature: The MCP server over Streamable HTTP
       | find_passages        |
       | get_annotations      |
       | get_book             |
+      | get_links            |
       | get_reading_list     |
       | get_references       |
       | get_stats            |

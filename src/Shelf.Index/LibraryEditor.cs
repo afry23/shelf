@@ -164,6 +164,7 @@ public static class LibraryEditor
             Files = files,
             NotDuplicates = new NotDuplicates(works, pairs),
             Related = [.. t.Related.Concat(s.Related).Where(id => id != target.Id && id != source.Id).Distinct()],
+            Links = LibraryLinks.CarryOnMerge(root, s, t, target),
         };
         SidecarStore.Write(targetPath, merged);
 

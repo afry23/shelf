@@ -146,6 +146,8 @@ public static partial class QueryParser
             "series" => FieldKind.Series,
             "site" => FieldKind.Site,
             "readinglist" => FieldKind.ReadingList,
+            "linked" => FieldKind.Linked,
+            "has" => FieldKind.Has,
             _ => null,
         };
         if (kind is null)
@@ -188,6 +190,13 @@ public static partial class QueryParser
                 return onList is "yes" or "no"
                     ? new ValueFilter(FieldKind.ReadingList, onList, negated)
                     : throw new QueryException($"readinglist: '{value}' is not one of yes, no");
+            case FieldKind.Has:
+                var thing = value.ToLowerInvariant();
+                return thing is "links"
+                    ? new ValueFilter(FieldKind.Has, thing, negated)
+                    : throw new QueryException($"has: '{value}' is not one of links");
+            case FieldKind.Linked:
+                return new ValueFilter(FieldKind.Linked, value, negated);
             case FieldKind.Type:
                 var type = value.ToLowerInvariant();
                 return type is "book" or "paper" or "article"

@@ -11,7 +11,7 @@ namespace Shelf.Index;
 internal static class IndexSchema
 {
     /// <summary>Stored in <c>PRAGMA user_version</c>. Increase it with every change of this schema.</summary>
-    public const int Version = 14;
+    public const int Version = 15;
 
     public const string Tokenizer = "unicode61 remove_diacritics 2";
 
@@ -158,6 +158,14 @@ internal static class IndexSchema
             PRIMARY KEY(work_id, position)) WITHOUT ROWID
         """,
         "CREATE INDEX work_refs_doi ON work_refs(doi)",
+        """
+        CREATE TABLE work_links(
+            work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            other_id TEXT NOT NULL,
+            note TEXT,
+            PRIMARY KEY(work_id, other_id)) WITHOUT ROWID
+        """,
+        "CREATE INDEX work_links_other ON work_links(other_id)",
         $"CREATE VIRTUAL TABLE annotations_fts USING fts5(quote, note, content='annotations', content_rowid='id', tokenize='{Tokenizer}')",
         """
         CREATE TRIGGER annotations_ai AFTER INSERT ON annotations BEGIN
@@ -180,6 +188,6 @@ internal static class IndexSchema
     /// <summary>Tables that hold data, in an order that is safe for deleting (children first).</summary>
     public static readonly string[] DataTablesChildrenFirst =
     [
-        "chunks", "annotations", "work_refs", "reading_progress", "work_tags", "files", "tags", "works", "dupe_ignores", "review_queue",
+        "chunks", "annotations", "work_refs", "work_links", "reading_progress", "work_tags", "files", "tags", "works", "dupe_ignores", "review_queue",
     ];
 }

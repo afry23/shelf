@@ -123,6 +123,8 @@ Feature: The page of a book in tabs
     When I press the key "ArrowRight" on the "Contents" tab
     Then the "Files" tab is selected
     When I press the key "ArrowRight" on the "Files" tab
+    Then the "Links" tab is selected
+    When I press the key "ArrowRight" on the "Links" tab
     Then the "Manage" tab is selected
 
   Scenario: The tab stays when the details change

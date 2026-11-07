@@ -164,6 +164,9 @@ public sealed record PairRequest(JsonNode? A, JsonNode? B);
 /// <summary>The body of <c>POST /works/{id}/merge</c>: the ID of the work that goes into the one in the path. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record MergeRequest(JsonNode? From);
 
+/// <summary>The body of <c>PUT /works/{id}/links/{other}</c>: the note of each side (F-LNK-5). Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record LinkRequest(JsonNode? Note, JsonNode? OtherNote);
+
 /// <summary>The body of <c>POST /works/fetch</c>: <c>paper</c> is a DOI or an arXiv ID. Any JSON is read so that a wrong type is answered with a reason.</summary>
 public sealed record FetchRequest(JsonNode? Paper);
 

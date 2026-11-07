@@ -466,6 +466,22 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-DOC-1 to F-DOC-3, the complete BDD suite is green, the native binary passes `tests/e2e/native.sh`.
 
+### M22 – Links Between Works
+
+**Goal:** A person links works by hand and writes why.
+
+**Status:** planned; feature files `Links`, `LinkSearch`, `LinkMaintenance`, `WebLinks`, `McpLinks`, `UiLinks`.
+
+| Area | Content | PRD |
+|---|---|---|
+| Data model | `links` in `book.json`, mirrored in the index (`work_links`) | F-LNK-1, F-LNK-3 |
+| CLI | `shelf link`, `shelf unlink`, `shelf links`, section in `show` | F-LNK-2 |
+| Search | `linked:<work>`, `has:links` | F-LNK-3 |
+| Upkeep | merge, delete, `doctor` check `links` | F-LNK-4 |
+| REST, MCP, web | `/api/v1/works/{id}/links`, `get_links`, `link_works`, `unlink_works`, tab "Links" | F-LNK-5 to F-LNK-7 |
+
+**Exit criteria:** feature files exist for F-LNK-1 to F-LNK-7, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

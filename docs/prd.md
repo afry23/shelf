@@ -320,8 +320,22 @@ A **notes file** is a PDF or TXT file that belongs to a work but is not a book: 
 | ID | Requirement | Prio |
 |---|---|---|
 | F-DOC-1 | `shelf doctor [--strict] [--json]` checks the library and changes nothing. Each check ends `ok`, `note` (could be better), `warning` (needs attention) or `error` (data is broken) and names the first five works or files concerned and the command that fixes it. Exit code 1 if there is an error, with `--strict` also for a warning. | S |
-| F-DOC-2 | The checks: `index` (usable), `sidecars` (every `book.json` and `annotations.json` valid), `files` (every file named in a sidecar exists), `index-sync` (the works in the folders and in the index are the same), `metadata` (works without year or language), `covers`, `cite-keys` (papers), `text` (files that cannot be read, have no text layer or are not read yet), `review` (entries in the review queue), `duplicates` (identical files), `embeddings` (only if semantic search is set up), `searches` (saved searches that do not parse). Without a usable index the checks that need it say so and the others still run. | S |
+| F-DOC-2 | The checks: `index` (usable), `sidecars` (every `book.json` and `annotations.json` valid), `files` (every file named in a sidecar exists), `index-sync` (the works in the folders and in the index are the same), `metadata` (works without year or language), `covers`, `cite-keys` (papers), `links` (links to works that do not exist), `text` (files that cannot be read, have no text layer or are not read yet), `review` (entries in the review queue), `duplicates` (identical files), `embeddings` (only if semantic search is set up), `searches` (saved searches that do not parse). Without a usable index the checks that need it say so and the others still run. | S |
 | F-DOC-3 | REST `GET /api/v1/doctor` answers with the same report as JSON (`works`, `errors`, `warnings`, `notes`, `checks[]` with `id`, `status`, `summary`, `count`, `examples[]`, `hint`). A problem of the library is part of the report, not an error of the request. Not offered via MCP. | S |
+
+### 6.15 Links Between Works
+
+A person can link works by hand: same topic, a sequel, a rebuttal, the paper behind a book. A link is not a duplicate and not another edition (that is `related`, F-GRP-5); it is the person's own note that two works belong together. The automatic "Similar books" (F-SEM) stay what they are.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-LNK-1 | `book.json` has the optional field `links`, a list of `{ "work": "<ID>", "note": "<text>" }` (left out when empty, `schema` stays 1; `note` is optional, at most 200 characters, one line). A link is written on **both** works; each side has its own note ("sequel of" on one, "predecessor of" on the other). A work cannot link itself and links another work once. Works of any kind (book, paper, article) can be linked. | M |
+| F-LNK-2 | `shelf link <work> <other> [--note <text>] [--other-note <text>]` creates the link (on an existing link it replaces the notes that are given), `shelf unlink <work> <other>` removes it from both works, `shelf links <work>` lists the links of a work with the note of its side (`--json`). Linking twice changes nothing but the notes. A reference that names no work or several works is an error. `shelf show` has a section "Links". | M |
+| F-LNK-3 | The links are part of the index (mirrored from `book.json`) and `shelf reindex` restores them from the sidecars. The search filter `linked:<work>` (ID, start of an ID, or cite key) selects the works that are linked with that work; `has:links` / `-has:links` selects works with or without links. | M |
+| F-LNK-4 | When works are merged, the links of the source move to the target (without a link to the target itself and without duplicates). When a work is deleted, the links to it are removed from the other works. A link to a work that does not exist (for example after a hand edit) is ignored when shown and reported by `shelf doctor` (check `links`). | M |
+| F-LNK-5 | REST: `GET /api/v1/works/{id}/links`, `PUT /api/v1/works/{id}/links/{other}` (`{"note": …, "otherNote": …}`; creates the link or replaces the notes), `DELETE /api/v1/works/{id}/links/{other}`. A link shows the other work (ID, title, authors, year, kind) and the note of the side of `{id}`. | M |
+| F-LNK-6 | MCP: the read-only tool `get_links` and the write tools `link_works` and `unlink_works`. With `mcp.read_only` the write tools are not offered. | S |
+| F-LNK-7 | Web interface: the work page has the tab "Links" (always shown, right after "Similar books", or after "Files" without it): the linked works with their notes (a click opens the work), a button to remove a link, a field to edit the note, and a form that searches the library by title and links the chosen work with an optional note. | S |
 
 ## 7. Interfaces
 
@@ -348,6 +362,7 @@ shelf export [query] [--format bibtex|csl-json|ris] [--out file]  Citations of a
 shelf import-bib <file> [--apply] [--overwrite]  Take over DOIs, venues and cite keys from a BibTeX file (preview unless --apply)
 shelf tag add|rm|list|rename|merge        Manage tags
 shelf readlist add|rm|show                Manage the reading list (F-RLS-3)
+shelf link <work> <other> [--note ...]    Link two works by hand; shelf unlink / shelf links (F-LNK-2)
 shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>

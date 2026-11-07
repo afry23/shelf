@@ -73,6 +73,23 @@ internal sealed class LibraryTools(LibraryService service)
     [Description("The reading list: the works (books, papers, articles) a person wants to read next, the one put on first at the top. A work leaves the list by itself when it is marked as read.")]
     public ReadingListResult GetReadingList() => Run(() => service.ReadingList());
 
+    [Description("The works a person linked with a given work by hand (same topic, a sequel, a rebuttal), each with the note the person wrote on this side. Different from similar_books, which is computed. Nothing is changed.")]
+    public LinksResult GetLinks([Description("The ID of a work, or the start of it")] string id) => Run(() => service.GetLinks(id));
+
+    [Description("Link two works by hand and say why. The link is written on both works; the note is about the other work, otherNote is the note of the other side. Linking again replaces the notes that are given and changes nothing else (changed is false if nothing was different). Can be undone with unlink_works.")]
+    public LinkOutcome LinkWorks(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The ID of the work to link with, or the start of it")] string other,
+        [Description("Why the first work is linked with the other (one line, at most 200 characters); an empty text removes the note")] string? note = null,
+        [Description("Why the other work is linked with the first (one line, at most 200 characters)")] string? otherNote = null) =>
+        Run(() => service.LinkWorks(id, other, note, otherNote));
+
+    [Description("Remove the link between two works from both of them. Fails if the works are not linked.")]
+    public LinkOutcome UnlinkWorks(
+        [Description("The ID of a work, or the start of it")] string id,
+        [Description("The ID of the linked work, or the start of it")] string other) =>
+        Run(() => service.UnlinkWorks(id, other));
+
     [Description("Put a work on the reading list. A work that is on it already stays as it is (changed is false). A work that is read already is refused. Can be undone with remove_from_reading_list.")]
     public ReadingListChange AddToReadingList([Description("The ID of a work, or the start of it")] string id) =>
         Run(() => service.AddToReadingList(id));

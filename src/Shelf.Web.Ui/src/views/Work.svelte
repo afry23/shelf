@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, addToReadingList, ApiError, removeFromReadingList, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, addToReadingList, linkWorks, unlinkWorks, workLinks, ApiError, removeFromReadingList, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type LinkItem, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -76,6 +76,108 @@
       current = false;
     };
   });
+
+  // ---- links made by hand (F-LNK-7) ----
+
+  let links = $state<LinkItem[]>([]);
+  let linkError = $state<string | null>(null);
+  let linkQuery = $state('');
+  let linkFound = $state<WorkItem[] | null>(null);
+  let linkChosen = $state<WorkItem | null>(null);
+  let linkNote = $state('');
+  // The note a person is typing for a link that exists; one text field per link.
+  let noteDrafts = $state<Record<string, string>>({});
+
+  $effect(() => {
+    const wanted = id;
+    let current = true;
+    links = [];
+    linkChosen = null;
+    linkQuery = '';
+    linkError = null;
+    workLinks(wanted)
+      .then((result) => {
+        if (current) {
+          links = result.links;
+          noteDrafts = Object.fromEntries(result.links.map((l) => [l.id, l.note ?? '']));
+        }
+      })
+      .catch(() => {
+        if (current) {
+          links = [];
+        }
+      });
+    return () => {
+      current = false;
+    };
+  });
+
+  $effect(() => {
+    const q = linkQuery.trim();
+    const self = id;
+    if (!q) {
+      linkFound = null;
+      return;
+    }
+    let current = true;
+    const timer = setTimeout(() => {
+      findWorks({ q: `title:"${q.replaceAll('"', '')}"`, limit: 6 })
+        .then((list) => {
+          if (current) {
+            const linked = new Set(links.map((l) => l.id));
+            linkFound = list.items.filter((w) => w.id !== self && !linked.has(w.id));
+          }
+        })
+        .catch(() => {
+          if (current) {
+            linkFound = [];
+          }
+        });
+    }, 200);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  });
+
+  function showLinks(result: { links: LinkItem[] }): void {
+    links = result.links;
+    noteDrafts = Object.fromEntries(result.links.map((l) => [l.id, l.note ?? '']));
+  }
+
+  async function addLink(): Promise<void> {
+    if (!linkChosen) {
+      return;
+    }
+    linkError = null;
+    try {
+      showLinks(await linkWorks(id, linkChosen.id, linkNote.trim() ? { note: linkNote.trim() } : {}));
+      linkChosen = null;
+      linkNote = '';
+      linkQuery = '';
+      linkFound = null;
+    } catch (e) {
+      linkError = (e as Error).message;
+    }
+  }
+
+  async function saveLinkNote(link: LinkItem): Promise<void> {
+    linkError = null;
+    try {
+      showLinks(await linkWorks(id, link.id, { note: (noteDrafts[link.id] ?? '').trim() }));
+    } catch (e) {
+      linkError = (e as Error).message;
+    }
+  }
+
+  async function removeLink(link: LinkItem): Promise<void> {
+    linkError = null;
+    try {
+      showLinks(await unlinkWorks(id, link.id));
+    } catch (e) {
+      linkError = (e as Error).message;
+    }
+  }
 
   // The tags of the works most like this one (F-TAG-6). Like the similar books, they need the embeddings; without them the section stays away.
   let suggestedTags = $state<TagSuggestion[]>([]);
@@ -167,6 +269,7 @@
     ...(refs && (refs.total || refs.citedBy.length || refs.doi) ? [{ id: 'references', label: 'References', count: refs.total || undefined }] : []),
     { id: 'files', label: 'Files', count: book?.files.length },
     ...(similarBooks.length ? [{ id: 'similar', label: 'Similar books', count: similarBooks.length }] : []),
+    { id: 'links', label: 'Links', count: links.length || undefined },
     { id: 'manage', label: 'Manage' },
   ]);
   const active = $derived(tabs.find((tab) => tab.id === chosen)?.id ?? tabs[0].id);
@@ -813,6 +916,54 @@
                 </li>
               {/each}
             </ul>
+          {:else if active === 'links'}
+            {#if links.length === 0}
+              <p class="muted">No links yet. Link works that belong together: the same topic, a sequel, a reply.</p>
+            {:else}
+              <ul class="links" aria-label="Links">
+                {#each links as link (link.id)}
+                  <li>
+                    <div class="head">
+                      <a href={`/works/${link.id}`}>{link.title}</a>
+                      <span class="muted">{authorLine(link.authors)}{link.year ? ` (${link.year})` : ''}</span>
+                    </div>
+                    <div class="note">
+                      <input type="text" aria-label="Note" maxlength="200" placeholder="Why do these belong together?" bind:value={noteDrafts[link.id]} />
+                      {#if (noteDrafts[link.id] ?? '') !== (link.note ?? '')}
+                        <button type="button" class="button" onclick={() => saveLinkNote(link)}>Save note</button>
+                      {/if}
+                      <button type="button" class="button" onclick={() => removeLink(link)}>Remove link</button>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+            {#if linkError}<p class="error" role="alert">{linkError}</p>{/if}
+            <section class="panel">
+              <h2>Link another work</h2>
+              {#if linkChosen}
+                <p>Link {linkChosen.title} with {book.title}.</p>
+                <p><input type="text" aria-label="Note" maxlength="200" placeholder="Note (optional)" bind:value={linkNote} /></p>
+                <button type="button" class="button" onclick={addLink}>Link</button>
+                <button type="button" class="button" onclick={() => (linkChosen = null)}>Cancel</button>
+              {:else}
+                <input type="search" aria-label="Find a work to link" placeholder="Find a work to link" bind:value={linkQuery} />
+                {#if linkFound}
+                  {#if linkFound.length === 0}
+                    <p class="muted">No other work found.</p>
+                  {:else}
+                    <ul class="similar" aria-label="Works to link">
+                      {#each linkFound as item (item.id)}
+                        <li>
+                          <button type="button" class="button" onclick={() => (linkChosen = item)}>{item.title}</button>
+                          <span class="muted">{authorLine(item.authors)}{item.year ? ` (${item.year})` : ''}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                {/if}
+              {/if}
+            </section>
           {:else if active === 'notes'}
             <NoteList store={notes} href={(a) => readLink(a.file, a.locator)} names={fileNames} />
           {:else if active === 'references' && refs}
@@ -1371,6 +1522,32 @@
     padding: 0;
     display: grid;
     gap: 0.4rem;
+  }
+
+  .links {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .links .head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
+  }
+
+  .links .note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+  }
+
+  .links .note input {
+    flex: 1 1 16rem;
   }
 
   .similar li {

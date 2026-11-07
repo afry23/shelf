@@ -80,6 +80,9 @@ public static class ShelfApp
         root.Subcommands.Add(UndoCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(TagCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(ReadingListCommand.Create(json, stdout, stderr, environment));
+        root.Subcommands.Add(LinkCommand.CreateLink(json, stdout, stderr, environment));
+        root.Subcommands.Add(LinkCommand.CreateUnlink(json, stdout, stderr, environment));
+        root.Subcommands.Add(LinkCommand.CreateList(json, stdout, stderr, environment));
         root.Subcommands.Add(NotesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(SearchesCommand.Create(json, stdout, stderr, environment));
         root.Subcommands.Add(DoctorCommand.Create(json, stdout, stderr, environment));

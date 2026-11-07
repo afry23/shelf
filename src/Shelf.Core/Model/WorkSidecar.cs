@@ -31,6 +31,13 @@ public enum FileRole
 /// <summary>A file of a work, named by its file name inside the work folder (F-LIB-4).</summary>
 public sealed record SidecarFile(string Name, FileProgress? Progress = null, FileRole Role = FileRole.Book);
 
+/// <summary>A link to another work that a person made by hand (F-LNK-1), with the note of this side.</summary>
+public sealed record WorkLink(Ulid Work, string? Note = null)
+{
+    /// <summary>The longest note a link may have.</summary>
+    public const int MaxNoteLength = 200;
+}
+
 /// <summary>Two files of the same or different works that were confirmed as not being duplicates.</summary>
 public sealed record FilePair(string A, string B);
 
@@ -166,6 +173,12 @@ public sealed record WorkSidecar
     /// work that no longer exists is ignored when shown.
     /// </summary>
     public IReadOnlyList<Ulid> Related { get; init; } = [];
+
+    /// <summary>
+    /// Works that the person linked with this one by hand (F-LNK-1). The link is written on both sides, each with its own
+    /// note. An ID of a work that no longer exists is ignored when shown.
+    /// </summary>
+    public IReadOnlyList<WorkLink> Links { get; init; } = [];
 
     public IReadOnlyDictionary<string, JsonElement> UnknownFields { get; init; } = EmptyUnknownFields;
 

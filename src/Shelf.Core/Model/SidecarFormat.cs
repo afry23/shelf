@@ -18,7 +18,7 @@ public static class SidecarFormat
     [
         "schema", "id", "title", "subtitle", "authors", "language", "year", "isbn10", "isbn13", "publisher",
         "series", "seriesIndex", "edition", "citeKey", "description", "tags", "rating", "readStatus", "finishedAt", "readingList", "added", "cover",
-        "files", "notDuplicates", "related",
+        "files", "notDuplicates", "related", "links",
         "kind", "doi", "arxivId", "pmid", "venue", "volume", "issue", "pages", "abstract", "keywords",
         "sourceUrl", "site", "published", "captured",
     ];
@@ -157,6 +157,26 @@ public static class SidecarFormat
             if (sidecar.Related[i] == sidecar.Id)
             {
                 Fail($"related[{i + 1}]", "must not be the work's own ID");
+            }
+        }
+
+        var linked = new HashSet<Ulid>();
+        for (var i = 0; i < sidecar.Links.Count; i++)
+        {
+            var link = sidecar.Links[i];
+            if (link.Work == sidecar.Id)
+            {
+                Fail($"links[{i + 1}].work", "must not be the work's own ID");
+            }
+
+            if (!linked.Add(link.Work))
+            {
+                Fail($"links[{i + 1}].work", $"duplicate link to {link.Work}");
+            }
+
+            if (link.Note is { } note && (note.Length > WorkLink.MaxNoteLength || note.Contains('\n') || note.Contains('\r')))
+            {
+                Fail($"links[{i + 1}].note", $"must be one line of at most {WorkLink.MaxNoteLength} characters");
             }
         }
 
@@ -329,6 +349,20 @@ public static class SidecarFormat
                 w.WriteEndArray();
             }
 
+            if (sidecar.Links.Count > 0)
+            {
+                w.WriteStartArray("links");
+                foreach (var link in sidecar.Links)
+                {
+                    w.WriteStartObject();
+                    w.WriteString("work", link.Work.ToString());
+                    Optional(w, "note", link.Note);
+                    w.WriteEndObject();
+                }
+
+                w.WriteEndArray();
+            }
+
             foreach (var (name, value) in sidecar.UnknownFields)
             {
                 w.WritePropertyName(name);
@@ -433,6 +467,7 @@ public static class SidecarFormat
                 Files = Files(root),
                 NotDuplicates = NotDuplicates(root),
                 Related = Related(root),
+                Links = Links(root),
                 UnknownFields = unknown,
             };
         }
@@ -522,6 +557,29 @@ public static class SidecarFormat
             }
 
             return related;
+        }
+
+        private List<WorkLink> Links(JsonElement root)
+        {
+            var links = new List<WorkLink>();
+            foreach (var (item, index) in Items(root, "links", ""))
+            {
+                var prefix = $"links[{index}].";
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    throw Fail($"links[{index}]", $"expected object, found {Kind(item)}");
+                }
+
+                if (!Ulid.TryParse(String(item, "work", prefix), out var work))
+                {
+                    throw Fail(prefix + "work", "not a valid ULID");
+                }
+
+                var note = String(item, "note", prefix);
+                links.Add(new WorkLink(work, string.IsNullOrWhiteSpace(note) ? null : note));
+            }
+
+            return links;
         }
 
         private NotDuplicates NotDuplicates(JsonElement root)

@@ -37,7 +37,7 @@ Feature: The MCP server
     Then the server is called "shelf"
     And the server instructions mention "search_books"
 
-  Scenario: The tools are offered, and only six of them change anything
+  Scenario: The tools are offered, and only eight of them change anything
     Then the server offers exactly the tools:
       | tool                 |
       | add_bookmark         |
@@ -51,9 +51,11 @@ Feature: The MCP server
       | find_probable_duplicates |
       | get_annotations      |
       | get_book             |
+      | get_links            |
       | get_reading_list     |
       | get_references       |
       | get_stats            |
+      | link_works           |
       | list_saved_searches  |
       | list_tags            |
       | propose_organization |
@@ -65,7 +67,8 @@ Feature: The MCP server
       | semantic_search      |
       | similar_books        |
       | suggest_tags         |
-    And every tool except "add_bookmark", "add_note", "add_tags", "remove_tags", "add_to_reading_list" and "remove_from_reading_list" is marked read-only
+      | unlink_works         |
+    And every tool except "add_bookmark", "add_note", "add_tags", "remove_tags", "add_to_reading_list", "remove_from_reading_list", "link_works" and "unlink_works" is marked read-only
     And no tool is marked destructive
     And every tool has a description
     And no tool name starts with "delete", "move", "trash" or "apply"
@@ -176,4 +179,4 @@ Feature: The MCP server
     Then the tool call fails
 
   Scenario: The listing does not depend on the order in which the server sends it
-    Then the tool names sorted are "add_bookmark, add_note, add_tags, add_to_reading_list, cite_passage, export_citations, find_duplicates, find_passages, find_probable_duplicates, get_annotations, get_book, get_reading_list, get_references, get_stats, list_saved_searches, list_tags, propose_organization, read_passage, remove_from_reading_list, remove_tags, resurface_highlights, search_books, semantic_search, similar_books, suggest_tags"
+    Then the tool names sorted are "add_bookmark, add_note, add_tags, add_to_reading_list, cite_passage, export_citations, find_duplicates, find_passages, find_probable_duplicates, get_annotations, get_book, get_links, get_reading_list, get_references, get_stats, link_works, list_saved_searches, list_tags, propose_organization, read_passage, remove_from_reading_list, remove_tags, resurface_highlights, search_books, semantic_search, similar_books, suggest_tags, unlink_works"

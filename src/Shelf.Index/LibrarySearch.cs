@@ -399,6 +399,16 @@ public static class LibrarySearch
                     // "yes" is a work with a time on the list; a negation turns the answer around.
                     filter.Add(onList.Value == "yes" != f.Negated ? "w.reading_list_at IS NOT NULL" : "w.reading_list_at IS NULL");
                     break;
+                case ValueFilter { Field: FieldKind.Has }:
+                    // "has:links": the work has at least one link to a work that exists.
+                    filter.Add($"{not}EXISTS (SELECT 1 FROM work_links l JOIN works o ON o.id = l.other_id WHERE l.work_id = w.id)");
+                    break;
+                case ValueFilter { Field: FieldKind.Linked } linked:
+                    // The works linked with the work that is named by its ID, the start of an ID, or its cite key.
+                    filter.Add(
+                        $"{not}w.id IN (SELECT l.other_id FROM work_links l WHERE l.work_id IN (SELECT s.id FROM works s WHERE substr(s.id, 1, length({{0}})) = upper({{0}}) OR s.cite_key = {{0}}))",
+                        linked.Value);
+                    break;
                 case ValueFilter { Field: FieldKind.Series } series:
                     // The whole name of the series, ignoring case: "series:\"reusable elements\"" finds "Reusable Elements".
                     filter.Add($"{not}COALESCE(lower(w.series) = {{0}}, 0)", series.Value);
