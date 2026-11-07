@@ -68,3 +68,14 @@ Feature: Adding, moving and creating in the browser
     And I click the "Create work" button
     Then the page shows the text "Real Title"
     And the file "library/Doe, Jane/Real Title/draft.epub" exists
+
+  @F-GRP-10
+  Scenario: The type of the new work can be chosen
+    Given a sample PDF "upload/note.pdf" with the title "A Note on Quantities", the author "Jane Roe" and the text seed 3
+    And I open "/library" in the browser
+    When I click the "New work" button
+    And I choose the file "upload/note.pdf" in the "File of the new work" field
+    And I choose "Paper" in the "Type" list
+    And I click the "Create work" button
+    Then the page shows the text "A Note on Quantities"
+    And the work "A Note on Quantities" has the kind "paper"

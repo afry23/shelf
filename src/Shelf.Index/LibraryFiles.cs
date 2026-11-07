@@ -98,15 +98,35 @@ public static class LibraryFiles
         return new AddResult(work.Id, name, replaced?.Name);
     }
 
-    /// <summary>Creates a work from a file without grouping it; given values replace what the file says.</summary>
+    /// <summary>
+    /// Creates a work from a file without grouping it; given values replace what the file says (F-GRP-9).
+    /// <paramref name="kind"/> names the kind of the work (F-GRP-10); null leaves it to the file.
+    /// </summary>
     /// <exception cref="LibraryEditException"/>
-    public static CreateResult CreateWork(string root, string source, WorkValues values, bool move, string workingDirectory)
+    public static CreateResult CreateWork(string root, string source, WorkValues values, bool move, string workingDirectory, WorkKind? kind = null)
     {
         var fullSource = CheckSource(root, source, workingDirectory);
+        CheckKind(source, fullSource, kind);
+        if (kind == WorkKind.Article)
+        {
+            var article = LibraryArticles.CreateByHand(root, fullSource, source, values);
+            if (move)
+            {
+                File.Delete(fullSource);
+            }
+
+            return article;
+        }
+
         var metadata = ReadMetadata(fullSource, source);
         var id = Ulid.New();
         var name = Path.GetFileName(fullSource);
         var sidecar = NewSidecar(id, metadata, values, name, progress: null);
+        if (kind == WorkKind.Paper)
+        {
+            sidecar = sidecar with { Kind = WorkKind.Paper };
+        }
+
         var folder = FolderNames.FreeFolder(FolderNames.WorkFolder(root, AuthorNames.Parse(sidecar.Authors[0]).SortKey, sidecar.Title, sidecar.Year));
         using (var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root)))
         {
@@ -313,6 +333,20 @@ public static class LibraryFiles
                 throw new LibraryEditException($"{Path.GetFileName(destination)} already exists");
             case MoveStatus.Missing:
                 throw new LibraryEditException($"{source} does not exist");
+        }
+    }
+
+    /// <summary>A kind that was asked for needs a file that fits it (F-GRP-10).</summary>
+    private static void CheckKind(string source, string fullSource, WorkKind? kind)
+    {
+        switch (kind)
+        {
+            case WorkKind.Paper when !string.Equals(Path.GetExtension(fullSource), ".pdf", StringComparison.OrdinalIgnoreCase):
+                throw new LibraryEditException($"{source}: not a PDF file");
+            case WorkKind.Article when !BookExtractor.IsMarkdown(fullSource):
+                throw new LibraryEditException($"{source}: not a Markdown file");
+            case WorkKind.Book when BookExtractor.IsMarkdown(fullSource):
+                throw new LibraryEditException($"{source}: a Markdown file is no book (use --kind article)");
         }
     }
 

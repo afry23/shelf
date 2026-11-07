@@ -313,7 +313,7 @@ internal static class Api
                 HttpRequest request,
                 CancellationToken cancellationToken) =>
             Receive(library, request, WebJsonContext.Default.CreateWorkOutcome, cancellationToken, file =>
-                library.Service.CreateWork(file, QueryValues(request.Query))))
+                library.Service.CreateWork(file, QueryValues(request.Query), request.Query["kind"].ToString())))
             .WithName("CreateWork")
             .Accepts<byte[]>("application/octet-stream")
             .Produces<CreateWorkOutcome>(StatusCodes.Status200OK);

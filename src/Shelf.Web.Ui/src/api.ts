@@ -639,8 +639,8 @@ export const addFile = (workId: string, file: File, options: { replace?: string;
   );
 
 /** Makes a work of a file, without grouping; what is not given is read from the file. */
-export const createWork = (file: File, values: { title?: string; author?: string; year?: string } = {}) =>
-  upload<CreateWorkOutcome>(`/works${query({ name: file.name, title: values.title?.trim(), author: values.author?.trim(), year: values.year?.trim() })}`, file);
+export const createWork = (file: File, values: { title?: string; author?: string; year?: string; kind?: string } = {}) =>
+  upload<CreateWorkOutcome>(`/works${query({ name: file.name, title: values.title?.trim(), author: values.author?.trim(), year: values.year?.trim(), kind: values.kind || undefined })}`, file);
 
 export interface FetchPaperOutcome {
   work: string;
