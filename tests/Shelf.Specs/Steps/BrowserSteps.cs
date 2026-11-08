@@ -258,6 +258,12 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("the first item of the list {string} is {string}")]
     public void ThenFirstItem(string list, string title) => Expect(Items(list).First, e => e.ToContainTextAsync(title));
 
+    [Then("the first value of the facet group {string} is {string}")]
+    public void ThenFirstFacetValue(string group, string value) =>
+        Expect(
+            Page.Locator("section").Filter(new() { Has = Page.GetByRole(AriaRole.Heading, new() { Name = group, Exact = true }) }).Locator("li .value").First,
+            e => e.ToHaveTextAsync(value));
+
     [Then("the row {string} of the list {string} shows {string}")]
     public void ThenRowShows(string title, string list, string text) =>
         Expect(Items(list).Filter(new() { HasText = title }).First, e => e.ToContainTextAsync(text));

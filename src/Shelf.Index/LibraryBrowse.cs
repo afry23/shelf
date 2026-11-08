@@ -21,7 +21,13 @@ public enum WorkSort
 
 /// <param name="Offset">Works to skip.</param>
 /// <param name="Limit">Works to return.</param>
-public sealed record BrowseOptions(WorkSort Sort = WorkSort.Title, bool Descending = false, int Offset = 0, int Limit = BrowseOptions.DefaultLimit)
+/// <param name="FacetOrders">Order of the values of a facet (<see cref="FacetOrder.Facets"/>), by facet; a facet that is not in it keeps its default order.</param>
+public sealed record BrowseOptions(
+    WorkSort Sort = WorkSort.Title,
+    bool Descending = false,
+    int Offset = 0,
+    int Limit = BrowseOptions.DefaultLimit,
+    IReadOnlyDictionary<string, FacetOrder>? FacetOrders = null)
 {
     public const int DefaultLimit = 50;
     public const int MaxLimit = 100;
@@ -40,6 +46,66 @@ public sealed record WorkListEntry(
     string ReadStatus,
     bool HasCover,
     string? ReadingListAt = null);
+
+/// <summary>The order of the values of one facet: by name or by the number of works, up or down. Ties are broken by name.</summary>
+public sealed record FacetOrder(bool ByCount, bool Descending)
+{
+    /// <summary>The facets whose values can be sorted.</summary>
+    public static readonly IReadOnlyList<string> Facets = ["tags", "authors", "publishers", "languages", "years"];
+
+    /// <summary>Reads <c>authors:name.asc,tags:count.desc</c>; null or empty is no choice.</summary>
+    /// <exception cref="FormatException">The text is not of that form, or names a facet twice.</exception>
+    public static Dictionary<string, FacetOrder> Parse(string? text)
+    {
+        var orders = new Dictionary<string, FacetOrder>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return orders;
+        }
+
+        foreach (var part in text.Split(',', StringSplitOptions.TrimEntries))
+        {
+            var colon = part.IndexOf(':', StringComparison.Ordinal);
+            var dot = part.IndexOf('.', colon + 1);
+            if (colon < 0 || dot < 0)
+            {
+                throw new FormatException($"facetSort '{part}' must look like authors:name.asc.");
+            }
+
+            var facet = part[..colon];
+            var key = part[(colon + 1)..dot];
+            var direction = part[(dot + 1)..];
+            if (!Facets.Contains(facet, StringComparer.Ordinal))
+            {
+                throw new FormatException($"facetSort facet must be one of {string.Join(", ", Facets)}.");
+            }
+
+            if (key is not ("name" or "count"))
+            {
+                throw new FormatException("facetSort key must be name or count.");
+            }
+
+            if (direction is not ("asc" or "desc"))
+            {
+                throw new FormatException("facetSort direction must be asc or desc.");
+            }
+
+            if (!orders.TryAdd(facet, new FacetOrder(key == "count", direction == "desc")))
+            {
+                throw new FormatException($"facetSort names {facet} twice.");
+            }
+        }
+
+        return orders;
+    }
+
+    /// <summary>The SQL ORDER BY for a grouped query whose columns are the value (1) and the count (2); <paramref name="name"/> is the expression of the value.</summary>
+    internal string Sql(string name, bool numeric)
+    {
+        var direction = Descending ? "DESC" : "ASC";
+        return ByCount ? $"2 {direction}, {name} ASC" : numeric ? $"{name} {direction}" : $"lower({name}) {direction}, {name} {direction}";
+    }
+}
 
 /// <summary>A value of a facet and the number of works of the filtered set that have it.</summary>
 public sealed record FacetCount(string Value, int Count);
@@ -87,7 +153,7 @@ public static class LibraryBrowse
         using var count = Command(connection, $"SELECT COUNT(*) FROM ({selection})", filter);
         var total = Convert.ToInt32(count.ExecuteScalar(), CultureInfo.InvariantCulture);
 
-        return new BrowsePage(total, Page(connection, filter, options), Facets(connection, filter, selection));
+        return new BrowsePage(total, Page(connection, filter, options), Facets(connection, filter, selection, options.FacetOrders));
     }
 
     private static List<WorkListEntry> Page(SqliteConnection connection, LibrarySearch.Filter filter, BrowseOptions options)
@@ -178,12 +244,15 @@ public static class LibraryBrowse
             .Select(k => k.Id)];
     }
 
-    private static BrowseFacets Facets(SqliteConnection connection, LibrarySearch.Filter filter, string selection)
+    private static BrowseFacets Facets(SqliteConnection connection, LibrarySearch.Filter filter, string selection, IReadOnlyDictionary<string, FacetOrder>? orders)
     {
-        var tags = Counts(connection, filter, $"SELECT t.path, COUNT(*) FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id IN ({selection}) GROUP BY t.id ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
-        var languages = Counts(connection, filter, $"SELECT lower(w.language), COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.language IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1");
-        var publishers = Counts(connection, filter, $"SELECT w.publisher, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.publisher IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT {FacetLimit}");
-        var years = Counts(connection, filter, $"SELECT w.year, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.year IS NOT NULL GROUP BY 1 ORDER BY 1 DESC");
+        string By(string facet, string name, string fallback, bool numeric = false) =>
+            orders is not null && orders.TryGetValue(facet, out var order) ? order.Sql(name, numeric) : fallback;
+
+        var tags = Counts(connection, filter, $"SELECT t.path, COUNT(*) FROM work_tags wt JOIN tags t ON t.id = wt.tag_id WHERE wt.work_id IN ({selection}) GROUP BY t.id ORDER BY {By("tags", "t.path", "2 DESC, 1")} LIMIT {FacetLimit}");
+        var languages = Counts(connection, filter, $"SELECT lower(w.language), COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.language IS NOT NULL GROUP BY 1 ORDER BY {By("languages", "lower(w.language)", "2 DESC, 1")}");
+        var publishers = Counts(connection, filter, $"SELECT w.publisher, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.publisher IS NOT NULL GROUP BY 1 ORDER BY {By("publishers", "w.publisher", "2 DESC, 1")} LIMIT {FacetLimit}");
+        var years = Counts(connection, filter, $"SELECT w.year, COUNT(*) FROM works w WHERE w.id IN ({selection}) AND w.year IS NOT NULL GROUP BY 1 ORDER BY {By("years", "w.year", "1 DESC", numeric: true)}");
         var formats = Counts(connection, filter, $"SELECT f.format, COUNT(DISTINCT f.work_id) FROM files f WHERE f.role = 'book' AND f.work_id IN ({selection}) GROUP BY f.format ORDER BY 2 DESC, 1");
         var statuses = Counts(connection, filter, $"SELECT w.read_status, COUNT(*) FROM works w WHERE w.id IN ({selection}) GROUP BY 1 ORDER BY 2 DESC, 1");
 
@@ -207,7 +276,7 @@ public static class LibraryBrowse
 
         return new BrowseFacets(
             tags,
-            [.. authors.OrderByDescending(a => a.Value).ThenBy(a => a.Key, StringComparer.Ordinal).Take(FacetLimit).Select(a => new FacetCount(a.Key, a.Value))],
+            SortedAuthors(authors, orders),
             publishers,
             languages,
             years,
@@ -215,6 +284,27 @@ public static class LibraryBrowse
             statuses,
             series,
             types);
+    }
+
+    private static List<FacetCount> SortedAuthors(Dictionary<string, int> authors, IReadOnlyDictionary<string, FacetOrder>? orders)
+    {
+        IEnumerable<KeyValuePair<string, int>> sorted;
+        if (orders is not null && orders.TryGetValue("authors", out var order))
+        {
+            sorted = (order.ByCount, order.Descending) switch
+            {
+                (true, true) => authors.OrderByDescending(a => a.Value).ThenBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.Key, StringComparer.Ordinal),
+                (true, false) => authors.OrderBy(a => a.Value).ThenBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.Key, StringComparer.Ordinal),
+                (false, true) => authors.OrderByDescending(a => a.Key, StringComparer.OrdinalIgnoreCase).ThenByDescending(a => a.Key, StringComparer.Ordinal),
+                (false, false) => authors.OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.Key, StringComparer.Ordinal),
+            };
+        }
+        else
+        {
+            sorted = authors.OrderByDescending(a => a.Value).ThenBy(a => a.Key, StringComparer.Ordinal);
+        }
+
+        return [.. sorted.Take(FacetLimit).Select(a => new FacetCount(a.Key, a.Value))];
     }
 
     private static List<FacetCount> Counts(SqliteConnection connection, LibrarySearch.Filter filter, string sql)

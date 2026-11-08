@@ -436,6 +436,7 @@ Requirements for the MCP server:
 | F-WEB-6 | The library view is paged: the number of pages is shown, a page can be opened directly, and the number of works per page (20, 40, 60, 80 or 100) can be chosen. Page and page size are part of the address. The size the view starts with is `web.page_size` of the global config (1 to 100, default 20). | M |
 | F-WEB-7 | The filter panel of the library view also has **series** and **type** (book or paper), with counts like the other facets, and the query language has the filter `series:` (the whole name of a series, ignoring case; a series written in two cases is one facet value). | S |
 | F-WEB-8 | In the grid of the library view, every book shows its year of publication below the author. A book without a year shows none. | S |
+| F-WEB-9 | In the filter panel of the library view, the values of the facets tags, authors, publishers, languages and years can be sorted per group by name (A-Z, Z-A) or by the number of works (high to low, low to high). The order is applied before the list is cut at 50 values and is kept in the address. Without a choice, the order is as before. | S |
 
 ### 8.2 Views
 
