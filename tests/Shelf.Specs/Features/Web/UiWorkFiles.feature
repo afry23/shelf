@@ -79,3 +79,35 @@ Feature: Adding, moving and creating in the browser
     And I click the "Create work" button
     Then the page shows the text "A Note on Quantities"
     And the work "A Note on Quantities" has the kind "paper"
+
+  @F-GRP-9
+  Scenario: A new work is made in a dialog
+    Given I open "/library" in the browser
+    When I click the "New work" button
+    Then the dialog "New work" is open
+
+  @F-GRP-9
+  Scenario: A dialog closed with Cancel creates nothing
+    Given I open "/library" in the browser
+    And I click the "New work" button
+    And I choose the file "upload/draft.epub" in the "File of the new work" field
+    When I click the "Cancel" button
+    Then the dialog "New work" is not open
+    And the file "library/Wrong Author/Wrong Title/draft.epub" does not exist
+
+  @F-GRP-9
+  Scenario: A dialog closed with Escape creates nothing
+    Given I open "/library" in the browser
+    And I click the "New work" button
+    When I press Escape
+    Then the dialog "New work" is not open
+
+  @F-GRP-9
+  Scenario: A file that does not fit stays in the open dialog
+    Given I open "/library" in the browser
+    And I click the "New work" button
+    And I choose the file "upload/draft.epub" in the "File of the new work" field
+    And I choose "Paper" in the "Type" list
+    When I click the "Create work" button
+    Then an alert says "PDF"
+    And the dialog "New work" is open

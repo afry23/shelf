@@ -193,6 +193,12 @@ public sealed class BrowserSteps(WebSteps web, ConfigSteps workspace) : IDisposa
     [Then("an alert says {string}")]
     public void ThenAlert(string text) => Assert.True(Wait(Page.GetByRole(AriaRole.Alert).Filter(new() { HasText = text }).First), $"No alert with '{text}'. {Dump()}");
 
+    [Then("the dialog {string} is open")]
+    public void ThenDialogOpen(string name) => Assert.True(Wait(Page.GetByRole(AriaRole.Dialog, new() { Name = name })), $"No dialog '{name}' is open. {Dump()}");
+
+    [Then("the dialog {string} is not open")]
+    public void ThenDialogNotOpen(string name) => Assert.True(Gone(Page.GetByRole(AriaRole.Dialog, new() { Name = name })), $"The dialog '{name}' is open. {Dump()}");
+
     [Then("the heading {string} is shown")]
     public void ThenHeading(string name) => Assert.True(Wait(Page.GetByRole(AriaRole.Heading, new() { Name = name, Level = 1 }).First), $"No heading '{name}'. {Dump()}");
 

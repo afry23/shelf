@@ -379,6 +379,16 @@ No telemetry. Network access happens only for the model download, for `shelf enr
 **Can I make the web UI reachable from my network?**
 Yes: `shelf serve --bind 0.0.0.0 --token <secret>`. A token is required for every non-loopback address. Put a TLS reverse proxy in front for anything beyond a trusted LAN.
 
+Behind nginx, uploads ("New work", "Add file") fail with `413 Request Entity Too Large` unless the body limit is raised; the default is 1 MB and shelf accepts up to 2 GiB:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    client_max_body_size 2g;
+    proxy_request_buffering off;   # stream uploads instead of spooling them to disk
+}
+```
+
 **Can I use the MCP server from another machine?**
 Yes: `shelf mcp --http --bind 0.0.0.0 --token <secret>` on the machine with the library, then connect to `http://<host>:8421/mcp` with a bearer token. See [Remote access over HTTP](#remote-access-over-http).
 
