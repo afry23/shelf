@@ -67,3 +67,28 @@ export function describeToken(token: string): string {
   const value = match[3].replace(/^"(.*)"$/, '$1');
   return `${negated ? 'Not ' : ''}${group.label}: ${value}`;
 }
+
+// The order of the values of a facet group (F-WEB-9) is kept in the address as `facetSort=authors:name.asc,tags:count.desc`.
+export const sortableFacets: FacetKey[] = ['tags', 'authors', 'publishers', 'languages', 'years'];
+
+export const facetOrders = [
+  { value: '', label: 'Default' },
+  { value: 'name.asc', label: 'Name A-Z' },
+  { value: 'name.desc', label: 'Name Z-A' },
+  { value: 'count.desc', label: 'Count high to low' },
+  { value: 'count.asc', label: 'Count low to high' },
+];
+
+export function facetOrderOf(facetSort: string, key: FacetKey): string {
+  const part = facetSort.split(',').find((p) => p.startsWith(`${key}:`));
+  return part ? part.slice(key.length + 1) : '';
+}
+
+/** The `facetSort` value with the order of one group set (an empty order removes it). */
+export function withFacetOrder(facetSort: string, key: FacetKey, order: string): string {
+  const parts = facetSort.split(',').filter((p) => p && !p.startsWith(`${key}:`));
+  if (order) {
+    parts.push(`${key}:${order}`);
+  }
+  return parts.join(',');
+}

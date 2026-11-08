@@ -530,7 +530,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
 
     /// <summary>The works that pass the filters in <paramref name="query"/>, one page, with the counts per facet.</summary>
     /// <param name="query">Filters of the query language only (<c>tag:cloud -lang:de</c>); words are refused.</param>
-    public BrowsePage Browse(string? query, string sort = "title", string order = "asc", int offset = 0, int limit = BrowseOptions.DefaultLimit)
+    public BrowsePage Browse(string? query, string sort = "title", string order = "asc", int offset = 0, int limit = BrowseOptions.DefaultLimit, string? facetSort = null)
     {
         if (limit is < 1 or > BrowseOptions.MaxLimit)
         {
@@ -552,6 +552,16 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
             throw new LibraryException("order must be asc or desc.");
         }
 
+        Dictionary<string, FacetOrder> facetOrders;
+        try
+        {
+            facetOrders = FacetOrder.Parse(facetSort);
+        }
+        catch (FormatException e)
+        {
+            throw new LibraryException(e.Message);
+        }
+
         SearchQuery parsed;
         try
         {
@@ -570,7 +580,7 @@ public sealed partial class LibraryService(string root, ShelfSettings settings, 
         try
         {
             using var connection = IndexDatabase.OpenRead(IndexDatabase.PathFor(root));
-            return LibraryBrowse.Browse(connection, parsed, new BrowseOptions(chosen, order == "desc", offset, limit));
+            return LibraryBrowse.Browse(connection, parsed, new BrowseOptions(chosen, order == "desc", offset, limit, facetOrders));
         }
         catch (IndexException e)
         {

@@ -305,7 +305,7 @@ const query = (params: Record<string, string | number | undefined>): string => {
 
 export const status = () => request<Status>('GET', '/status');
 
-export const works = (params: { q?: string; sort?: string; order?: string; offset?: number; limit?: number }) =>
+export const works = (params: { q?: string; sort?: string; order?: string; offset?: number; limit?: number; facetSort?: string }) =>
   request<WorkList>('GET', `/works${query(params)}`);
 
 export const work = async (id: string) => {

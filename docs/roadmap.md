@@ -482,6 +482,19 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-LNK-1 to F-LNK-7, the complete BDD suite is green.
 
+### M23 – Sorted Facets
+
+**Goal:** A person sorts the values of a facet by name or by number of works.
+
+**Status:** planned; feature files `WebFacetSort`, `UiFacetSort`.
+
+| Area | Content | PRD |
+|---|---|---|
+| REST | `facetSort` on `GET /api/v1/works` (`<facet>:<name\|count>.<asc\|desc>`) | F-WEB-9 |
+| Web | sort list per group in the filter panel, kept in the address | F-WEB-9 |
+
+**Exit criteria:** feature files exist for F-WEB-9, the complete BDD suite is green.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:

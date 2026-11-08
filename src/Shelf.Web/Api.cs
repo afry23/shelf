@@ -27,12 +27,13 @@ internal static class Api
                 string? sort,
                 string? order,
                 string? offset,
-                string? limit) =>
+                string? limit,
+                string? facetSort) =>
             Run(WebJsonContext.Default.WorkList, () =>
             {
                 var from = Whole(offset, "offset must not be negative.", 0);
                 var count = Whole(limit, $"limit must be between 1 and {BrowseOptions.MaxLimit}.", BrowseOptions.DefaultLimit);
-                var page = library.Service.Browse(q, sort ?? "title", order ?? "asc", from, count);
+                var page = library.Service.Browse(q, sort ?? "title", order ?? "asc", from, count, facetSort);
                 return new WorkList(page.Total, from, count, [.. page.Items.Select(Item)], Facets(page.Facets));
             }))
             .WithName("ListWorks")

@@ -14,7 +14,7 @@
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, plural } from '../format';
-  import { addToken, describeToken, facetGroups, filterToken, hasToken, removeToken, tokens, type FacetKey } from '../query';
+  import { addToken, describeToken, facetGroups, facetOrderOf, facetOrders, filterToken, hasToken, removeToken, sortableFacets, tokens, withFacetOrder, type FacetKey } from '../query';
   import { navigate, param, setParams } from '../router.svelte';
   import { defaultPageSize } from '../stores.svelte';
 
@@ -29,6 +29,7 @@
   const q = $derived(param('q'));
   const sort = $derived(param('sort', 'title'));
   const order = $derived(param('order', 'asc'));
+  const facetSort = $derived(param('facetSort'));
   const offset = $derived(Math.max(0, Number(param('offset', '0')) || 0));
   type View = 'grid' | 'list';
   function storedView(): View {
@@ -116,7 +117,7 @@
     if (mainWidth === 0 || defaultPageSize.value === null) {
       return;
     }
-    const params = { q, sort, order, offset, limit };
+    const params = { q, sort, order, offset, limit, facetSort };
     let current = true;
     works(params)
       .then((result) => {
@@ -330,7 +331,20 @@
           {@const values = list.facets[group.key]}
           {#if values.length}
             <section>
-              <h3>{group.label}</h3>
+              <div class="group-head">
+                <h3>{group.label}</h3>
+                {#if sortableFacets.includes(group.key)}
+                  <select
+                    class="facet-sort"
+                    aria-label={`Sort ${group.label}`}
+                    value={facetOrderOf(facetSort, group.key)}
+                    onchange={(e) => setParams({ facetSort: withFacetOrder(facetSort, group.key, e.currentTarget.value) || null })}>
+                    {#each facetOrders as choice (choice.value)}
+                      <option value={choice.value}>{choice.label}</option>
+                    {/each}
+                  </select>
+                {/if}
+              </div>
               <ul>
                 {#each visible(group.key, values) as item (item.value)}
                   <li>
@@ -505,6 +519,18 @@
 
   .filters h3 {
     margin-bottom: 0.4rem;
+  }
+
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .facet-sort {
+    font-size: 0.8rem;
+    max-width: 8.5rem;
   }
 
   .filters ul {
