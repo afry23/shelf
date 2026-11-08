@@ -36,3 +36,23 @@ Feature: Adding a paper by DOI or arXiv ID in the browser
     And I fill the "DOI or arXiv ID" field with "not-an-id"
     And I click the "Fetch paper" button
     Then the page shows the text "neither a DOI nor an arXiv ID"
+
+  Scenario: A paper is added in a dialog
+    Given I open "/library" in the browser
+    When I click the "Add paper" button
+    Then the dialog "Add paper" is open
+
+  Scenario: A dialog closed with Cancel asks nothing online
+    Given I open "/library" in the browser
+    And I click the "Add paper" button
+    When I click the "Cancel" button
+    Then the dialog "Add paper" is not open
+    And no online source was queried
+
+  Scenario: A reference that is not understood stays in the open dialog
+    Given I open "/library" in the browser
+    And I click the "Add paper" button
+    And I fill the "DOI or arXiv ID" field with "not-an-id"
+    When I click the "Fetch paper" button
+    Then an alert says "neither a DOI nor an arXiv ID"
+    And the dialog "Add paper" is open

@@ -12,8 +12,9 @@
     type WorkList,
   } from '../api';
   import Cover from '../components/Cover.svelte';
+  import Dialog from '../components/Dialog.svelte';
   import Segmented from '../components/Segmented.svelte';
-  import { authorLine, plural } from '../format';
+  import { authorLine, bytes, plural } from '../format';
   import { addToken, describeToken, facetGroups, facetOrderOf, facetOrders, filterToken, hasToken, removeToken, sortableFacets, tokens, withFacetOrder, type FacetKey } from '../query';
   import { navigate, param, setParams } from '../router.svelte';
   import { defaultPageSize } from '../stores.svelte';
@@ -163,6 +164,27 @@
   let createAuthor = $state('');
   let createYear = $state('');
   let createKind = $state('');
+  let createFile = $state<File | null>(null);
+  let dropping = $state(false);
+
+  const pickFile = () => (createFile = createInput?.files?.[0] ?? null);
+
+  function dropFile(event: DragEvent): void {
+    event.preventDefault();
+    dropping = false;
+    const files = event.dataTransfer?.files;
+    if (createInput && files?.length) {
+      createInput.files = files;
+      pickFile();
+    }
+  }
+
+  function closeCreate(): void {
+    creating = false;
+    createError = null;
+    createFile = null;
+    createTitle = createAuthor = createYear = createKind = '';
+  }
 
   async function submitCreate(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -188,6 +210,12 @@
   let fetchBusy = $state(false);
   let fetchError = $state<string | null>(null);
   let fetchReference = $state('');
+
+  function closeFetch(): void {
+    fetching = false;
+    fetchError = null;
+    fetchReference = '';
+  }
 
   async function submitFetch(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -234,39 +262,66 @@
     <h1>Library</h1>
     <p class="count muted" role="status">{list ? plural(list.total, 'book') : ''}</p>
     <a class="button" href={citationsUrl('bibtex', q || undefined)} download title="BibTeX of the works shown; works without a cite key are left out">Export citations</a>
-    <button type="button" class="button" aria-expanded={creating} aria-controls="new-work" onclick={() => (creating = !creating)}>New work</button>
-    <button type="button" class="button" aria-expanded={fetching} aria-controls="add-paper" onclick={() => (fetching = !fetching)}>Add paper</button>
+    <button type="button" class="button" aria-expanded={creating} aria-controls="new-work" onclick={() => (creating ? closeCreate() : (creating = true))}>New work</button>
+    <button type="button" class="button" aria-expanded={fetching} aria-controls="add-paper" onclick={() => (fetching ? closeFetch() : (fetching = true))}>Add paper</button>
   </div>
 
   {#if fetching}
-    <form id="add-paper" aria-label="Add paper" onsubmit={submitFetch}>
-      <p class="muted">Loads the details and the open-access PDF of a paper from the internet, now and only now.</p>
-      <p><input type="text" aria-label="DOI or arXiv ID" placeholder="DOI or arXiv ID, e.g. 1706.03762" bind:value={fetchReference} /></p>
-      {#if fetchError}<p class="error" role="alert">{fetchError}</p>{/if}
-      <button type="submit" class="button" disabled={fetchBusy}>{fetchBusy ? 'Loading…' : 'Fetch paper'}</button>
-    </form>
+    <Dialog title="Add paper" busy={fetchBusy} onclose={closeFetch}>
+      <form id="add-paper" aria-label="Add paper form" onsubmit={submitFetch}>
+        <p class="hint">Loads the details and the open-access PDF of a paper from the internet, now and only now.</p>
+        <label class="field">DOI or arXiv ID
+          <input type="text" aria-label="DOI or arXiv ID" placeholder="e.g. 1706.03762" bind:value={fetchReference} />
+        </label>
+        {#if fetchError}<p class="error" role="alert">{fetchError}</p>{/if}
+        <div class="actions">
+          <button type="button" class="button" disabled={fetchBusy} onclick={closeFetch}>Cancel</button>
+          <button type="submit" class="button primary" disabled={fetchBusy}>{fetchBusy ? 'Loading…' : 'Fetch paper'}</button>
+        </div>
+      </form>
+    </Dialog>
   {/if}
 
   {#if creating}
-    <form id="new-work" aria-label="New work" onsubmit={submitCreate}>
-      <p class="muted">Makes a work of one file without grouping it into a work it matches. What you leave empty is read from the file.</p>
-      <p><input type="file" aria-label="File of the new work" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={createInput} /></p>
-      <p>
-        <label>Type
-          <select aria-label="Type" bind:value={createKind}>
-            <option value="">Let the file decide</option>
-            <option value="book">Book</option>
-            <option value="paper">Paper</option>
-            <option value="article">Article (Markdown file)</option>
-          </select>
+    <Dialog title="New work" busy={createBusy} onclose={closeCreate}>
+      <form id="new-work" aria-label="New work form" onsubmit={submitCreate}>
+        <p class="hint">Makes a work of one file without grouping it into a work it matches. What you leave empty is read from the file.</p>
+        <label
+          class="drop"
+          class:over={dropping}
+          ondragover={(e) => { e.preventDefault(); dropping = true; }}
+          ondragleave={() => (dropping = false)}
+          ondrop={dropFile}
+        >
+          <input type="file" aria-label="File of the new work" accept=".epub,.pdf,.mobi,.azw3,.cbz,.txt,.md" bind:this={createInput} onchange={pickFile} />
+          {#if createFile}
+            <strong>{createFile.name}</strong>
+            <span class="muted">{bytes(createFile.size)}</span>
+          {:else}
+            <strong>Choose a file</strong>
+            <span class="muted">or drop it here · EPUB, PDF, MOBI, AZW3, CBZ, TXT, MD</span>
+          {/if}
         </label>
-      </p>
-      <p><input type="text" aria-label="Title" placeholder="Title" bind:value={createTitle} /></p>
-      <p><input type="text" aria-label="Author" placeholder="Author" bind:value={createAuthor} /></p>
-      <p><input type="text" inputmode="numeric" aria-label="Year" placeholder="Year" bind:value={createYear} /></p>
-      {#if createError}<p class="error" role="alert">{createError}</p>{/if}
-      <button type="submit" class="button" disabled={createBusy}>{createBusy ? 'Uploading…' : 'Create work'}</button>
-    </form>
+        <div class="fields">
+          <label class="wide">Type
+            <select aria-label="Type" bind:value={createKind}>
+              <option value="">Let the file decide</option>
+              <option value="book">Book</option>
+              <option value="paper">Paper</option>
+              <option value="article">Article (Markdown file)</option>
+            </select>
+          </label>
+          <label class="wide">Title <input type="text" aria-label="Title" placeholder="From the file" bind:value={createTitle} /></label>
+          <label class="wide">Author <input type="text" aria-label="Author" placeholder="From the file" bind:value={createAuthor} /></label>
+          <label>Year <input type="text" inputmode="numeric" aria-label="Year" placeholder="From the file" bind:value={createYear} /></label>
+        </div>
+        {#if createError}<p class="error" role="alert">{createError}</p>{/if}
+        <div class="actions">
+          <button type="button" class="button" disabled={createBusy} onclick={closeCreate}>Cancel</button>
+          <button type="submit" class="button primary" disabled={createBusy}>{createBusy ? 'Uploading…' : 'Create work'}</button>
+        </div>
+      </form>
+    </Dialog>
   {/if}
 
   <div class="toolbar">
@@ -464,6 +519,78 @@
 </div>
 
 <style>
+  #new-work,
+  #add-paper {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .drop {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 1.25rem 1rem;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .drop:hover,
+  .drop.over,
+  .drop:focus-within {
+    border-color: var(--accent);
+    background: var(--paper);
+  }
+
+  .drop input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .field,
+  .fields label {
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .fields .wide {
+    grid-column: 1 / -1;
+  }
+
+  .field input,
+  .fields input,
+  .fields select {
+    font-size: 1rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
   .page {
     max-width: 90rem;
     margin: 0 auto;

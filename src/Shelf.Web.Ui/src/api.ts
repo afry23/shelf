@@ -285,6 +285,10 @@ async function upload<T>(path: string, file: File): Promise<T> {
   if (response.status === 401) {
     throw new ApiError('This server needs an access token. Open the address that shelf serve was started for with ?token=… at the end, once.', 401);
   }
+  if (response.status === 413) {
+    // Shelf takes 2 GiB; a 413 comes from a proxy in front of it (nginx: client_max_body_size, 1m by default).
+    throw new ApiError('The file is too large for the server or a proxy in front of it. With nginx, raise client_max_body_size (for example to 2g).', 413);
+  }
   if (!response.ok) {
     const problem = (await response.json().catch(() => null)) as Problem | null;
     throw new ApiError(problem?.detail ?? problem?.title ?? `HTTP ${response.status}`, response.status);
