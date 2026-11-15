@@ -622,6 +622,17 @@ export interface AddFileOutcome {
   replaced?: string;
 }
 
+export interface ConvertOutcome {
+  work: string;
+  source: string;
+  file: string;
+  replaced?: string;
+}
+
+/** Turns a PDF of the work into a reflowable EPUB with the converter of the server (F-CNV-4); `file` is a file ID, needed if there are several PDFs. */
+export const convertWork = (workId: string, options: { file?: string; replace?: boolean } = {}) =>
+  request<ConvertOutcome>('POST', `/works/${encodeURIComponent(workId)}/convert`, { file: options.file, replace: options.replace });
+
 export interface CreateWorkOutcome {
   work: string;
   file: string;

@@ -127,6 +127,11 @@ public static class LibraryConvert
             var output = Path.Combine(temporary, Path.ChangeExtension(pdf.Name, ".epub"));
             converter.Convert(settings.Command, pdfPath, output, TimeSpan.FromSeconds(settings.TimeoutSeconds), cancellation);
             Check(output, settings.Command);
+            if (existing is not null && FileAnalyzer.Analyze(LibraryEditor.FilePath(root, work, existing.Name)).Sha256 == FileAnalyzer.Analyze(output).Sha256)
+            {
+                throw new ConvertException($"the converter made an EPUB that is identical to {existing.Name}; nothing changed", ConvertFailureKind.Usage);
+            }
+
             var added = LibraryFiles.AddFile(root, work, output, new AddOptions(Replace: existing?.Name), workingDirectory);
             return new ConvertResult(work.Id, pdf.Name, added.File, added.Replaced);
         }

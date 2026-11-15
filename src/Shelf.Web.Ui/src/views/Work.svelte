@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { addFile, addToReadingList, linkWorks, unlinkWorks, workLinks, ApiError, removeFromReadingList, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type LinkItem, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
+  import { addFile, addToReadingList, convertWork, linkWorks, unlinkWorks, workLinks, ApiError, removeFromReadingList, fetchReferences, workReferences, deleteFile, moveFile, deleteWork, editWork, enrichApply, citationUrl, enrichPreview, exportUrl, fileUrl, mergeWorks, setTags, suggestCiteKey, similar as loadSimilar, tagSuggestions as loadTagSuggestions, works as findWorks, tags as loadTags, work as loadWork, type EnrichPreview, type LinkItem, type ReadStatus, type SearchItem, type TagNode, type TagSuggestion, type WorkReferences, type WorkDetail, type WorkItem } from '../api';
   import Cover from '../components/Cover.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { authorLine, bytes, readLink, resumeText } from '../format';
@@ -396,6 +396,30 @@
   let addNotes = $state(false);
   let addBusy = $state(false);
   let filesDone = $state<string | null>(null);
+
+  // A PDF of the work becomes a reflowable EPUB with the converter of the server (F-CNV-4); shelf undo reverts it.
+  const pdfFiles = $derived(book?.files.filter((f) => f.format === 'pdf' && f.role === 'book') ?? []);
+  const hasEpub = $derived(book?.files.some((f) => f.format === 'epub' && f.role === 'book') ?? false);
+  let convertFile = $state('');
+  let convertBusy = $state(false);
+
+  async function convert(): Promise<void> {
+    if (!book) {
+      return;
+    }
+    actionError = null;
+    filesDone = null;
+    convertBusy = true;
+    try {
+      const outcome = await convertWork(book.id, { file: pdfFiles.length > 1 ? convertFile || pdfFiles[0].id : undefined, replace: hasEpub || undefined });
+      filesDone = outcome.replaced ? `Converted ${outcome.source} to ${outcome.file} and moved the old ${outcome.replaced} to the trash.` : `Converted ${outcome.source} to ${outcome.file}.`;
+      book = { ...(await loadWork(book.id)) };
+    } catch (e) {
+      actionError = (e as Error).message;
+    } finally {
+      convertBusy = false;
+    }
+  }
 
   // A new version of the book joins the work; "replaces" sends the old file to the trash (shelf undo brings it back).
   async function uploadFile(): Promise<void> {
@@ -1070,6 +1094,23 @@
                 {/each}
               </tbody>
             </table>
+
+            {#if pdfFiles.length}
+              <div class="add">
+                <h3>Make an EPUB</h3>
+                <p class="muted">A reflowable EPUB of the PDF, for example for a Kindle. It is made by the converter that is set in the config (convert.command) and joins this work; shelf undo brings the old state back.</p>
+                {#if pdfFiles.length > 1}
+                  <p>
+                    <label>PDF to convert
+                      <select aria-label="PDF to convert" bind:value={convertFile}>
+                        {#each pdfFiles as file (file.id)}<option value={file.id}>{file.name}</option>{/each}
+                      </select>
+                    </label>
+                  </p>
+                {/if}
+                <button type="button" class="button" disabled={convertBusy} onclick={convert}>{convertBusy ? 'Converting…' : hasEpub ? 'Convert to EPUB again' : 'Convert to EPUB'}</button>
+              </div>
+            {/if}
 
             <div class="add">
               <h3>Add a file</h3>

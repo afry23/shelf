@@ -11,6 +11,9 @@ public enum LibraryErrorKind
 
     /// <summary>The thing exists, but not in the state the request needs (a file that is no duplicate).</summary>
     Conflict,
+
+    /// <summary>An outside tool that the request needs failed (the converter of <c>shelf convert</c>).</summary>
+    Failed,
 }
 
 /// <summary>An error the caller can act on: a bad query, an unknown work, no text at a location. The message is meant to be shown.</summary>

@@ -67,6 +67,16 @@ Feature: Converting the PDF of a work into a reflowable EPUB
     Then the exit code is 0
     And the table "files" of the index has 2 rows
 
+  Scenario: --replace with an identical result changes nothing
+    Given the converter is configured as "fakeconv {input} {output}"
+    And the converter writes an EPUB with the chapter text "Same text."
+    And I have run shelf with arguments "convert 01J9Z3K --library library"
+    When I run shelf with arguments "convert 01J9Z3K --replace --library library"
+    Then the exit code is 2
+    And standard error contains "identical to es.epub"
+    And the table "files" of the index has 2 rows
+    And no conversion folder is left behind
+
   Scenario: Several PDFs need --file
     Given a sample PDF "library/Alander/Event Sourcing in Practice/es-second.pdf" with the title "Event Sourcing in Practice", the author "Jördis Ålander" and the pages:
       | text                      |

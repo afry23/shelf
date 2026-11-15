@@ -436,6 +436,9 @@ public sealed record EnrichPreviewResult(
 /// <summary>What <c>enrich/apply</c> wrote: the fields, the name of the cover file when one was saved, and the warnings.</summary>
 public sealed record EnrichApplyResult(string Id, string Source, string[] Fields, string? Cover, string[] Warnings);
 
+/// <summary>What a conversion made (F-CNV-4): the work, the PDF it came from, the new EPUB and the EPUB it replaced.</summary>
+public sealed record ConvertOutcome(string Work, string Source, string File, string? Replaced);
+
 /// <summary>A file added to a work (F-GRP-7): the work, the name the file got in the work folder, and the file it replaced.</summary>
 public sealed record AddFileOutcome(string Work, string File, string? Replaced);
 

@@ -347,7 +347,7 @@ A person reads a PDF on a Kindle, where a fixed page layout is hard to read. she
 | F-CNV-1 | `shelf convert <work> [--file <name>] [--replace]` converts the PDF of a work into a reflowable EPUB with the tool of `convert.command` (global or library config) and adds the result as a file of the same work, next to the PDF, with the role `book`. A work with several PDFs needs `--file`. A work that already has an EPUB is refused unless `--replace` is given. `--json` is supported. | C |
 | F-CNV-2 | `convert.command` is a template with the placeholders `{input}` and `{output}`; shelf runs it in a temporary folder with a time limit (`convert.timeout`, default 600 s) and removes the folder afterwards. The result must be a valid EPUB (the OPF can be read) with at least one chapter of text, else nothing is added. Without the key the command fails with an error that names `convert.command`; a tool that is not installed or that fails is an error with its message and adds nothing. | C |
 | F-CNV-3 | A PDF without a text layer (marked "no text", Q7) is refused before the tool is called, with a hint that shelf has no OCR. | C |
-| F-CNV-4 | The new EPUB is a file of the work like any other: hashed, indexed (full text, chapter and CFI locators) and readable in the web interface, which also offers "Convert to EPUB" on the work page (REST `POST /api/v1/works/{id}/convert`, body `{"file": …, "replace": …}`). The conversion is a file operation and goes through the journal (9.3). | C |
+| F-CNV-4 | The new EPUB is a file of the work like any other: hashed, indexed (full text, chapter and CFI locators) and readable in the web interface, which also offers "Convert to EPUB" on the work page (REST `POST /api/v1/works/{id}/convert`, body `{"file": …, "replace": …}`; answers `{work, source, file, replaced}`). The status is 400 without a converter, a PDF or a text layer, 404 for an unknown work or file, 409 if the work has an EPUB and `replace` is not set (or the result is identical to it), 502 if the converter fails, runs too long or writes no usable EPUB. The button is shown only for a work with a PDF; the converter runs on the server. The conversion is a file operation and goes through the journal (9.3). | C |
 
 ## 7. Interfaces
 
@@ -379,6 +379,7 @@ shelf dupes [--interactive]               Find and clean up duplicates
 shelf trash empty [--yes]                 Delete the trash for good (dry run without --yes)
 shelf merge <a> <b> / split <work> <file>
 shelf add <work> <file> [--replace <file>] [--carry-notes] [--move]  Add a file to a work (new version); --replace trashes the old file
+shelf convert <work> [--file <name>] [--replace]       Turn the PDF of a work into a reflowable EPUB with convert.command (F-CNV-1)
 shelf create <file> [--title ...] [--author ...] [--year ...] [--move]  Create a work by hand from a file
 shelf move <work> <file> (--to <work> | --new) [--yes]  Move a file to another or a new work (dry run without --yes)
 shelf delete <work> [file] [--yes]      Move a file or a whole work to the trash (dry run without --yes)
