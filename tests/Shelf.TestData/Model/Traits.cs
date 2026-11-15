@@ -37,7 +37,7 @@ public static class FixtureTraits
     [
         "epub2", "epub3", "cover", "no-cover", "language-de", "language-en", "non-ascii-title", "isbn", "series",
         "empty-metadata", "malformed-opf", "not-a-zip", "pdf-text-layer", "pdf-image-only", "pdf-info", "pdf-xmp",
-        "pdf-no-metadata",
+        "pdf-no-metadata", "pdf-one-column", "pdf-two-columns", "pdf-footnotes",
     ];
 }
 

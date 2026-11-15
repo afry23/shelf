@@ -25,6 +25,9 @@ public static class DerivedFixtures
         "not-a-zip.epub",
         "Jane Doe - Quiet Systems (2004).pdf",
         "scanned-page.pdf",
+        "one-column.pdf",
+        "two-columns.pdf",
+        "footnotes.pdf",
     ];
 
     /// <summary>Content of one derived fixture.</summary>
@@ -38,6 +41,9 @@ public static class DerivedFixtures
         "not-a-zip.epub" => NotAZip(),
         "Jane Doe - Quiet Systems (2004).pdf" => QuietSystemsPdf(),
         "scanned-page.pdf" => ScannedPage(),
+        "one-column.pdf" => OneColumnPdf(),
+        "two-columns.pdf" => TwoColumnsPdf(),
+        "footnotes.pdf" => FootnotesPdf(),
         _ => throw new ArgumentException($"Unknown derived fixture '{fileName}'.", nameof(fileName)),
     };
 
@@ -163,6 +169,54 @@ public static class DerivedFixtures
             IdentitySeed = "d5",
         });
     }
+
+    private const string ColumnFiller =
+        "Event sourcing stores every change as an event and streams keep the events in order. ";
+
+    private static string Repeat(string text, int times) => string.Concat(Enumerable.Repeat(text, times));
+
+    private static byte[] ColumnPdf(string title, IReadOnlyList<PdfColumnPage> pages, string seed) =>
+        PdfWriter.Write(new PdfSpec
+        {
+            ColumnPages = pages,
+            HasInfo = true,
+            Title = title,
+            Author = "Test Author",
+            IdentitySeed = seed,
+        });
+
+    /// <summary>Two chapters on two pages, one column each; the order Chapter 1 before Chapter 2 is the test.</summary>
+    private static byte[] OneColumnPdf() => ColumnPdf(
+        "One Column",
+        [
+            new PdfColumnPage("Chapter 1", PdfWriter.Wrap("First chapter. " + Repeat(ColumnFiller, 8)), [], []),
+            new PdfColumnPage("Chapter 2", PdfWriter.Wrap("Second chapter. " + Repeat(ColumnFiller, 8)), [], []),
+        ],
+        "d7");
+
+    /// <summary>One page with two columns; a converter that reads line by line mixes the two texts up.</summary>
+    private static byte[] TwoColumnsPdf() => ColumnPdf(
+        "Two Columns",
+        [
+            new PdfColumnPage(
+                "Chapter 1",
+                PdfWriter.Wrap("Main text of the first column. " + Repeat(ColumnFiller, 6) + "This is the end of the left column.", PdfWriter.ColumnChars),
+                PdfWriter.Wrap("This is the start of the right one. " + Repeat(ColumnFiller, 6), PdfWriter.ColumnChars),
+                []),
+        ],
+        "d8");
+
+    /// <summary>One column with a footnote at the foot of the page; the footnote belongs after the main text.</summary>
+    private static byte[] FootnotesPdf() => ColumnPdf(
+        "Footnotes",
+        [
+            new PdfColumnPage(
+                "Chapter 1",
+                PdfWriter.Wrap("Main text with a note marker. " + Repeat(ColumnFiller, 6) + "End of the main text."),
+                [],
+                ["1 Footnote 1: a note that belongs to the main text of this page."]),
+        ],
+        "d9");
 
     private static TextDocument QuietSystemsText() => TextGenerator.Generate(Languages.English, 9, Words);
 

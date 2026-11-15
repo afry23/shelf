@@ -7,8 +7,21 @@ namespace Shelf.TestData.Formats;
 /// <summary>A one-bit DeviceGray image drawn as the only content of a page (a "scanned page").</summary>
 internal sealed record PdfImage(int Width, int Height, byte[] Data);
 
+/// <summary>
+/// One page with a heading, a left and a right text column and footnote lines at the bottom. An empty
+/// <see cref="Right"/> gives a one-column page; the left column then runs over the full width.
+/// </summary>
+internal sealed record PdfColumnPage(
+    string Heading,
+    IReadOnlyList<string> Left,
+    IReadOnlyList<string> Right,
+    IReadOnlyList<string> Footnotes);
+
 internal sealed class PdfSpec
 {
+    /// <summary>When set, these pages are written instead of <see cref="Pages"/>, with positioned columns.</summary>
+    public IReadOnlyList<PdfColumnPage>? ColumnPages { get; init; }
+
     /// <summary>Text pages; each entry is the list of lines of one page.</summary>
     public IReadOnlyList<IReadOnlyList<string>> Pages { get; init; } = [];
 
@@ -40,7 +53,9 @@ internal static class PdfWriter
 
     public static byte[] Write(PdfSpec spec)
     {
-        var pageCount = spec.Image is not null ? 1 : Math.Max(1, spec.Pages.Count);
+        var pageCount = spec.Image is not null
+            ? 1
+            : Math.Max(1, spec.ColumnPages?.Count ?? spec.Pages.Count);
         var next = 4;
         var info = spec.HasInfo ? next++ : 0;
         var xmp = spec.HasXmp ? next++ : 0;
@@ -116,7 +131,9 @@ internal static class PdfWriter
 
             var content = spec.Image is not null
                 ? "q 468 0 0 648 72 72 cm /Im1 Do Q\n"
-                : TextContent(spec.Pages.Count == 0 ? [] : spec.Pages[i]);
+                : spec.ColumnPages is { Count: > 0 } columnPages
+                    ? ColumnContent(columnPages[i])
+                    : TextContent(spec.Pages.Count == 0 ? [] : spec.Pages[i]);
             var contentBytes = Latin1(content);
             Begin(output, offsets, contentObjects[i]);
             Raw(output, $"<< /Length {contentBytes.Length.ToString(CultureInfo.InvariantCulture)} >>\nstream\n");
@@ -222,6 +239,42 @@ internal static class PdfWriter
 
         b.Append("ET\n");
         return b.ToString();
+    }
+
+    /// <summary>Column width in characters for <see cref="Wrap"/>: a two-column page and a full-width page.</summary>
+    public const int ColumnChars = 34;
+
+    private static string ColumnContent(PdfColumnPage page)
+    {
+        var b = new StringBuilder();
+        b.Append("BT\n/F1 16 Tf\n72 740 Td\n(").Append(EscapeLiteral(page.Heading)).Append(") Tj\nET\n");
+        AppendBlock(b, 72, 700, page.Left);
+        if (page.Right.Count > 0)
+        {
+            AppendBlock(b, 324, 700, page.Right);
+        }
+
+        if (page.Footnotes.Count > 0)
+        {
+            b.Append("0.5 w 72 112 m 192 112 l S\n");
+            AppendBlock(b, 72, 100, page.Footnotes, 8);
+        }
+
+        return b.ToString();
+    }
+
+    private static void AppendBlock(StringBuilder b, int x, int y, IReadOnlyList<string> lines, int size = 11)
+    {
+        b.Append("BT\n/F1 ").Append(size.ToString(CultureInfo.InvariantCulture)).Append(" Tf\n")
+            .Append((size + 3).ToString(CultureInfo.InvariantCulture)).Append(" TL\n")
+            .Append(x.ToString(CultureInfo.InvariantCulture)).Append(' ')
+            .Append(y.ToString(CultureInfo.InvariantCulture)).Append(" Td\n");
+        foreach (var line in lines)
+        {
+            b.Append('(').Append(EscapeLiteral(line)).Append(") Tj\nT*\n");
+        }
+
+        b.Append("ET\n");
     }
 
     private static string XmpPacket(PdfSpec spec)
