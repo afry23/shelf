@@ -51,7 +51,7 @@ Existing alternatives were evaluated and rejected. Reasons include unreadable ha
 
 ### 3.2 Non-Goals
 
-- Format conversion (EPUB ↔ PDF ↔ MOBI)
+- Format conversion in shelf itself (EPUB ↔ PDF ↔ MOBI). The one exception is PDF → EPUB by an external tool the user installed (6.16); shelf brings no converter
 - Plugin system
 - Sync with e-readers (Kindle, Kobo, etc.)
 - DRM removal
@@ -337,6 +337,17 @@ A person can link works by hand: same topic, a sequel, a rebuttal, the paper beh
 | F-LNK-5 | REST: `GET /api/v1/works/{id}/links`, `PUT /api/v1/works/{id}/links/{other}` (`{"note": …, "otherNote": …}`; creates the link or replaces the notes), `DELETE /api/v1/works/{id}/links/{other}`. A link shows the other work (ID, title, authors, year, kind) and the note of the side of `{id}`. | M |
 | F-LNK-6 | MCP: the read-only tool `get_links` and the write tools `link_works` and `unlink_works`. With `mcp.read_only` the write tools are not offered. | S |
 | F-LNK-7 | Web interface: the work page has the tab "Links" (always shown, right after "Similar books", or after "Files" without it): the linked works with their notes (a click opens the work), a button to remove a link, a field to edit the note, and a form that searches the library by title and links the chosen work with an optional note. | S |
+
+### 6.16 PDF to EPUB Conversion
+
+A person reads a PDF on a Kindle, where a fixed page layout is hard to read. shelf calls a converter the person installed (a layout-aware tool such as docling, marker or MinerU, followed by pandoc) and keeps the reflowable EPUB as another file of the same work. shelf holds no converter and does not go online; like `rclone` (F-IMP-8) the tool is the person's own and is called only on explicit command. OCR stays a non-goal: a PDF without a text layer is refused.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| F-CNV-1 | `shelf convert <work> [--file <name>] [--replace]` converts the PDF of a work into a reflowable EPUB with the tool of `convert.command` (global or library config) and adds the result as a file of the same work, next to the PDF, with the role `book`. A work with several PDFs needs `--file`. A work that already has an EPUB is refused unless `--replace` is given. `--json` is supported. | C |
+| F-CNV-2 | `convert.command` is a template with the placeholders `{input}` and `{output}`; shelf runs it in a temporary folder with a time limit (`convert.timeout`, default 600 s) and removes the folder afterwards. The result must be a valid EPUB (the OPF can be read) with at least one chapter of text, else nothing is added. Without the key the command fails with an error that names `convert.command`; a tool that is not installed or that fails is an error with its message and adds nothing. | C |
+| F-CNV-3 | A PDF without a text layer (marked "no text", Q7) is refused before the tool is called, with a hint that shelf has no OCR. | C |
+| F-CNV-4 | The new EPUB is a file of the work like any other: hashed, indexed (full text, chapter and CFI locators) and readable in the web interface, which also offers "Convert to EPUB" on the work page (REST `POST /api/v1/works/{id}/convert`, body `{"file": …, "replace": …}`). The conversion is a file operation and goes through the journal (9.3). | C |
 
 ## 7. Interfaces
 

@@ -495,6 +495,21 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Exit criteria:** feature files exist for F-WEB-9, the complete BDD suite is green.
 
+### M24 – PDF to EPUB
+
+**Goal:** A person turns the PDF of a work into a reflowable EPUB for a Kindle with a converter of their own.
+
+**Status:** planned; feature files `Convert`, `ConvertColumns`. A spike comes first: docling, marker and MinerU, each followed by pandoc, on a one-column, a two-column and a footnote PDF; the result is an ADR and the default of `convert.command`. Calibre is not a candidate (too large an installation, decided by the owner). The two-column case decides.
+
+| Area | Content | PRD |
+|---|---|---|
+| Spike | tool choice, ADR | F-CNV-2 |
+| CLI | `shelf convert`, config `convert.command`, `convert.timeout` | F-CNV-1, F-CNV-2 |
+| Checks | text layer, valid EPUB, journal | F-CNV-2, F-CNV-3 |
+| REST, web | `POST /api/v1/works/{id}/convert`, button on the work page | F-CNV-4 |
+
+**Exit criteria:** feature files exist for F-CNV-1 to F-CNV-4, the complete BDD suite is green, the native binary passes `tests/e2e/native.sh`, the EPUB of the two-column fixture passes `epubcheck`.
+
 ## 4. Backlog After 1.0
 
 Could items and deferred decisions:
