@@ -208,8 +208,8 @@
       "publicDomain": null,
       "modifications": [],
       "generatorCommand": "dotnet run --project tests/Shelf.TestData -- fixtures --out tests/fixtures/derived",
-      "size": 2806,
-      "sha256": "e35f2be5c1eb63ca1e85a1e108d83d990e6ced477cbfb38490400ede85c3c8d4"
+      "size": 1635,
+      "sha256": "5e474c8885ad918470364284d7b6c87a929d98ce2371f2338af64a5643f8666e"
     },
     {
       "path": "derived/two-columns.pdf",

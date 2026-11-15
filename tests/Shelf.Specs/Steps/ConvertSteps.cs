@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text.RegularExpressions;
 using Reqnroll;
 using Shelf.Index;
 using Shelf.TestData;
@@ -10,6 +12,9 @@ namespace Shelf.Specs.Steps;
 public sealed class ConvertSteps(ConfigSteps workspace, ScenarioEnvironment environment)
 {
     private const string Library = "library";
+    private const string RealConverterVariable = "SHELF_REAL_CONVERTER";
+
+    private string _text = string.Empty;
 
     [Given("the converter is configured as {string}")]
     public void GivenTheConverterIsConfiguredAs(string command) => AppendConfig($"convert.command = '{command}'");
@@ -52,6 +57,39 @@ public sealed class ConvertSteps(ConfigSteps workspace, ScenarioEnvironment envi
         LibraryReindexer.Rebuild(library, includeContent: false);
     }
 
+    [Given("the real converter of the configuration is installed")]
+    public void GivenTheRealConverterIsInstalled()
+    {
+        Assert.SkipUnless(Environment.GetEnvironmentVariable(RealConverterVariable) == "1", $"set {RealConverterVariable}=1 and install marker and pandoc (tools/pdf2epub.sh)");
+        environment.Converter.Real = true;
+        AppendConfig($"convert.command = '{Path.Combine(RepositoryPaths.Root(), "tools", "pdf2epub.sh")} {{input}} {{output}}'");
+        AppendConfig("convert.timeout = 1800");
+    }
+
+    [When("I read the text of the new EPUB")]
+    public void WhenIReadTheTextOfTheNewEpub()
+    {
+        var epub = Directory.EnumerateFiles(Path.Combine(workspace.WorkingDirectory, Library), "*.epub", SearchOption.AllDirectories).Single();
+        using var archive = ZipFile.OpenRead(epub);
+        var chapters = archive.Entries.Where(e => e.FullName.StartsWith("EPUB/text/", StringComparison.Ordinal) && e.Name.StartsWith("ch", StringComparison.Ordinal) && e.Name.EndsWith(".xhtml", StringComparison.Ordinal));
+        _text = string.Join('\n', chapters.OrderBy(e => e.FullName, StringComparer.Ordinal).Select(e =>
+        {
+            using var reader = new StreamReader(e.Open());
+            return Regex.Replace(reader.ReadToEnd(), "<[^>]*>", " ");
+        }));
+        _text = Regex.Replace(_text, @"\s+", " ");
+    }
+
+    [Then("the phrase {string} comes before the phrase {string}")]
+    public void ThenThePhraseComesBefore(string first, string second)
+    {
+        var a = _text.IndexOf(first, StringComparison.Ordinal);
+        var b = _text.IndexOf(second, StringComparison.Ordinal);
+        Assert.True(a >= 0, $"'{first}' not found in: {_text}");
+        Assert.True(b >= 0, $"'{second}' not found in: {_text}");
+        Assert.True(a < b, $"'{first}' ({a}) must come before '{second}' ({b}) in: {_text}");
+    }
+
     [Then("the converter was called with an input that ends in {string}")]
     public void ThenTheConverterWasCalledWithAnInput(string suffix) =>
         Assert.Contains(environment.Converter.Calls, call => call.Input.EndsWith(suffix, StringComparison.Ordinal));
@@ -89,6 +127,9 @@ public sealed class FakeConverter : IPdfConverter
 
     public bool Missing { get; set; }
 
+    /// <summary>Run the user's real converter instead of writing a fake result (<c>ConvertColumns.feature</c>).</summary>
+    public bool Real { get; set; }
+
     public string? FailWith { get; set; }
 
     /// <summary>How long the tool would run; longer than the time limit ends in a timeout without waiting.</summary>
@@ -98,6 +139,12 @@ public sealed class FakeConverter : IPdfConverter
 
     public void Convert(string command, string input, string output, TimeSpan timeout, CancellationToken cancellation)
     {
+        if (Real)
+        {
+            new ProcessConverter().Convert(command, input, output, timeout, cancellation);
+            return;
+        }
+
         var call = new ConverterCall(input, output);
         var tool = ProcessConverter.Arguments(command, input, output)[0];
         if (Missing)

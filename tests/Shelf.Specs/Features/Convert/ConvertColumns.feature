@@ -1,6 +1,6 @@
-# Runs by hand with the real converter of convert.command (marker + pandoc, ADR 0022); it needs the tools and
-# several GB of models, so the automatic suite skips it.
-@F-CNV-1 @F-CNV-2 @M24 @ignore
+# Runs the real converter tools/pdf2epub.sh (marker + pandoc, ADR 0022). It needs both tools and several GB of
+# models, so it is skipped unless SHELF_REAL_CONVERTER=1 is set.
+@F-CNV-1 @F-CNV-2 @M24
 Feature: Reading order of converted PDFs with several columns
   As a person who reads scientific texts on a Kindle
   I want the EPUB of a two-column PDF to follow the reading order

@@ -185,12 +185,26 @@ public static class DerivedFixtures
             IdentitySeed = seed,
         });
 
-    /// <summary>Two chapters on two pages, one column each; the order Chapter 1 before Chapter 2 is the test.</summary>
+    /// <summary>
+    /// Two chapters in the text flow of one page, one column; the order Chapter 1 before Chapter 2 is the test. The
+    /// headings are not a running head at a fixed place (a converter would drop that).
+    /// </summary>
     private static byte[] OneColumnPdf() => ColumnPdf(
         "One Column",
         [
-            new PdfColumnPage("Chapter 1", PdfWriter.Wrap("First chapter. " + Repeat(ColumnFiller, 8)), [], []),
-            new PdfColumnPage("Chapter 2", PdfWriter.Wrap("Second chapter. " + Repeat(ColumnFiller, 8)), [], []),
+            new PdfColumnPage(
+                string.Empty,
+                [
+                    "Chapter 1",
+                    string.Empty,
+                    .. PdfWriter.Wrap("First chapter. " + Repeat(ColumnFiller, 3)),
+                    string.Empty,
+                    "Chapter 2",
+                    string.Empty,
+                    .. PdfWriter.Wrap("Second chapter. " + Repeat(ColumnFiller, 3)),
+                ],
+                [],
+                []),
         ],
         "d7");
 
