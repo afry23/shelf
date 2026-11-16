@@ -499,7 +499,7 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 
 **Goal:** A person turns the PDF of a work into a reflowable EPUB for a Kindle with a converter of their own.
 
-**Status:** planned; feature files `Convert`, `ConvertColumns`. A spike comes first: docling, marker and MinerU, each followed by pandoc, on a one-column, a two-column and a footnote PDF; the result is an ADR and the default of `convert.command`. Calibre is not a candidate (too large an installation, decided by the owner). The two-column case decides.
+**Status:** implemented; feature files `Convert`, `ConvertColumns`, `WebConvert`, `UiConvert`, `ConvertSettings`. The spike (docling, marker, pandoc; Calibre excluded by the owner as too large an installation) is [ADR 0022](adr/0022-pdf-to-epub-converter.md).
 
 | Area | Content | PRD |
 |---|---|---|
@@ -509,6 +509,8 @@ Order: 1 → 2 → 3 → 4 → 5 → 6. Slice 7 can start after 3 and run in par
 | REST, web | `POST /api/v1/works/{id}/convert`, button on the work page | F-CNV-4 |
 
 **Exit criteria:** feature files exist for F-CNV-1 to F-CNV-4, the complete BDD suite is green, the native binary passes `tests/e2e/native.sh`, the EPUB of the two-column fixture passes `epubcheck`.
+
+**Result:** all exit criteria met. F-CNV-1 to F-CNV-4 (all Could) are implemented: `shelf convert`, `convert.command` and `convert.timeout`, the REST call and the button on the work page. BDD green (3137 scenarios, 29 skipped), the native binary passes `tests/e2e/native.sh` on `osx-arm64` and `linux-x64` in CI. The EPUBs of the one-column, two-column and footnote fixtures pass `epubcheck` with both recipes (`tools/pdf2epub.sh`: marker + pandoc, default; `tools/pdf2epub-docling.sh`: docling + pandoc). A real 143-page book converts in 21 s (marker) or 34 s (docling) to a valid EPUB. Known limits: marker reads some words as formulas (150 spans in that book, none with docling); the heading levels are flat; the quality of tables and images was not judged; nothing was tried on a real Kindle; the license of the marker model weights is not checked; the real-converter scenarios run only with `SHELF_REAL_CONVERTER=1`.
 
 ## 4. Backlog After 1.0
 
