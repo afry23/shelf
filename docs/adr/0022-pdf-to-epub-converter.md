@@ -40,6 +40,25 @@ Owner decisions taken before the work:
 | a page with a footnote at the foot of the page | docling | the footnote lands **between** the two columns |
 | same | marker | the footnote lands **after** the main text |
 
+**A real book** (not in the repository, it is a licensed copy: a German law guide, 143 pages, one column, 69 tables, running footer on every page; marker + pandoc through `shelf convert` on `osx-arm64`):
+
+| Measure | Result |
+|---|---|
+| Time | 21 s in total (marker 17 s) |
+| Size | PDF 3.2 MB, EPUB 270 KB (no images in the PDF text flow) |
+| Text kept | 40,146 of 45,222 words; the difference is the 143 copies of the running footer, which marker drops (2 of 143 stay) |
+| Chapters | 228 files, median 1.6 KB, largest 7.9 KB; every heading is one chapter |
+| `epubcheck` | first run: 2 errors (duplicate ID), fixed in `tools/pdf2epub.sh`; then 0 errors, 0 warnings |
+| Search | the EPUB is indexed and found (`format:epub`), `shelf doctor` reports nothing about it |
+| Math | marker took 150 spans of the text for formulas (`$...$`), 34 of them words with a space between the letters (bold text); pandoc turns them into 117 MathML elements and warns about `\bf` |
+
+Findings from the book:
+
+- **Duplicate ID.** marker writes every heading as `##`. Without a `#` above them pandoc invents a first chapter with the title of the book, and its ID collides with a real heading of the same text. The script now moves the headings up one level when the Markdown has no `# `.
+- **Flat headings.** marker does not keep the levels (227 of 227 headings are `##`), so the table of contents has one level.
+- **False formulas.** About 150 bold words or fragments are read as math. A Kindle shows MathML poorly, so these words may be unreadable. Not fixed; a filter between marker and pandoc that turns such spans back into text is the next step.
+- **Tables** (69) were recognized by marker; how well they read on a Kindle was not judged.
+
 Time (observation, not a gate): docling 27 s for 7 pages including the first model download; marker 8 s for the same file.
 
 ## Decision
@@ -54,6 +73,6 @@ Time (observation, not a gate): docling 27 s for 7 pages including the first mod
 - **Formulas stay weak.** Both tools write LaTeX; a Kindle shows MathML poorly. Mathematical PDFs convert, but the formulas may be unreadable. Not fixed here.
 - **License.** marker's code is GPL-3 and its model weights have their own license (free for personal use, limits for commercial use). shelf only starts it as a separate process; the person installs it. docling is MIT.
 - **Heavy installation for the person**, not for shelf: PyTorch and models, several GB, downloaded on first use (docling and marker go online for the models once; shelf itself does not).
-- **Not measured:** real books (hundreds of pages), scanned PDFs (refused before the call), `linux-x64`, three or more columns, footnotes that sit in the text flow.
+- **Not measured:** books of several hundred pages, the quality of tables on a Kindle, scanned PDFs (refused before the call), `linux-x64`, three or more columns, footnotes that sit in the text flow.
 - **Risk:** both tools change quickly; the recipe is configuration, so a better tool replaces it without a change in shelf.
 - The generator of `tests/Shelf.TestData` gained `PdfColumnPage` (positioned columns and footnotes) and three derived fixtures (`one-column.pdf`, `two-columns.pdf`, `footnotes.pdf`).

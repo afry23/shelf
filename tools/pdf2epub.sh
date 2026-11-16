@@ -29,5 +29,12 @@ fi
 
 # Title from the PDF file name; shelf puts the real metadata of the work in the library, not in this file.
 title=$(basename "$input" .pdf)
+# marker writes every heading as "##". Without a "#" above them pandoc invents a first chapter with the title of the book,
+# and its id collides with a real heading of the same text (epubcheck: duplicate ID). So the headings move up one level.
+shift=0
+if ! grep -q '^# ' "$markdown"; then
+  shift=-1
+fi
+
 # Run from the Markdown folder so that images next to it are found and embedded.
-(cd "$(dirname "$markdown")" && pandoc "$(basename "$markdown")" -f markdown -t epub3 --metadata "title=$title" -o "$output")
+(cd "$(dirname "$markdown")" && pandoc "$(basename "$markdown")" -f markdown -t epub3 --shift-heading-level-by="$shift" --metadata "title=$title" -o "$output")
