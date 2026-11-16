@@ -199,6 +199,8 @@ Missing files are fine. Unknown keys produce a warning on stderr. Invalid values
 | `organize.pattern` | `{author_sort}/{title} ({year})/{title}.{ext}` | both | Folder and file naming for `shelf organize` |
 | `organize.paper_pattern` | `papers/{year}/{cite_key}/{cite_key}.{ext}` | both | Folder and file naming of papers for `shelf organize` |
 | `fetch.unpaywall_email` | none | both | E-mail address that Unpaywall asks for; without it `shelf fetch` does not ask Unpaywall |
+| `convert.command` | none | both | Converter of `shelf convert`, with `{input}` and `{output}`; see [the guide](docs/howto-pdf-to-epub.md) |
+| `convert.timeout` | `600` | both | Seconds the converter may run (1 to 86400) |
 | `semantic.model` | `multilingual-e5-small` | both | Embedding model (changing it re-triggers embeddings) |
 | `reader.preferred_format` | `epub` | both | Format the web reader opens (`epub` or `pdf`) |
 | `mcp.read_only` | `false` | both | Disable the MCP write tools |
@@ -278,6 +280,7 @@ Every command supports `--json`. Commands that work on a library accept `--libra
 | `shelf dupes [--interactive]` | Find and clean up duplicates |
 | `shelf merge <a> <b>` / `shelf split <work> <file>` | Fix grouping by hand |
 | `shelf add <work> <file> [--replace <file>]` | Add a file to a work, for example a new version |
+| `shelf convert <work> [--file <name>] [--replace]` | Turn the PDF of a work into a reflowable EPUB with a converter of your own, for a Kindle ([guide](docs/howto-pdf-to-epub.md)) |
 | `shelf create <file> [--title ...]` | Create a work by hand |
 | `shelf move <work> <file> (--to <work>\|--new)` | Move a file to another work |
 | `shelf delete <work> [file]` | Move a file or work to the trash |
@@ -349,6 +352,7 @@ You can leave out `.shelf/index.db*` (rebuild with `shelf reindex`) and `.shelf/
 
 - [Encrypted backup with restic](docs/howto-backup.md): what to back up, what to skip, restore.
 - [Importing Humble Bundle e-books](docs/howto-humble-bundle.md): how to get your purchases into shelf.
+- [Turning a PDF into an EPUB for a Kindle](docs/howto-pdf-to-epub.md): install marker or docling, set `convert.command`, convert, limits.
 
 ## FAQ
 
