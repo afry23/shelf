@@ -87,6 +87,8 @@ public sealed class SettingsSteps
             "organize.pattern" => Settings().Organize.Pattern.Text,
             "organize.paper_pattern" => Settings().Organize.PaperPattern.Text,
             "fetch.unpaywall_email" => Settings().Fetch.UnpaywallEmail ?? string.Empty,
+            "convert.command" => Settings().Convert.Command ?? string.Empty,
+            "convert.timeout" => Settings().Convert.TimeoutSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "semantic.model" => Settings().Semantic.Model,
             "reader.preferred_format" => Settings().Reader.PreferredFormat,
             "mcp.read_only" => Settings().Mcp.ReadOnly ? "true" : "false",

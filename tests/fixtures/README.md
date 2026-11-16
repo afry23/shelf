@@ -25,6 +25,9 @@ Budget: total at most 5 MiB (5,242,880 bytes), per file at most 1.5 MiB (1,572,8
 | `derived/malformed-opf.epub` | generator | d4 | malformed-opf | see manifest |
 | `derived/not-a-zip.epub` | generator | d5 | not-a-zip | see manifest |
 | `derived/scanned-page.pdf` | generator | d6 | pdf-image-only, pdf-info | see manifest |
+| `derived/one-column.pdf` | generator | d7 | pdf-text-layer, pdf-info, pdf-one-column | see manifest |
+| `derived/two-columns.pdf` | generator | d8 | pdf-text-layer, pdf-info, pdf-two-columns | see manifest |
+| `derived/footnotes.pdf` | generator | d9 | pdf-text-layer, pdf-info, pdf-footnotes | see manifest |
 
 Total about 1.9 MB. The same work in several files (`flatland`: EPUB 2, EPUB 3 and a second EPUB 3 from another
 source; `d1`: EPUB and PDF; `d3`: EPUB and PDF) is intentional: it is what grouping and duplicate tests need.

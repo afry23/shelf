@@ -304,6 +304,13 @@ internal static class Api
             .Accepts<EnrichRequest>("application/json")
             .Produces<EnrichApplyResult>(StatusCodes.Status200OK);
 
+        api.MapPost("/works/{id}/convert", ([FromServices] LibraryHandle library, string id, [FromBody] ConvertRequest? body) =>
+                Run(WebJsonContext.Default.ConvertOutcome, () =>
+                    library.Service.Convert(RequireId(id), OptionalText(body?.File, "file"), OptionalFlag(body?.Replace, "replace") ?? false, CancellationToken.None)))
+            .WithName("ConvertWork")
+            .Accepts<ConvertRequest>("application/json")
+            .Produces<ConvertOutcome>(StatusCodes.Status200OK);
+
         api.MapPost("/files/{id}/split", ([FromServices] LibraryHandle library, string id) =>
                 Run(WebJsonContext.Default.SplitOutcome, () => library.Service.SplitFile(id)))
             .WithName("SplitFile")
@@ -952,6 +959,7 @@ internal static class Api
             {
                 LibraryErrorKind.NotFound => StatusCodes.Status404NotFound,
                 LibraryErrorKind.Conflict => StatusCodes.Status409Conflict,
+                LibraryErrorKind.Failed => StatusCodes.Status502BadGateway,
                 _ => StatusCodes.Status400BadRequest,
             },
             e.Message);

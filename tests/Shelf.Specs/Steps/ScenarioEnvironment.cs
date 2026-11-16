@@ -15,6 +15,9 @@ public sealed class ScenarioEnvironment
     /// <summary>What <c>import --from</c> fetches instead of running rclone.</summary>
     public FakeRemote Remote { get; } = new();
 
+    /// <summary>What <c>convert</c> runs instead of the user's converter.</summary>
+    public FakeConverter Converter { get; } = new();
+
     /// <summary>The online catalogs that <c>enrich</c> asks instead of the internet; both are empty until a scenario fills them.</summary>
     public FakeOnline Online { get; } = new();
 

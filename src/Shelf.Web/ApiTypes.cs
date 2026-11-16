@@ -171,6 +171,9 @@ public sealed record LinkRequest(JsonNode? Note, JsonNode? OtherNote);
 public sealed record FetchRequest(JsonNode? Paper);
 
 /// <summary>The body of <c>POST /works/{id}/enrich</c> and <c>/enrich/apply</c>; every field is optional. Any JSON is read so that a wrong type is answered with a reason.</summary>
+/// <summary>The body of <c>POST /works/{id}/convert</c> (F-CNV-4): <c>file</c> (the ID of the PDF, needed if the work has several) and <c>replace</c> (convert again). Any JSON is read so that a wrong type is answered with a reason.</summary>
+public sealed record ConvertRequest(JsonNode? File, JsonNode? Replace);
+
 public sealed record EnrichRequest(JsonNode? Source, JsonNode? Pick, JsonNode? Overwrite, JsonNode? Cover);
 
 /// <summary>The body of <c>POST /works/{id}/references/fetch</c>: <c>apply</c> stores the list, else nothing is written. Any JSON is read so that a wrong type is answered with a reason.</summary>

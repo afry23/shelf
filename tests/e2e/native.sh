@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end check of the native shelf binary: import, search, edit and reindex (M1), then organize, undo, tags,
 # duplicates and the trash (M2), then the MCP server and, when a model folder is given, semantic search (M3), then the web
-# server (M4): the API, files with range requests, covers, the interface without Node.js, the access token and the cookie.
+# server (M4): the API, files with range requests, covers, the interface without Node.js, the access token and the cookie,
+# then PDF to EPUB with a converter script of our own (M24: the command, undo, the REST call).
 # Usage: native.sh <path to shelf> <empty work directory>
 # SHELF_E5_DIR (optional): folder with model.onnx and sentencepiece.bpe.model of multilingual-e5-small.
 set -euo pipefail
@@ -239,6 +240,41 @@ mcp_http_start --token s3cret
 [ "$(mcp_post 'Authorization: Bearer wrong' "$LIST")" = 401 ]
 [ "$(mcp_post 'Authorization: Bearer s3cret' "$LIST")" = 200 ]
 mcp_http_stop
+
+echo "== M24: convert a PDF to an EPUB (the converter is a script of our own; shelf brings none)"
+mkdir -p incoming-convert
+cp "$FIXTURES/two-columns.pdf" incoming-convert/
+"$BIN" import incoming-convert --library library | grep -q 'Imported 1 file: 1 new work'
+"$BIN" search 'title:columns' --library library --json > convert-search.json
+CID="$(sed -E 's/.*"id":"([0-9A-Z]{26})".*/\1/' convert-search.json)"
+code=0
+"$BIN" convert "$CID" --library library > /dev/null 2> convert-err.txt || code=$?
+[ "$code" = 2 ] # no converter configured
+grep -q 'convert.command' convert-err.txt
+printf '#!/bin/sh\ncp "%s" "$2"\n' "$FIXTURES/Jane Doe - Quiet Systems (2004).epub" > fakeconv.sh
+chmod +x fakeconv.sh
+printf "convert.command = '%s/fakeconv.sh {input} {output}'\n" "$PWD" >> library/.shelf/config.toml
+snapshot > convert-before.txt
+"$BIN" convert "$CID" --library library | grep -q 'Converted two-columns.pdf to two-columns.epub'
+[ -n "$(find library -name 'two-columns.epub')" ]
+"$BIN" show "$CID" --library library | grep -q 'two-columns.epub'
+code=0
+"$BIN" convert "$CID" --library library > /dev/null 2> convert-err.txt || code=$?
+[ "$code" = 2 ] # the work has an EPUB already
+grep -q 'already has an EPUB' convert-err.txt
+"$BIN" undo --library library | grep -q 'Reverted the last add run'
+snapshot | diff convert-before.txt - # undo brings back the exact state
+[ -z "$(find library -name 'two-columns.epub')" ]
+
+serve_start
+code="$(curl -s -o convert-http.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/v1/works/$CID/convert")"
+[ "$code" = 200 ]
+grep -q '"file":"two-columns.epub"' convert-http.json
+code="$(curl -s -o convert-http.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/v1/works/$CID/convert")"
+[ "$code" = 409 ]
+serve_stop
+"$BIN" undo --library library | grep -q 'Reverted the last add run'
+snapshot | diff convert-before.txt -
 
 echo "== M5: shell completion (the scripts come out of the binary)"
 "$BIN" completion bash > completion.bash

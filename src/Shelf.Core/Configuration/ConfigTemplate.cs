@@ -31,6 +31,12 @@ public static class ConfigTemplate
         # [fetch]
         # unpaywall_email = "you@example.org"
 
+        # shelf convert turns the PDF of a work into a reflowable EPUB with a converter of your own (shelf brings none).
+        # The command needs {input} (the PDF) and {output} (the EPUB to write); it is not run by a shell. Only shelf convert runs it.
+        # [convert]
+        # command = "pdf2epub {input} {output}"
+        # timeout = 600
+
         # The reader of the web interface: the format that "Read" opens when a work has an EPUB and a PDF.
         # [reader]
         # preferred_format = "epub"

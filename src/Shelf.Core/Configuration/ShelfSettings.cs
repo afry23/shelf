@@ -27,6 +27,17 @@ public sealed record FetchSettings(string? UnpaywallEmail)
     public static FetchSettings Default { get; } = new((string?)null);
 }
 
+/// <summary>How <c>shelf convert</c> turns a PDF into an EPUB (F-CNV-2).</summary>
+/// <param name="Command">The converter as a template with <c>{input}</c> and <c>{output}</c>; without it nothing is converted.</param>
+/// <param name="TimeoutSeconds">How long the converter may run.</param>
+public sealed record ConvertSettings(string? Command, int TimeoutSeconds)
+{
+    public const int DefaultTimeoutSeconds = 600;
+    public const int LargestTimeoutSeconds = 86400;
+
+    public static ConvertSettings Default { get; } = new(null, DefaultTimeoutSeconds);
+}
+
 /// <summary>The embedding model for semantic search (F-SEM-1, F-SEM-8).</summary>
 public sealed record SemanticSettings(string Model)
 {
@@ -89,6 +100,8 @@ public sealed class ShelfSettings
     private const string PatternKey = "organize.pattern";
     private const string PaperPatternKey = "organize.paper_pattern";
     private const string UnpaywallEmailKey = "fetch.unpaywall_email";
+    private const string ConvertCommandKey = "convert.command";
+    private const string ConvertTimeoutKey = "convert.timeout";
     private const string ModelKey = "semantic.model";
     private const string McpMaxCharsKey = "mcp.max_chars";
     private const string McpReadOnlyKey = "mcp.read_only";
@@ -100,13 +113,14 @@ public sealed class ShelfSettings
     private const string DefaultLibraryKey = "default_library";
     private const string LibrariesKey = "libraries";
 
-    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
-    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, WebPageSizeKey, DefaultLibraryKey, LibrariesKey];
+    private static readonly HashSet<string> LibraryKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ConvertCommandKey, ConvertTimeoutKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey];
+    private static readonly HashSet<string> GlobalKeys = [AutoMergeKey, ReviewKey, MaxHammingKey, AutoHammingKey, ProbableHammingKey, ProbableCosineKey, PatternKey, PaperPatternKey, UnpaywallEmailKey, ConvertCommandKey, ConvertTimeoutKey, ModelKey, McpMaxCharsKey, McpReadOnlyKey, PreferredFormatKey, WebPortKey, WebBindKey, WebTokenKey, WebPageSizeKey, DefaultLibraryKey, LibrariesKey];
 
     private ShelfSettings(
         GroupingSettings grouping,
         OrganizeSettings organize,
         FetchSettings fetch,
+        ConvertSettings convert,
         SemanticSettings semantic,
         McpSettings mcp,
         ReaderSettings reader,
@@ -118,6 +132,7 @@ public sealed class ShelfSettings
         Grouping = grouping;
         Organize = organize;
         Fetch = fetch;
+        Convert = convert;
         Semantic = semantic;
         Mcp = mcp;
         Reader = reader;
@@ -132,6 +147,8 @@ public sealed class ShelfSettings
     public OrganizeSettings Organize { get; }
 
     public FetchSettings Fetch { get; }
+
+    public ConvertSettings Convert { get; }
 
     public SemanticSettings Semantic { get; }
 
@@ -151,7 +168,7 @@ public sealed class ShelfSettings
     public IReadOnlyList<string> Warnings { get; }
 
     /// <summary>Settings without any config file.</summary>
-    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, FetchSettings.Default, SemanticSettings.Default, McpSettings.Default, ReaderSettings.Default, WebSettings.Default, [], null, []);
+    public static ShelfSettings Defaults { get; } = new(GroupingSettings.Default, OrganizeSettings.Default, FetchSettings.Default, ConvertSettings.Default, SemanticSettings.Default, McpSettings.Default, ReaderSettings.Default, WebSettings.Default, [], null, []);
 
     /// <exception cref="ConfigException">A known key has the wrong type or an invalid value.</exception>
     public static ShelfSettings Resolve(ConfigDocument? global, ConfigDocument? library)
@@ -176,6 +193,8 @@ public sealed class ShelfSettings
         var pattern = PathPattern.Default;
         var paperPattern = PathPattern.PaperDefault;
         var unpaywallEmail = FetchSettings.Default.UnpaywallEmail;
+        var convertCommand = ConvertSettings.Default.Command;
+        var convertTimeout = ConvertSettings.Default.TimeoutSeconds;
         var model = SemanticSettings.Default.Model;
         var maxChars = McpSettings.DefaultMaxChars;
         var readOnly = false;
@@ -196,6 +215,8 @@ public sealed class ShelfSettings
             pattern = ReadPattern(layer, PatternKey) ?? pattern;
             paperPattern = ReadPattern(layer, PaperPatternKey) ?? paperPattern;
             unpaywallEmail = ReadEmail(layer, UnpaywallEmailKey) ?? unpaywallEmail;
+            convertCommand = ReadConvertCommand(layer) ?? convertCommand;
+            convertTimeout = ReadConvertTimeout(layer) ?? convertTimeout;
             model = ReadModel(layer) ?? model;
             maxChars = ReadMaxChars(layer) ?? maxChars;
             readOnly = layer.GetBoolean(McpReadOnlyKey) ?? readOnly;
@@ -225,7 +246,7 @@ public sealed class ShelfSettings
                 key: DefaultLibraryKey);
         }
 
-        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern, paperPattern), new FetchSettings(unpaywallEmail), new SemanticSettings(model), new McpSettings(maxChars, readOnly), new ReaderSettings(preferredFormat), web, libraries, defaultLibrary, warnings);
+        return new ShelfSettings(new GroupingSettings(autoMerge, review, maxHamming, autoHamming, probableHamming, probableCosine), new OrganizeSettings(pattern, paperPattern), new FetchSettings(unpaywallEmail), new ConvertSettings(convertCommand, convertTimeout), new SemanticSettings(model), new McpSettings(maxChars, readOnly), new ReaderSettings(preferredFormat), web, libraries, defaultLibrary, warnings);
     }
 
     private static void Warn(ConfigDocument document, HashSet<string> known, List<string> warnings)
@@ -248,6 +269,33 @@ public sealed class ShelfSettings
         }
 
         return value;
+    }
+
+    private static string? ReadConvertCommand(ConfigDocument document)
+    {
+        var command = document.GetString(ConvertCommandKey);
+        if (command is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(command) || !command.Contains("{input}", StringComparison.Ordinal) || !command.Contains("{output}", StringComparison.Ordinal))
+        {
+            throw new ConfigException($"{document.SourceName}: {ConvertCommandKey}: must contain {{input}} and {{output}}", document.SourceName, key: ConvertCommandKey);
+        }
+
+        return command;
+    }
+
+    private static int? ReadConvertTimeout(ConfigDocument document)
+    {
+        var value = document.GetInteger(ConvertTimeoutKey);
+        if (value is < 1 or > ConvertSettings.LargestTimeoutSeconds)
+        {
+            throw new ConfigException($"{document.SourceName}: {ConvertTimeoutKey}: must be between 1 and {ConvertSettings.LargestTimeoutSeconds}", document.SourceName, key: ConvertTimeoutKey);
+        }
+
+        return (int?)value;
     }
 
     private static int? ReadMaxChars(ConfigDocument document)

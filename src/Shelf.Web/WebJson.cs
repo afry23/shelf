@@ -48,6 +48,8 @@ public sealed record StatusResponse(string Version, int Works, int Files, int Pa
 [JsonSerializable(typeof(LinkOutcome))]
 [JsonSerializable(typeof(FetchPaperOutcome))]
 [JsonSerializable(typeof(CiteKeySuggestion))]
+[JsonSerializable(typeof(ConvertRequest))]
+[JsonSerializable(typeof(ConvertOutcome))]
 [JsonSerializable(typeof(EnrichRequest))]
 [JsonSerializable(typeof(ReferencesFetchRequest))]
 [JsonSerializable(typeof(ReferencesResult))]
