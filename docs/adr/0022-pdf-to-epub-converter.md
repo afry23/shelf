@@ -59,6 +59,21 @@ Findings from the book:
 - **False formulas.** About 150 bold words or fragments are read as math. A Kindle shows MathML poorly, so these words may be unreadable. Not fixed; a filter between marker and pandoc that turns such spans back into text is the next step.
 - **Tables** (69) were recognized by marker; how well they read on a Kindle was not judged.
 
+The same book with docling instead of marker (`tools/pdf2epub-docling.sh`; only counts were read, no text, because of the rights notice of the file):
+
+| Measure | marker | docling |
+|---|---|---|
+| Time | 17 s | 33 s |
+| MathML elements | 117 | 0 |
+| Control characters in the Markdown | 0 | 781 (`0x03`, `0x08`): invalid XML, the script strips them |
+| Tables in the EPUB | 52 | 26 |
+| Images in the EPUB | 0 | 17 (EPUB 1.5 MB instead of 0.6 MB) |
+| Running footer left | 2 of 143 | 1 of 143 |
+| Heading levels | all `##` | all `##` |
+| `epubcheck` | 0 errors | 0 errors after the cleanup (a link without a scheme was read as a file of the EPUB; the script adds `https://`) |
+
+The false formulas could not be reproduced with a synthetic PDF (bold text with umlauts and ß comes out clean), so a filter between marker and pandoc would be written blind and is not built. Instead there are two recipes: `tools/pdf2epub.sh` (marker, default) and `tools/pdf2epub-docling.sh` (docling) for books where marker reads words as formulas. Both pass the three reading-order scenarios (`SHELF_CONVERTER_SCRIPT` picks the script). Whether the 26 missing tables or the 17 images of docling are better or worse on a Kindle was not judged.
+
 Time (observation, not a gate): docling 27 s for 7 pages including the first model download; marker 8 s for the same file.
 
 ## Decision

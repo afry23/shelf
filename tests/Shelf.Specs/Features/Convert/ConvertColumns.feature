@@ -1,5 +1,6 @@
 # Runs the real converter tools/pdf2epub.sh (marker + pandoc, ADR 0022). It needs both tools and several GB of
-# models, so it is skipped unless SHELF_REAL_CONVERTER=1 is set.
+# models, so it is skipped unless SHELF_REAL_CONVERTER=1 is set. SHELF_CONVERTER_SCRIPT=pdf2epub-docling.sh runs the
+# docling recipe instead.
 @F-CNV-1 @F-CNV-2 @M24
 Feature: Reading order of converted PDFs with several columns
   As a person who reads scientific texts on a Kindle

@@ -14,6 +14,9 @@ public sealed class ConvertSteps(ConfigSteps workspace, ScenarioEnvironment envi
     private const string Library = "library";
     private const string RealConverterVariable = "SHELF_REAL_CONVERTER";
 
+    /// <summary>The script of <c>tools/</c> that the real converter runs; <c>pdf2epub.sh</c> (marker) unless set, or <c>pdf2epub-docling.sh</c>.</summary>
+    private const string ScriptVariable = "SHELF_CONVERTER_SCRIPT";
+
     private string _text = string.Empty;
 
     [Given("the converter is configured as {string}")]
@@ -62,7 +65,7 @@ public sealed class ConvertSteps(ConfigSteps workspace, ScenarioEnvironment envi
     {
         Assert.SkipUnless(Environment.GetEnvironmentVariable(RealConverterVariable) == "1", $"set {RealConverterVariable}=1 and install marker and pandoc (tools/pdf2epub.sh)");
         environment.Converter.Real = true;
-        AppendConfig($"convert.command = '{Path.Combine(RepositoryPaths.Root(), "tools", "pdf2epub.sh")} {{input}} {{output}}'");
+        AppendConfig($"convert.command = '{Path.Combine(RepositoryPaths.Root(), "tools", Environment.GetEnvironmentVariable(ScriptVariable) ?? "pdf2epub.sh")} {{input}} {{output}}'");
         AppendConfig("convert.timeout = 1800");
     }
 
